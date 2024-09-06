@@ -9,19 +9,25 @@
 -- - ...incrementally build models that recognize (best,rest) 
 --   examples (where "best"  can be  defined by  multiple goals). 
 --         
--- ### In this code:
+-- ### For this code:
+-- - The raw source files are in markdown, where
+--   type annotations are allowed for function arguments and return types. In those annocations "?" denotes
+--    "optional argument" A tiny pre-processor[^md2lua] generates
+--    Lua source code by stripping out the annotations.
+-- - There are some specific local types:
+--   - Class names are in UPPER CASE.
+--   - atom = bool | str | num  
+--   - row  = list[ atom | "?" ]
+--   - rows = list[ row ]
+--   - klasses = dict[str,rows]
 -- - Settings are stored in `the` (and this variable is 
 --   parsed from the `help` string at top of file).
 -- - Test cases are stored in the `go` table and the test 
 --    `go.X` can be called at the command line using
 --   "`./min.lua -X`" (optionally, with a command-line argument)
--- - In function arguments, 2 spaces denotes "start of optional args" 
---   and 4 spaces denotes "start of local args".
--- - Class names are in UPPER CASE.
--- - atom = bool | str | num 
--- - row  = list[ atom | "?" ]
--- - rows = list[ row ]
--- - klasses = dict[str,rows]
+-- - In function arguments,  4 spaces denotes "start of local args".
+-- 
+-- [^md2lua]: [https://github.com/timm/noml/blob/main/etc/md2lua.awk](https://github.com/timm/noml/blob/main/etc/md2lua.awk)
 -- 
     
 local the,help = {},[[
@@ -34,7 +40,7 @@ USAGE:
 
 OPTIONS:
   -all            run test suite
-  -b begin  int   initial samples   = 4
+  -b begin  int   initial samples   = 4   -- 
   -B Break  int   max samples       = 30
   -c cut    int   items to sort     = 100
   -C Cohen  float small effect      = .35
@@ -53,9 +59,6 @@ local o,oo,pop,push,red,shuffle,sort,trim,up,yellow
 -- 
 -- 
 -- ## Create
--- 
--- Stuff
--- 
 
 function SYM:new(  i, is) --> SYM 
   i, is = i or 0, is or " "
@@ -126,7 +129,7 @@ function SYM:add(x,  n) -->  nil
 -- ## Query
 -- 
 
-function NUM:norm(x) --> ("?" | num) --> "?" | 0..1
+function NUM:norm(x) --> ("" | num) --> "" | 0..1
   return x=="?" and x or (x - self.lo) / (self.hi - self.lo + 1/big) end
 
 function NUM:pdf(x) --> (num) --> num
@@ -222,8 +225,8 @@ function DATA:demoteBadGusses(out,    half,saved) --> list[constrast] --> list[c
 
 local CONTRAST={}
 
-function CONTRAST:new(goal,i,is,lo,hi,B,R)
-  return new(CONTRAST,{goal=goal, i=i, is=is, lo=lo, hi=hi, 
+function CONTRAST:new(bins,goal,i,is,lo,hi,B,R)
+  return new(CONTRAST, bins=bins, {goal=goal},  i=i, is=is, lo=lo, hi=hi, 
                        n=0, bests=0, rests=0, B=B, R=R}) end
 
 function CONTRAST:__tostring() return "12" end
@@ -248,8 +251,11 @@ function CONTRAST:combined(other,dull,small,      k,e0,e1,e2)
   e0, e1, e2 = k:entropy(), self:entropy(), other:entropy()
   if e0 <= (e1*self.n + e2*other.n) / k.n then return k end end
 
-function CONTRAST.combine(i,j,      k)
-  k = CONTRAST:new(i.goal, i.i, i.is, math.min(i.lo,j.lo), math.max(i.hi,j.hi),i.B,i.R)
+function CONTRAST.combine(i,j,      k,lo,hi)
+  lo = math.min(i.lo,j.lo)
+  hi = math.max(i.hi,j.hi)
+  k = CONTRAST:new(i.bins, i.goal, i.i, i.is, lo, hi,i.B,i.R)
+  for _,bin in pairs(j.bins) do k.bins[bin]=bin end
   k.n     = i.n + j.n
   k.bests = i.bests + j.bests
   k.rests = i.rests + j.rests
@@ -270,7 +276,7 @@ function DATA:contrasts4col(col,other,      x,b,out,index)
       if x ~= "?" then
         b = col:discretize(x)
         index[b] = index[b] or 
-                   push(out,CONTRAST:new("best",col.i,col.is,x,x,#self.rows,#other.rows))
+        push(out,CONTRAST:new({b=b},"best",col.i,col.is,x,x,#self.rows,#other.rows))
         index[b]:add(x,klass) end end end
   return col:contrastsCombined(sort(out,lt"lo"), col.n / the.ranges) end
 
@@ -292,12 +298,14 @@ pop = table.remove  --> (list) --> any
 fmt = string.format --> (str)  --> str
 
 function new(klass,obj) --> (t1, t2) --> t2 
-  klass.__index=klass; klass.__tostring=o; return setmetatable(obj,klass) end
+  klass.__index    = klass
+  klass.__tostring = klass.__tostring or o
+  return setmetatable(obj,klass) end
 
 function push(t,x)  --> (list, any) --> list
   t[1+#t]=x; return x end
 
-function sort(t,  fun) --> (list, ?function) --> list
+function sort(t,  fun) --> (list, function) --> list
   table.sort(t,fun); return t end
 
 function median(t) --> (list) --> list

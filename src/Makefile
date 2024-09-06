@@ -1,5 +1,4 @@
 SHELL:= /bin/bash#
-.SILENT:
 
 LOUD=\033[1;34m 
 SOFT=\033[0m
@@ -14,28 +13,18 @@ help: ##  show help
 push: ##  commit to main
 	git add *;git commit -am save;git push;git status
 
-
-        #-H favicon.html         \
-        #--css style.css \
-
 Pandoc =           \
  -s                 \
  --css my.css        \
  -f markdown          \
  --mathjax             \
+ -H ../etc/favicon.html         \
  --include-before=../etc/head.html \
  --include-after=../etc/foot.html   \
  --highlight-style tango 
 
-../src/%.lua : ../docs/%.md
-	echo "$@ ... "
-	gawk -f ../etc/md2lua.awk $< > $@
+all: ../src/*.lua ../docs/*.html
 
-../docs/index.html : ../docs/noml.html
-	echo "$@ ... "
-	cp $< $@
-
-../docs/%.html : ../docs/%.md  
-	echo "$@ ... "
-	cp ../etc/my.css ../docs/my.css
-	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
+%.lua              : %.md           ; gawk -f ../etc/md2lua.awk $< > $@
+../docs/index.html : ../src/noml.md ; sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
+../docs/%.html     : ../src/%.md    ; sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
