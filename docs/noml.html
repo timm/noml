@@ -4,7 +4,8 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Noml</title>
+  <meta name="author" content="Instance-based analytics. No complex models" />
+  <title>The No-ML Manifesto</title>
   <style>
     code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
@@ -89,13 +90,18 @@
 <body>
 <div class=wrapper>
 <p>
-tim menzies, timm@ieee.org, cs, nc state
-<hr>
-<a href="index.html">home</a>
+<img src="logo.png" width=200 align=right>
+tim menzies 
+:: timm@ieee.org 
 :: <a href="https://github.com/timm/noml/issues">issues</a> 
-:: <a href="https://github.com/timm/noml/blob/main/LICENSE">license</a>  </p>
+:: <a href="https://github.com/timm/noml/blob/main/LICENSE.md">&copy; 2024</a>  </p>
+<hr>
 <header id="title-block-header">
-<h1 class="title">Noml</h1>
+<h1 class="title">The No-ML Manifesto</h1>
+<p class="author"><em>Instance-based analytics. No complex
+models</em></p>
+<p class="date"><em>Less, but better (faster, cheaper, easier,
+explicable)</em></p>
 </header>
 <h2 id="about">About</h2>
 <ul>
@@ -149,7 +155,7 @@ class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#c
 <h2 id="create">Create</h2>
 <p>Stuff</p>
 <div class="sourceCode" id="cb2"><pre
-class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="cn">SYM</span><span class="op">:</span>new<span class="op">(</span>  <span class="va">i</span><span class="op">,</span><span class="va">is</span><span class="op">)</span> <span class="co">--&gt; (int, str) --&gt; SYM</span></span>
+class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="cn">SYM</span><span class="op">:</span>new<span class="op">(</span>  <span class="va">i</span><span class="op">:</span><span class="va">int</span><span class="op">,</span> <span class="va">is</span><span class="op">:</span><span class="va">str</span><span class="op">)</span> <span class="op">:</span><span class="cn">SYM</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">i</span><span class="op">,</span> <span class="va">is</span> <span class="op">=</span> <span class="va">i</span> <span class="kw">or</span> <span class="dv">0</span><span class="op">,</span> <span class="va">is</span> <span class="kw">or</span> <span class="st">&quot; &quot;</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> new<span class="op">(</span><span class="cn">SYM</span><span class="op">,</span> <span class="op">{</span><span class="va">n</span><span class="op">=</span><span class="dv">0</span><span class="op">,</span> <span class="va">i</span><span class="op">=</span><span class="va">i</span><span class="op">,</span> <span class="va">is</span><span class="op">=</span><span class="va">is</span><span class="op">,</span> <span class="va">has</span><span class="op">={},</span> <span class="va">most</span><span class="op">=</span><span class="dv">0</span><span class="op">,</span> <span class="va">mode</span><span class="op">=</span><span class="kw">nil</span><span class="op">})</span> <span class="kw">end</span></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
@@ -164,7 +170,7 @@ class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#c
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="va">col</span> <span class="op">=</span> push<span class="op">(</span><span class="va">all</span><span class="op">,</span> <span class="op">(</span><span class="va">is</span><span class="op">:</span><span class="fu">find</span><span class="st">&quot;^[A-Z]&quot;</span> <span class="kw">and</span> <span class="cn">NUM</span> <span class="kw">or</span> <span class="cn">SYM</span><span class="op">):</span>new<span class="op">(</span><span class="va">i</span><span class="op">,</span><span class="va">is</span><span class="op">))</span></span>
 <span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">not</span> <span class="va">is</span><span class="op">:</span><span class="fu">find</span><span class="st">&quot;X$&quot;</span> <span class="cf">then</span></span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>      push<span class="op">(</span><span class="va">is</span><span class="op">:</span><span class="fu">find</span><span class="st">&quot;[!+-]$&quot;</span> <span class="kw">and</span> <span class="va">y</span> <span class="kw">or</span> <span class="va">x</span><span class="op">,</span> <span class="va">col</span><span class="op">)</span> <span class="cf">end</span> <span class="cf">end</span></span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> new<span class="op">(</span><span class="cn">COLS</span><span class="op">,</span> <span class="op">{</span><span class="va">names</span><span class="op">=</span><span class="va">names</span><span class="op">,</span> <span class="va">all</span><span class="op">=</span><span class="va">all</span><span class="op">,</span> <span class="va">x</span><span class="op">=</span><span class="va">x</span><span class="op">,</span> <span class="va">y</span><span class="op">=</span><span class="va">y</span><span class="op">})</span> <span class="kw">end</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> new<span class="op">(</span><span class="cn">COLS</span><span class="op">,</span> <span class="op">{</span><span class="va">names</span><span class="op">,</span> <span class="va">all</span><span class="op">=</span><span class="va">all</span><span class="op">,</span> <span class="va">x</span><span class="op">=</span><span class="va">x</span><span class="op">,</span> <span class="va">y</span><span class="op">=</span><span class="va">y</span><span class="op">})</span> <span class="kw">end</span></span>
 <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="cn">DATA</span><span class="op">:</span>new<span class="op">()</span> <span class="co">--&gt; () --&gt; DATA</span></span>
 <span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> new<span class="op">(</span><span class="cn">DATA</span><span class="op">,</span> <span class="op">{</span><span class="va">rows</span><span class="op">={},</span> <span class="va">cols</span><span class="op">=</span><span class="kw">nil</span><span class="op">})</span> <span class="kw">end</span></span>

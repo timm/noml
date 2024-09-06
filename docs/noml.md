@@ -1,6 +1,8 @@
 #!/usr/bin/env lua
 -- vim: set ts=2 sw=2 et :
-% Noml
+% The No-ML Manifesto
+% _Instance-based analytics. No complex models_
+% _Less, but better (faster, cheaper, easier, explicable)_
 
 ## About
 - Using as few dependent variables as possible...

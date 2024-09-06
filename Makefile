@@ -31,6 +31,10 @@ Pandoc =           \
 	echo "$@ ... "
 	gawk -f ../etc/md2lua.awk $< > $@
 
+../docs/index.html : ../docs/noml.html
+	echo "$@ ... "
+	cp $< $@
+
 ../docs/%.html : ../docs/%.md  
 	echo "$@ ... "
 	cp ../etc/my.css ../docs/my.css
