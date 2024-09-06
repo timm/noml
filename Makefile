@@ -27,7 +27,7 @@ Pandoc =           \
  --include-after=../etc/foot.html   \
  --highlight-style tango 
 
-../src/%.lua : ../docs/%.md 
+../src/%.lua : ../docs/%.md
 	echo "$@ ... "
 	gawk -f ../etc/md2lua.awk $< > $@
 

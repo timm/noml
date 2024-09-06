@@ -1,8 +1,8 @@
 #!/usr/bin/env lua
 -- vim: set ts=2 sw=2 et :
 % The NoML Manifesto
-% _Instance-based analytics. No complex models_
-% _Less, but better (faster, cheaper, easier, explicable)_
+% _Less, but better, analytics (faster, cheaper, easier, explicable)_
+% _(Mostly) instance-based AI. No complex models_
 
 ## About
 - Using as few dependent variables as possible...
@@ -57,16 +57,16 @@ local o,oo,pop,push,red,shuffle,sort,trim,up,yellow
 Stuff
 
 ```lua
-function SYM:new(  i:int, is:str) :SYM
+function SYM:new(  i: int, is: str) --> SYM 
   i, is = i or 0, is or " "
   return new(SYM, {n=0, i=i, is=is, has={}, most=0, mode=nil}) end
 
-function NUM:new(  i,is) --> (int, str) --> SYM
+function NUM:new(  i: int, is: str) --> SYM
   i, is = i or 0, is or " "
   return new(NUM, {n=0, i=i, is=is, mu=0, sd=0, m2=0, lo=big, hi=-big,
                    goal = is:find"-$" and 0 or 1}) end
 
-function COLS:new(names:list[str],     all,x,y,col) :COLS
+function COLS:new(names : list[str],     all,x,y,col) --> COLS
   all,x,y = {},{},{}
   for i,is in pairs(names) do
     col = push(all, (is:find"^[A-Z]" and NUM or SYM):new(i,is))
@@ -74,38 +74,38 @@ function COLS:new(names:list[str],     all,x,y,col) :COLS
       push(is:find"[!+-]$" and y or x, col) end end
   return new(COLS, {names, all=all, x=x, y=y}) end
 
-function DATA:new() --> () --> DATA
+function DATA:new() -->  DATA
   return new(DATA, {rows={}, cols=nil}) end
 
-function DATA:clone(  rows) --> ( ?rows ) --> DATA 
+function DATA:clone(  rows: rows) --> DATA 
   return DATA:new():from({self.cols.names}):from(rows) end
 ```
 
 ## Update
 
 ```lua
-function DATA:csv(file) --> (str) --> DATA
+function DATA:csv(file: str)  --> DATA
   csv(file, function(n,row) 
               table.insert(row, n==0 and "idX" or n)
               self:add(row) end)
   return self end
 
-function DATA:from(  rows) --> ( ?list[row] ) --> DATA
+function DATA:from(  rows: rows) --> DATA
   for _,row in pairs(rows or {}) do self:add(row) end
   return self end
 
-function DATA:add(row) --> (row) --> nil
+function DATA:add(row: row) --> nil
   if   self.cols 
   then push(self.rows,self.cols:add(row)) 
   else self.cols=COLS:new(row) end end
 
-function COLS:add(row) --> (row) --> row
+function COLS:add(row: row) --> row
   for _,cols in pairs{self.x, self.y} do
     for _,col in pairs(cols) do
       col:add( row[col.i] ) end end
   return row end
 
-function NUM:add(x,    d) --> (atom) --> nil
+function NUM:add(x: num,    d) -->  nil
   if x ~= "?" then
     self.n  = self.n + 1
     d       = x - self.mu
@@ -115,7 +115,7 @@ function NUM:add(x,    d) --> (atom) --> nil
     if x > self.hi then self.hi = x end
     if x < self.lo then self.lo = x end end end  
 
-function SYM:add(x,  n) --> (atom) --> nil
+function SYM:add(x: atom,  n) -->  nil
   if x ~= "?" then
     n           = n or 1
     self.n      = n + self.n 
