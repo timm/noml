@@ -1,0 +1,5 @@
+body { padding:10px; font-family: Courier New, monospace; max-width: 700px; font-size: small; } 
+pre  { border: 1px dashed #CCC; 
+       padding: 10px; font-size: small; background-color: #F6F6F6;
+ }
+
