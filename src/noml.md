@@ -1,7 +1,7 @@
 #!/usr/bin/env ./lua
 -- vim: set ts=2 sw=2 et :
 % The NoML Manifesto
-% _Less, but better, analytics (faster, cheaper, easier, explicable). (Mostly) instance-based AI. No complex models_
+% _Less, but better, analytics ("better"= faster, cheaper, easier, explicable). Mostly instance-based AI. No complex models_
 
 ## About
 - Using as few dependent variables as possible...
