@@ -129,46 +129,46 @@ function SYM:add(x,  n) -->  nil
 -- ## Query
 -- 
 
-function NUM:norm(x) --> ("" | num) --> "" | 0..1
+function NUM:norm(x) --> 0..1
   return x=="?" and x or (x - self.lo) / (self.hi - self.lo + 1/big) end
 
-function NUM:pdf(x) --> (num) --> num
+function NUM:pdf(x) --> num
   return math.exp(-.5*((x - self.mu)/self.sd)^2) / (self.sd*((2*math.pi)^0.5)) end
 
 
-function NUM:cdf(x,     fun,z) -->  (num) --> num
+function NUM:cdf(x,     fun,z) --> num
   fun = function(z) return 1 - 0.5 * math.exp(-0.717 * z - 0.416 * z * z) end
   z   = (x - self.mu) / self.sd
   return  z>=0 and fun(z) or 1 - fun(-z) end
 
-function NUM:discretize(x)  --> (num) --> num
+function NUM:discretize(x) --> num
   return self:cdf(x) * the.ranges // 1 end
 
-function SYM:discretize(x)  --> (atom) --> atom
+function SYM:discretize(x) --> atom
   return x end
 
-function SYM:entropy(     e) --> () --> float
+function SYM:entropy(     e) --> float
   e=0; for _,n in pairs(self.has) do e = e - n/self.n * math.log(n/self.n, 2) end
   return e end
 -- 
 -- ## Goals
 
-function DATA:chebyshev(row,    tmp,d) --> (row) --> 0..1
+function DATA:chebyshev(row,    tmp,d) --> 0..1
   d=0; for _,col in pairs(self.cols.y) do
          tmp = math.abs(col.goal - col:norm(row[col.i]))
          if tmp > d then d = tmp end end
   return d end
 
-function DATA:shuffle() -->  () --> DATA
+function DATA:shuffle() --> DATA
   self.rows = shuffle(self.rows)
 	return self end
 
-function DATA:sort(    fun) --> () --> DATA
+function DATA:sort(    fun) --> DATA
   fun = function(row) return self:chebyshev(row) end
   self.rows = sort(self.rows, function(a,b) return fun(a) < fun(b) end)
   return self end
 
-function DATA:bestRest(top,      best,rest) --> () --> DATA,DATA
+function DATA:bestRest(top,      best,rest) --> DATA,DATA
   self:sort()
   best,rest = self:clone(), self:clone()
   for i,row in pairs(self:sort().rows) do
@@ -177,13 +177,13 @@ function DATA:bestRest(top,      best,rest) --> () --> DATA,DATA
 -- 
 -- ## Bayes
 
-function SYM:like(x, prior) --> (atom,num) --> num
+function SYM:like(x, prior) --> num
   return ((self.has[x] or 0) + the.m*prior)/(self.n +the.m) end
 
-function NUM:like(x,...) --> (atom, any...) --> num
+function NUM:like(x,...) --> num
   return self.sd==0 and  (x==self.mu and 1 or 1E-32) or math.min(1,self:pdf(x)) end
 
-function DATA:like(row, n, nClasses) --> (row, int, int) --> num
+function DATA:like(row, n, nClasses) --> num
   local col,prior,out,v,inc
   prior = (#self.rows + the.k) / (n + the.k * nClasses)
   out   = math.log(prior)
@@ -194,7 +194,7 @@ function DATA:like(row, n, nClasses) --> (row, int, int) --> num
       if inc > 0 then out = out + math.log(inc) end end end
   return out end
 
-function DATA:acquire(score,rows) --> (rows, function) --> row
+function DATA:acquire(score, rows) --> row
   local todo,done,top
   todo, done = {},{}
   for i,t in pairs(rows or {}) do push( done, t) end
@@ -205,7 +205,7 @@ function DATA:acquire(score,rows) --> (rows, function) --> row
     done = self:clone(done):sort().rows end
   return done end
 
-function DATA:guess(todo, done, score) --> (rows, rows, function) --> row
+function DATA:guess(todo, done, score) --> row
   local best,rest,fun,tmp,out,j,k
   best,rest = self:clone(done):bestRest()
   fun = function(t) return score(best:like(t,#done,2), rest:like(t,#done,2)) end
@@ -214,7 +214,7 @@ function DATA:guess(todo, done, score) --> (rows, rows, function) --> row
   for _,z in pairs(sort(tmp, lt(1))) do push(out, z[2]) end
   return self:demoteBadGusses(out) end
 
-function DATA:demoteBadGusses(out,    half,saved) --> list[constrast] --> list[constrast]
+function DATA:demoteBadGusses(out,    half,saved) --> list[constrast]
   half,saved = the.cut//2,{}
   for i=half, the.cut        do push(saved,out[i]) end
   for i=the.cut+1, #out-half do out[i-half] = out[i] end
@@ -293,48 +293,48 @@ function NUM:contrastsCombined(contrasts,small,    t,new,dull)
 -- 
 -- ## Lib
 
-big = 1E32          -->        --> num
-pop = table.remove  --> (list) --> any
-fmt = string.format --> (str)  --> str
+big = 1E32          --> num
+pop = table.remove  --> any
+fmt = string.format --> str
 
-function new(klass,obj) --> (t1, t2) --> t2 
+function new(klass, obj) --> t2 
   klass.__index    = klass
   klass.__tostring = klass.__tostring or o
   return setmetatable(obj,klass) end
 
-function push(t,x)  --> (list, any) --> list
+function push(t, x) --> list
   t[1+#t]=x; return x end
 
-function sort(t,  fun) --> (list, function) --> list
+function sort(t, fun) --> list
   table.sort(t,fun); return t end
 
-function median(t) --> (list) --> list
+function median(t) --> list
   return sort(t)[.5*#t//1] end
 
-function lt(key) -->  (str) --> function
+function lt(key) -->  function
   return function(a,b) return a[key] < b[key] end end
 
-function gt(key)  --> (str) --> function
+function gt(key) --> function
   return function(a,b) return a[key] > b[key] end end
 
-function up(fun) --> (function) --> function
+function up(fun) --> function
   return function(a,b) return fun(a) > fun(b) end end
 
-function down(fun) --> (function) --> function
+function down(fun) --> function
   return function(a,b) return fun(a) < fun(b) end end
 
-function keys(t,    u) --> (list) --> list
+function keys(t,    u) --> list
   u={}; for k,_ in pairs(t) do push(u,k) end return sort(u) end   
 
-function shuffle(t,    j) --> (list) --> list
+function shuffle(t,    j) --> list
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
   return t end
 
-function coerce(s,     fun) --> (str) --> atom
+function coerce(s,     fun) --> atom
   fun = function(s) return s=="true" and true or s ~= "false" and s end
   return math.tointeger(s) or tonumber(s) or fun(trim(s)) end
 
-function csv(file,fun,      src,s,cells,n) --> (str, function) --> nil
+function csv(file, fun,      src,s,cells,n) --> nil
   function cells(s,    t)
     t={}; for s1 in s:gmatch"([^,]+)" do push(t,coerce(s1)) end; return t end
   src = io.input(file)
@@ -343,10 +343,10 @@ function csv(file,fun,      src,s,cells,n) --> (str, function) --> nil
     s = io.read()
     if s then n=n+1; fun(n,cells(s)) else return io.close(src) end end end
 
-function trim(s) --> (str) --> str
+function trim( s ) --> str
   return s:match"^%s*(.-)%s*$" end
 
-function o(x,     list,hash) --> (any) --> str
+function o(x,     list,hash) --> str
   list= function(t) for _,v in pairs(x) do push(t, o(v)) end; return t end
   hash= function(t) for _,k in pairs(keys(x)) do 
                       if   not o(k):find"^_" 
@@ -356,7 +356,7 @@ function o(x,     list,hash) --> (any) --> str
   if type(x) ~= "table"  then return tostring(x)   end
   return "{" .. table.concat(#x>0 and list{} or hash{}, " ") .. "}" end
 
-function oo(x) --> (any) --> nil
+function oo(x) --> nil
   print(o(x)) end
 
 function yellow(s) return "\27[33m" .. s .. "\27[0m" end

@@ -1,4 +1,5 @@
 SHELL:= /bin/bash#
+.SILENT:
 
 LOUD=\033[1;34m 
 SOFT=\033[0m
@@ -18,13 +19,21 @@ Pandoc =           \
  --css my.css        \
  -f markdown          \
  --mathjax             \
- -H ../etc/favicon.html         \
+ -H ../etc/favicon.html \
  --include-before=../etc/head.html \
  --include-after=../etc/foot.html   \
  --highlight-style tango 
 
 all: ../src/*.lua ../docs/*.html
 
-%.lua              : %.md           ; gawk -f ../etc/md2lua.awk $< > $@
-../docs/index.html : ../src/noml.md ; sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
-../docs/%.html     : ../src/%.md    ; sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
+%.lua : %.md           
+	echo "$@ ..."
+	gawk -f ../etc/md2lua.awk $< > $@
+
+../docs/index.html : ../src/noml.md 
+	echo "$@ ..."
+	 sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
+
+../docs/%.html : ../src/%.md    
+	echo "$@ ..."
+	 sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
