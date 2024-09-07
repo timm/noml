@@ -1,8 +1,7 @@
 #!/usr/bin/env ./lua
 -- vim: set ts=2 sw=2 et :
 -- % The NoML Manifesto
--- % _Less, but better, analytics (faster, cheaper, easier, explicable)_
--- % _(Mostly) instance-based AI. No complex models_
+-- % _Less, but better, analytics (faster, cheaper, easier, explicable)._<br> _(Mostly) instance-based AI. No complex models_
 -- 
 -- ## About
 -- - Using as few dependent variables as possible...
@@ -54,8 +53,6 @@ OPTIONS:
   -T Top    float best set size     = .5]]
 
 local NUM,SYM,COLS,DATA,l = {},{},{},{},{}
-local big,coerce,csv,down,fmt,green,gt,keys,lt,median,new
-local o,oo,pop,push,red,shuffle,sort,trim,up,yellow
 -- 
 -- 
 -- ## Create

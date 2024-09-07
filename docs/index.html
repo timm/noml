@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <meta name="author" content="Less, but better, analytics (faster, cheaper, easier, explicable)" />
+  <meta name="author" content="Less, but better, analytics (faster, cheaper, easier, explicable).  (Mostly) instance-based AI. No complex models" />
   <title>The NoML Manifesto</title>
   <style>
     code{white-space: pre-wrap;}
@@ -92,17 +92,16 @@
 <div class=wrapper>
 <p>
 <img src="logo.png" width=200 align=right>
-<a href="https://github.com/timm/noml/blob/main/LICENSE.md">&copy;2024</a>  tim menzies 
-(timm@ieee.org)
-:: <a href="https://github.com/timm/noml/blob/main/src/noml.lua">code</a>
+<a href="https://github.com/timm/noml/blob/main/src/noml.lua">code</a>
 :: <a href="https://github.com/timm/moot">data</a>
-:: <a href="https://github.com/timm/noml/issues">issues</a> </p>
-<hr>
+:: <a href="https://github.com/timm/noml/issues">issues</a> 
+<br>
+<a href="https://github.com/timm/noml/blob/main/LICENSE.md">&copy;2024</a>,  tim menzies 
+(timm@ieee.org)</p><hr>
 <header id="title-block-header">
 <h1 class="title">The NoML Manifesto</h1>
 <p class="author"><em>Less, but better, analytics (faster, cheaper,
-easier, explicable)</em></p>
-<p class="date"><em>(Mostly) instance-based AI. No complex
+easier, explicable).</em><br> <em>(Mostly) instance-based AI. No complex
 models</em></p>
 </header>
 <h2 id="about">About</h2>
@@ -159,9 +158,7 @@ class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#c
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="vs">  -t train  str   csv file          = ../../../moot/optimize/misc/auto93.csv</span></span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="vs">  -T Top    float best set size     = .5]]</span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="cn">NUM</span><span class="op">,</span><span class="cn">SYM</span><span class="op">,</span><span class="cn">COLS</span><span class="op">,</span><span class="cn">DATA</span><span class="op">,</span><span class="va">l</span> <span class="op">=</span> <span class="op">{},{},{},{},{}</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">big</span><span class="op">,</span><span class="va">coerce</span><span class="op">,</span><span class="va">csv</span><span class="op">,</span><span class="va">down</span><span class="op">,</span><span class="va">fmt</span><span class="op">,</span><span class="va">green</span><span class="op">,</span><span class="va">gt</span><span class="op">,</span><span class="va">keys</span><span class="op">,</span><span class="va">lt</span><span class="op">,</span><span class="va">median</span><span class="op">,</span><span class="va">new</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">o</span><span class="op">,</span><span class="va">oo</span><span class="op">,</span><span class="va">pop</span><span class="op">,</span><span class="va">push</span><span class="op">,</span><span class="va">red</span><span class="op">,</span><span class="va">shuffle</span><span class="op">,</span><span class="va">sort</span><span class="op">,</span><span class="va">trim</span><span class="op">,</span><span class="va">up</span><span class="op">,</span><span class="va">yellow</span></span></code></pre></div>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="cn">NUM</span><span class="op">,</span><span class="cn">SYM</span><span class="op">,</span><span class="cn">COLS</span><span class="op">,</span><span class="cn">DATA</span><span class="op">,</span><span class="va">l</span> <span class="op">=</span> <span class="op">{},{},{},{},{}</span></span></code></pre></div>
 <h2 id="create">Create</h2>
 <div class="sourceCode" id="cb2"><pre
 class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="cn">SYM</span><span class="op">:</span>new<span class="op">(</span>  <span class="va">i</span><span class="op">:</span> <span class="va">int</span><span class="op">,</span> <span class="va">is</span><span class="op">:</span> <span class="va">str</span><span class="op">)</span> <span class="co">--&gt; SYM </span></span>
