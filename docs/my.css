@@ -1,9 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
 
+a:link { 
+  text-decoration: none; 
+} 
+
+a:hover { 
+  text-decoration: underline; 
+} 
+
 body { padding:10px; 
        max-width: 700px; 
        font-size: small;  
-       font-family: "Roboto", "Helvetica", "Arial", sans-serif; }
+       font-family: monospace, "Roboto", "Helvetica", "Arial", sans-serif; }
 
 pre  { border: 1px dashed #CCC; 
        padding: 10px; font-size: small; background-color: #F6F6F6; }
