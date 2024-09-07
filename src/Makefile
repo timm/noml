@@ -19,7 +19,8 @@ setup: ## set file permissions
 	[ -f "noml.lua" ] && chmod +x ./noml.lua
  
 push: ## commit to main
-	git add *;git commit -am save;git push;git status
+	echo -en "$(LOUD)Why this push? $(SOFT)"; read x; git commit -am "$$x"
+	- git push; git status
 
 Pandoc =           \
  -s                 \
@@ -44,4 +45,4 @@ all: ../src/*.lua ../docs/*.html setup
 
 ../docs/%.html : ../src/%.md    
 	echo "... $@"
-	 sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
+	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
