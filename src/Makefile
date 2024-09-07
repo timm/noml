@@ -4,21 +4,21 @@ SHELL:= /bin/bash#
 LOUD=\033[1;34m 
 SOFT=\033[0m
 
-help: ##  show help
+help: ## show help
 	grep '^[a-z].*:.*##' $(MAKEFILE_LIST) \
 	| sort \
 	| gawk 'BEGIN {FS="##"; print "\n$(LOUD)make$(SOFT) [OPTIONS]\n"} \
-	              { sub(/^[^:]*:/,"",$$1); \
-				          printf("$(LOUD)%10s$(SOFT) %s\n",$$1,$$2)}'
+	              {sub(/:.*/,"",$$1); \
+                 printf("$(LOUD)%10s$(SOFT) %s\n",$$1,$$2)}'
 
-mac: setup 
+mac: setup ## mac os/x install instructions
 	brew install -q lua htop gawk 
 
-setup: ##
+setup: ## set file permissions
 	chmod +x ./lua
 	[ -f "noml.lua" ] && chmod +x ./noml.lua
  
-push: ##  commit to main
+push: ## commit to main
 	git add *;git commit -am save;git push;git status
 
 Pandoc =           \
@@ -34,13 +34,14 @@ Pandoc =           \
 all: ../src/*.lua ../docs/*.html setup
 
 %.lua : %.md           
-	echo "$@ ..."
+	echo "... $@"
 	gawk -f ../etc/md2lua.awk $< > $@
+	luac -p $@
 
 ../docs/index.html : ../src/noml.md 
-	echo "$@ ..."
+	echo "... $@"
 	 sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
 
 ../docs/%.html : ../src/%.md    
-	echo "$@ ..."
+	echo "... $@"
 	 sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)

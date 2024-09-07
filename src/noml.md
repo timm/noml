@@ -53,7 +53,7 @@ OPTIONS:
   -t train  str   csv file          = ../../../moot/optimize/misc/auto93.csv
   -T Top    float best set size     = .5]]
 
-local NUM,SYM,COLS,DATA = {},{},{},{}
+local NUM,SYM,COLS,DATA,l = {},{},{},{},{}
 local big,coerce,csv,down,fmt,green,gt,keys,lt,median,new
 local o,oo,pop,push,red,shuffle,sort,trim,up,yellow
 ```
@@ -63,23 +63,23 @@ local o,oo,pop,push,red,shuffle,sort,trim,up,yellow
 ```lua
 function SYM:new(  i: int, is: str) --> SYM 
   i, is = i or 0, is or " "
-  return new(SYM, {n=0, i=i, is=is, has={}, most=0, mode=nil}) end
+  return l.new(SYM, {n=0, i=i, is=is, has={}, most=0, mode=nil}) end
 
 function NUM:new(  i: int, is: str) --> SYM
   i, is = i or 0, is or " "
-  return new(NUM, {n=0, i=i, is=is, mu=0, sd=0, m2=0, lo=big, hi=-big,
-                   goal = is:find"-$" and 0 or 1}) end
+  return l.new(NUM, {n=0, i=i, is=is, mu=0, sd=0, m2=0, lo=big, hi=-big,
+                     goal = is:find"-$" and 0 or 1}) end
 
 function COLS:new(names : list[str],     all,x,y,col) --> COLS
   all,x,y = {},{},{}
   for i,is in pairs(names) do
-    col = push(all, (is:find"^[A-Z]" and NUM or SYM):new(i,is))
+    col = l.push(all, (is:find"^[A-Z]" and NUM or SYM):new(i,is))
     if not is:find"X$" then
-      push(is:find"[!+-]$" and y or x, col) end end
-  return new(COLS, {names, all=all, x=x, y=y}) end
+      l.push(is:find"[!+-]$" and y or x, col) end end
+  return l.new(COLS, {names, all=all, x=x, y=y}) end
 
 function DATA:new() -->  DATA
-  return new(DATA, {rows={}, cols=nil}) end
+  return l.new(DATA, {rows={}, cols=nil}) end
 
 function DATA:clone(  rows: rows) --> DATA 
   return DATA:new():from({self.cols.names}):from(rows) end
@@ -100,7 +100,7 @@ function DATA:from(  rows: rows) --> DATA
 
 function DATA:add(row: row) --> nil
   if   self.cols 
-  then push(self.rows,self.cols:add(row)) 
+  then l.push(self.rows,self.cols:add(row)) 
   else self.cols=COLS:new(row) end end
 
 function COLS:add(row: row) --> row
@@ -150,8 +150,8 @@ function SYM:discretize(x:atom) --> atom
   return x end
 
 function SYM:entropy(     e) --> float
-  e=0; for _,n in pairs(self.has) do e = e - n/self.n * math.log(n/self.n, 2) end
-  return e end
+  fun = function(n) return n/self.n * math.log(n/self.n,2) end
+  return -sum(self.has, fun) end
 ```
 
 ## Goals
@@ -299,79 +299,102 @@ function NUM:contrastsCombined(contrasts,small,    t,new,dull)
       if new then t[#t] = new else push(t,contrast) end end end
   return t end
 ```
-## Lib
-```lua
-big = 1E32          --> num
-pop = table.remove  --> any
-fmt = string.format --> str
 
-function new(klass:t1, obj:t2) --> t2 
+## Lib
+
+```lua
+l.big = 1E32          --> num
+l.pop = table.remove  --> any
+l.fmt = string.format --> str
+
+function l.map(t:list,fun:function,     u) --> list
+  u={}; for k,v in pairs(t) do u[1+#u]=fun(v)  end; return u end
+
+function l.mapp(t:list,fun:function,    u) --> list
+  u={}; for k,v in pairs(t) do u[k]  =fun(k,v) end; return u end
+
+function l.sum(t:list,?fun:function,      sum) --> num
+  out,fun = 0,fun or function(x) return x end
+  l.map(t,function(x) out = out + fun(x) end)
+  return out end
+
+function l.max(t:list[X], ?fun:function,      most,fun,out) --> X
+  most,fun = -big,fun or function(x) return x end
+  l.map(t, function(x) tmp=fun(x); if tmp > most then most,out=tmp,x end end)
+  return out end
+  
+l.filter=map
+l.filterr=mapp
+
+function l.new(klass:t1, obj:t2) --> t2 
   klass.__index    = klass
   klass.__tostring = klass.__tostring or o
   return setmetatable(obj,klass) end
 
-function push(t:list, x:any) --> list
+function l.push(t:list, x:any) --> list
   t[1+#t]=x; return x end
 
-function sort(t:list, ?fun:function) --> list
+function l.sort(t:list, ?fun:function) --> list
   table.sort(t,fun); return t end
 
-function median(t:list) --> list
+function l.median(t:list) --> list
   return sort(t)[.5*#t//1] end
 
-function lt(key:str) -->  function
+function l.lt(key:str) -->  function
   return function(a,b) return a[key] < b[key] end end
 
-function gt(key:str) --> function
+function l.gt(key:str) --> function
   return function(a,b) return a[key] > b[key] end end
 
-function up(fun:function) --> function
+function l.up(fun:function) --> function
   return function(a,b) return fun(a) > fun(b) end end
 
-function down(fun:function) --> function
+function l.down(fun:function) --> function
   return function(a,b) return fun(a) < fun(b) end end
 
-function keys(t:list,    u) --> list
-  u={}; for k,_ in pairs(t) do push(u,k) end return sort(u) end   
+function l.keys(t:list,    u) --> list
+  u={}; for k,_ in pairs(t) do l.push(u,k) end return sort(u) end   
 
-function shuffle(t:list,    j) --> list
+function l.shuffle(t:list,    j) --> list
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
   return t end
 
-function coerce(s:str,     fun) --> atom
+function l.coerce(s:str,     fun) --> atom
   fun = function(s) return s=="true" and true or s ~= "false" and s end
   return math.tointeger(s) or tonumber(s) or fun(trim(s)) end
 
-function csv(file:str, fun:function,      src,s,cells,n) --> nil
+function l.csv(file:str, fun:function,      src,s,cells,n) --> nil
   function cells(s,    t)
-    t={}; for s1 in s:gmatch"([^,]+)" do push(t,coerce(s1)) end; return t end
+    t={}; for s1 in s:gmatch"([^,]+)" do l.push(t,l.coerce(s1)) end; return t end
   src = io.input(file)
   n   = -1
   while true do
     s = io.read()
     if s then n=n+1; fun(n,cells(s)) else return io.close(src) end end end
 
-function trim( s:str ) --> str
+function l.trim( s:str ) --> str
   return s:match"^%s*(.-)%s*$" end
 
-function o(x:any,     list,hash) --> str
-  list= function(t) for _,v in pairs(x) do push(t, o(v)) end; return t end
+function l.o(x:any,     list,hash) --> str
+  list= function(t) for _,v in pairs(x) do push(t, l.o(v)) end; return t end
   hash= function(t) for _,k in pairs(keys(x)) do 
-                      if   not o(k):find"^_" 
-                      then push(t, fmt(":%s %s", k, o(x[k]))) end end 
+                      if   not l.o(k):find"^_" 
+                      then push(t, l.fmt(":%s %s", k, l.o(x[k]))) end end 
                     return t end
-  if type(x) == "number" then return fmt("%g",x) end
+  if type(x) == "number" then return l.fmt("%g",x) end
   if type(x) ~= "table"  then return tostring(x)   end
   return "{" .. table.concat(#x>0 and list{} or hash{}, " ") .. "}" end
 
-function oo(x:any) --> nil
-  print(o(x)) end
+function l.oo(x:any) --> nil
+  print(l.o(x)) end
 
-function yellow(s) return "\27[33m" .. s .. "\27[0m" end
-function green(s)  return "\27[32m" .. s .. "\27[0m" end
-function red(s)    return "\27[31m" .. s .. "\27[0m" end
+function l.yellow(s) return "\27[33m" .. s .. "\27[0m" end
+function l.green(s)  return "\27[32m" .. s .. "\27[0m" end
+function l.red(s)    return "\27[31m" .. s .. "\27[0m" end
 ```
+
 ## Main
+
 ```lua
 local go = {}
 
@@ -382,25 +405,25 @@ function go.the(_) oo(the) end
 function go.all(_,     status,msg,fails,todos) 
   todos, fails = "sort csv data bayes cheb acq", 0
   for x in todos:gmatch"([^ ]+)" do
-    print(yellow(x))
+    print(l.yellow(x))
     math.randomseed(the.seed)
     status,msg = xpcall(go[x], debug.traceback, _)
     if status == false then 
-      print(red("fail in "..x.." :"..msg)); fails = fails + 1
-    else print(green("pass")) end end
+      print(l.red("fail in "..x.." :"..msg)); fails = fails + 1
+    else print(l.green("pass")) end end
   os.exit(fails) end 
 
 function go.train(x) the.train = x end
 
-function go.seed(x) the.seed = coerce(x); math.randomseed(the.seed) end
+function go.seed(x) the.seed = l.coerce(x); math.randomseed(the.seed) end
 
 function go.sort(_,     t)
-  t = sort({10,1,2,3,1,4,1,1,2,4,2,1}, function(a,b) return a>b end)
+  t = l.sort({10,1,2,3,1,4,1,1,2,4,2,1}, function(a,b) return a>b end)
   assert(t[1]==10, "wrong sort") end
 
 function go.csv(_,     fun) 
   fun = function(n,t) if (n % 60) == 0 then print(n, o(t)) end end
-  csv(the.train, fun) end
+  l.csv(the.train, fun) end
 
 function go.data(_,      d)
   d = DATA:new():csv(the.train):shuffle():sort()
@@ -411,7 +434,7 @@ function go.data(_,      d)
 function go.bayes(_,      d,fun)
   d   = DATA:new():csv(the.train) 
   fun = function(t) return d:like(t,1000,2) end
-  for n,t in pairs(sort(d.rows, down(fun))) do
+  for n,t in pairs(l.sort(d.rows, down(fun))) do
     if n==1 or n==#d.rows or (n%30)==0 then print(n, t[#t], fun(t)) end end end
 
 function go.cheb(_,      d,num)
@@ -440,9 +463,11 @@ function go.pdf(_)  os.execute("make -B ~/tmp/min.pdf; open ~/tmp/min.pdf") end
 function go.doc(_)  os.execute(
   "pycco -d ~/tmp min.lua; echo 'p {text-align:right;}' >> ~/tmp/pycco.css") end
 ```
+
 ## Start
+
 ```lua
-help:gsub("\n%s+-%S%s(%S+)[^=]+=%s+(%S+)", function(k,v) the[k] = coerce(v) end)
+help:gsub("\n%s+-%S%s(%S+)[^=]+=%s+(%S+)", function(k,v) the[k]= l.coerce(v) end)
 math.randomseed(the.seed)
 
 if arg[0]:find"min.lua" then
@@ -450,5 +475,5 @@ if arg[0]:find"min.lua" then
     s = s:sub(2)
     if go[s] then go[s]( arg[i+1] ) end end end
 
-return {NUM=NUM,SYM=SYM,DATA=DATA,the=the,help=help} 
+return {NUM=NUM,SYM=SYM,DATA=DATA,lib=lib,the=the,help=help} 
 ```
