@@ -1,6 +1,6 @@
 #!/usr/bin/env ./lua
--- vim: set ts=2 sw=2 et :
--- % The NoML Manifesto
+-- <!-- vim: set ts=2 sw=2 et :  -->   
+-- % The NoML Manifesto   
 -- % _Less, but better, analytics ("better"= faster, cheaper, explicable). Mostly instance-based AI. No complex models. Really simple code._
 -- 
 -- ## About
@@ -64,7 +64,7 @@ function SYM:new(  i, is) --> SYM
 
 function NUM:new(  i, is) --> SYM
   i, is = i or 0, is or " "
-  return l.new(NUM, {n=0, i=i, is=is, mu=0, sd=0, m2=0, lo=big, hi=-big,
+  return l.new(NUM, {n=0, i=i, is=is, mu=0, sd=0, m2=0, lo=l.big, hi=-l.big,
                      goal = is:find"-$" and 0 or 1}) end
 
 function COLS:new(names,     all,x,y,col) --> COLS
@@ -86,7 +86,7 @@ function DATA:clone(  rows) --> DATA
 -- 
 
 function DATA:csv(file)  --> DATA
-  csv(file, function(n,row) 
+  l.csv(file, function(n,row) 
               table.insert(row, n==0 and "idX" or n)
               self:add(row) end)
   return self end
@@ -129,7 +129,7 @@ function SYM:add(x,  n) -->  nil
 -- 
 
 function NUM:norm(x) --> 0..1
-  return x=="?" and x or (x - self.lo) / (self.hi - self.lo + 1/big) end
+  return x=="?" and x or (x - self.lo) / (self.hi - self.lo + 1/l.big) end
 
 function NUM:pdf(x) --> num
   return math.exp(-.5*((x - self.mu)/self.sd)^2) / (self.sd*((2*math.pi)^0.5)) end
@@ -146,9 +146,9 @@ function NUM:discretize(x) --> num
 function SYM:discretize(x) --> atom
   return x end
 
-function SYM:entropy(     e) --> float
+function SYM:entropy(     fun) --> float
   fun = function(n) return n/self.n * math.log(n/self.n,2) end
-  return -sum(self.has, fun) end
+  return -l.sum(self.has, fun) end
 -- 
 -- 
 -- ## Goals
@@ -161,12 +161,12 @@ function DATA:chebyshev(row,    tmp,d) --> 0..1
   return d end
 
 function DATA:shuffle() --> DATA
-  self.rows = shuffle(self.rows)
+  self.rows = l.shuffle(self.rows)
 	return self end
 
 function DATA:sort(    fun) --> DATA
   fun = function(row) return self:chebyshev(row) end
-  self.rows = sort(self.rows, function(a,b) return fun(a) < fun(b) end)
+  self.rows = l.sort(self.rows, function(a,b) return fun(a) < fun(b) end)
   return self end
 
 function DATA:bestRest(top,      best,rest) --> DATA,DATA
@@ -200,11 +200,11 @@ function DATA:like(row, n, nClasses) --> num
 function DATA:acquire(score, rows) --> row
   local todo,done,top
   todo, done = {},{}
-  for i,t in pairs(rows or {}) do push( done, t) end
-  for i,t in pairs(self.rows)  do push(#done < the.begin and done or todo, t) end
+  for i,t in pairs(rows or {}) do l.push( done, t) end
+  for i,t in pairs(self.rows)  do l.push(#done < the.begin and done or todo, t) end
   while #done < the.Break do
     top, todo = self:guess(todo, done, score or function(B,R) return B-R end)
-    push(done, top) 
+    l.push(done, top) 
     done = self:clone(done):sort().rows end
   return done end
 
@@ -213,16 +213,16 @@ function DATA:guess(todo, done, score) --> row
   best,rest = self:clone(done):bestRest()
   fun = function(t) return score(best:like(t,#done,2), rest:like(t,#done,2)) end
   tmp, out = {},{}
-  for i,t in pairs(todo) do push(tmp, {i <= the.cut and fun(t) or 0, t}) end
-  for _,z in pairs(sort(tmp, lt(1))) do push(out, z[2]) end
+  for i,t in pairs(todo) do l.push(tmp, {i <= the.cut and fun(t) or 0, t}) end
+  for _,z in pairs(l.sort(tmp, l.lt(1))) do l.push(out, z[2]) end
   return self:demoteBadGusses(out) end
 
 function DATA:demoteBadGusses(out,    half,saved) --> list[constrast]
   half,saved = the.cut//2,{}
-  for i=half, the.cut        do push(saved,out[i]) end
+  for i=half, the.cut        do l.push(saved,out[i]) end
   for i=the.cut+1, #out-half do out[i-half] = out[i] end
   for i,x in pairs(saved)    do out[#out-half + i ] = x end
-  return pop(out), out end
+  return l.pop(out), out end
 -- 
 -- 
 --  ## Contrasts
@@ -231,8 +231,8 @@ function DATA:demoteBadGusses(out,    half,saved) --> list[constrast]
 local CONTRAST={}
 
 function CONTRAST:new(bins,goal,i,is,lo,hi,B,R)
-  return new(CONTRAST, {bins=bins, goal=goal,  i=i, is=is, lo=lo, hi=hi, 
-                       n=0, bests=0, rests=0, B=B, R=R}) end
+  return l.new(CONTRAST, {bins=bins, goal=goal,  i=i, is=is, lo=lo, hi=hi, 
+                          n=0, bests=0, rests=0, B=B, R=R}) end
 
 function CONTRAST:__tostring() return "12" end
 function CONTRAST:add(x,y)
@@ -270,8 +270,8 @@ function DATA:contrasts(other,both,      out)
   out = {}
   for i,col in pairs(both.cols.x) do
     for _,contrast in pairs(self:contrasts4col(col,other)) do 
-        push(out, contrast) end end 
-  return   sort(out, up(function(c) return c:score() end)) end
+        l.push(out, contrast) end end 
+  return   l.sort(out, l.up(function(c) return c:score() end)) end
 
 function DATA:contrasts4col(col,other,      x,b,out,index)
   out, index = {}, {}
@@ -281,9 +281,9 @@ function DATA:contrasts4col(col,other,      x,b,out,index)
       if x ~= "?" then
         b = col:discretize(x)
         index[b] = index[b] or 
-        push(out,CONTRAST:new({b=b},"best",col.i,col.is,x,x,#self.rows,#other.rows))
+        l.push(out,CONTRAST:new({b=b},"best",col.i,col.is,x,x,#self.rows,#other.rows))
         index[b]:add(x,klass) end end end
-  return col:contrastsCombined(sort(out,lt"lo"), col.n / the.ranges) end
+  return col:contrastsCombined(l.sort(out,l.lt"lo"), col.n / the.ranges) end
 
 function SYM:contrastsCombined(contrasts,_) return contrasts end
 
@@ -293,7 +293,7 @@ function NUM:contrastsCombined(contrasts,small,    t,new,dull)
   for i,contrast in pairs(contrasts) do
     if i > 1 then
       new = contrast:combined(t[#t], dull,small) 
-      if new then t[#t] = new else push(t,contrast) end end end
+      if new then t[#t] = new else l.push(t,contrast) end end end
   return t end
 -- 
 -- 
@@ -307,25 +307,25 @@ l.fmt = string.format --> str
 function l.map(t,fun,     u) --> list
   u={}; for k,v in pairs(t) do u[1+#u]=fun(v)  end; return u end
 
-function l.mapp(t,fun,    u) --> list
+function l.maps(t,fun,    u) --> list
   u={}; for k,v in pairs(t) do u[k]  =fun(k,v) end; return u end
 
-function l.sum(t,fun,      sum) --> num
+l.filter  = l.map
+l.filters = l.maps
+
+function l.sum(t,fun,      out) --> num
   out,fun = 0,fun or function(x) return x end
   l.map(t,function(x) out = out + fun(x) end)
   return out end
 
-function l.max(t, fun,      most,fun,out) --> X
-  most,fun = -big,fun or function(x) return x end
-  l.map(t, function(x) tmp=fun(x); if tmp > most then most,out=tmp,x end end)
+function l.max(t, fun,      most,out) --> X
+  most,fun = -l.big,fun or function(x) return x end
+  l.map(t, function(x) local tmp=fun(x); if tmp > most then most,out=tmp,x end end)
   return out end
   
-l.filter=map
-l.filterr=mapp
-
 function l.new(klass, obj) --> t2 
   klass.__index    = klass
-  klass.__tostring = klass.__tostring or o
+  klass.__tostring = klass.__tostring or l.o
   return setmetatable(obj,klass) end
 
 function l.push(t, x) --> list
@@ -335,7 +335,7 @@ function l.sort(t, fun) --> list
   table.sort(t,fun); return t end
 
 function l.median(t) --> list
-  return sort(t)[.5*#t//1] end
+  return l.sort(t)[.5*#t//1] end
 
 function l.lt(key) -->  function
   return function(a,b) return a[key] < b[key] end end
@@ -350,7 +350,7 @@ function l.down(fun) --> function
   return function(a,b) return fun(a) < fun(b) end end
 
 function l.keys(t,    u) --> list
-  u={}; for k,_ in pairs(t) do l.push(u,k) end return sort(u) end   
+  u={}; for k,_ in pairs(t) do l.push(u,k) end return l.sort(u) end   
 
 function l.shuffle(t,    j) --> list
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
@@ -358,7 +358,7 @@ function l.shuffle(t,    j) --> list
 
 function l.coerce(s,     fun) --> atom
   fun = function(s) return s=="true" and true or s ~= "false" and s end
-  return math.tointeger(s) or tonumber(s) or fun(trim(s)) end
+  return math.tointeger(s) or tonumber(s) or fun(l.trim(s)) end
 
 function l.csv(file, fun,      src,s,cells,n) --> nil
   function cells(s,    t)
@@ -373,14 +373,11 @@ function l.trim( s ) --> str
   return s:match"^%s*(.-)%s*$" end
 
 function l.o(x,     list,hash) --> str
-  list= function(t) for _,v in pairs(x) do push(t, l.o(v)) end; return t end
-  hash= function(t) for _,k in pairs(keys(x)) do 
-                      if   not l.o(k):find"^_" 
-                      then push(t, l.fmt(":%s %s", k, l.o(x[k]))) end end 
-                    return t end
   if type(x) == "number" then return l.fmt("%g",x) end
   if type(x) ~= "table"  then return tostring(x)   end
-  return "{" .. table.concat(#x>0 and list{} or hash{}, " ") .. "}" end
+  list = function(x)   return l.o(x) end
+  hash = function(k,v) if not l.o(k):find"^_"  then return l.fmt(":%s %s", k, l.o(x[k])) end end 
+  return "{" .. table.concat(#x>0 and l.map(x,list) or l.sort(l.filters(x,hash))," ").."}" end
 
 function l.oo(x) --> nil
   print(l.o(x)) end
@@ -397,7 +394,7 @@ local go = {}
 
 function go.h(_) print("\n" ..help) end
 
-function go.the(_) oo(the) end
+function go.the(_) l.oo(the) end
 
 function go.all(_,     status,msg,fails,todos) 
   todos, fails = "sort csv data bayes cheb acq", 0
@@ -419,19 +416,19 @@ function go.sort(_,     t)
   assert(t[1]==10, "wrong sort") end
 
 function go.csv(_,     fun) 
-  fun = function(n,t) if (n % 60) == 0 then print(n, o(t)) end end
+  fun = function(n,t) if (n % 60) == 0 then print(n, l.o(t)) end end
   l.csv(the.train, fun) end
 
 function go.data(_,      d)
   d = DATA:new():csv(the.train):shuffle():sort()
   for n,row in pairs(d.rows) do 
-    if n==1 or (n%30)==0 then print(n,o(row)) end end
-  print""; for _,col in pairs(d.cols.y) do oo(col) end end
+    if n==1 or (n%30)==0 then print(n,l.o(row)) end end
+  print""; for _,col in pairs(d.cols.y) do l.oo(col) end end
 
 function go.bayes(_,      d,fun)
   d   = DATA:new():csv(the.train) 
   fun = function(t) return d:like(t,1000,2) end
-  for n,t in pairs(l.sort(d.rows, down(fun))) do
+  for n,t in pairs(l.sort(d.rows, l.down(fun))) do
     if n==1 or n==#d.rows or (n%30)==0 then print(n, t[#t], fun(t)) end end end
 
 function go.cheb(_,      d,num)
@@ -443,11 +440,11 @@ function go.cheb(_,      d,num)
 function go.acq(_,      d,toBe,t,asIs,repeats,start)
   d = DATA:new():csv(the.train) 
   asIs,toBe = {},{}
-  for _,t in pairs(d.rows) do push(asIs, d:chebyshev(t)) end
+  for _,t in pairs(d.rows) do l.push(asIs, d:chebyshev(t)) end
   repeats = 20
   start = os.clock()
-  for i=1,repeats do push(toBe, d:chebyshev(d:shuffle():acquire()[1])) end
-  oo{secs = (os.clock() - start)/repeats, asIs=median(asIs), toBe=median(toBe)} end
+  for i=1,repeats do l.push(toBe, d:chebyshev(d:shuffle():acquire()[1])) end
+  l.oo{secs = (os.clock() - start)/repeats, asIs=l.median(asIs), toBe=l.median(toBe)} end
 
 function go.br(_,     both,best,rest)
   both = DATA:new():csv(the.train)
@@ -472,5 +469,5 @@ if arg[0]:find"min.lua" then
     s = s:sub(2)
     if go[s] then go[s]( arg[i+1] ) end end end
 
-return {NUM=NUM,SYM=SYM,DATA=DATA,lib=lib,the=the,help=help} 
+return {NUM=NUM,SYM=SYM,DATA=DATA,lib=l,the=the,help=help} 
 -- 
