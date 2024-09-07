@@ -1,5 +1,5 @@
--- #!/usr/bin/env lua
--- -- vim: set ts=2 sw=2 et :
+#!/usr/bin/env ./lua
+-- vim: set ts=2 sw=2 et :
 -- % The NoML Manifesto
 -- % _Less, but better, analytics (faster, cheaper, easier, explicable)_
 -- % _(Mostly) instance-based AI. No complex models_
@@ -59,6 +59,7 @@ local o,oo,pop,push,red,shuffle,sort,trim,up,yellow
 -- 
 -- 
 -- ## Create
+-- 
 
 function SYM:new(  i, is) --> SYM 
   i, is = i or 0, is or " "
@@ -126,6 +127,7 @@ function SYM:add(x,  n) -->  nil
     if self.has[x] > self.most then
       self.most, self.mode = self.has[x], x end end end
 -- 
+-- 
 -- ## Query
 -- 
 
@@ -151,7 +153,9 @@ function SYM:entropy(     e) --> float
   e=0; for _,n in pairs(self.has) do e = e - n/self.n * math.log(n/self.n, 2) end
   return e end
 -- 
+-- 
 -- ## Goals
+-- 
 
 function DATA:chebyshev(row,    tmp,d) --> 0..1
   d=0; for _,col in pairs(self.cols.y) do
@@ -175,7 +179,9 @@ function DATA:bestRest(top,      best,rest) --> DATA,DATA
     (i <= (#self.rows)^(top or the.Top) and best or rest):add(row) end
   return best,rest end
 -- 
+-- 
 -- ## Bayes
+-- 
 
 function SYM:like(x, prior) --> num
   return ((self.has[x] or 0) + the.m*prior)/(self.n +the.m) end
@@ -221,12 +227,14 @@ function DATA:demoteBadGusses(out,    half,saved) --> list[constrast]
   for i,x in pairs(saved)    do out[#out-half + i ] = x end
   return pop(out), out end
 -- 
+-- 
 --  ## Contrasts
+-- 
 
 local CONTRAST={}
 
 function CONTRAST:new(bins,goal,i,is,lo,hi,B,R)
-  return new(CONTRAST, bins=bins, {goal=goal},  i=i, is=is, lo=lo, hi=hi, 
+  return new(CONTRAST, {bins=bins, goal=goal,  i=i, is=is, lo=lo, hi=hi, 
                        n=0, bests=0, rests=0, B=B, R=R}) end
 
 function CONTRAST:__tostring() return "12" end

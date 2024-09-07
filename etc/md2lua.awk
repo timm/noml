@@ -1,4 +1,5 @@
 BEGIN            { pre="-- " }
+NR <=2           { print $0; next }
 /^function /     { gsub(/\?/,"")
                    n=index($0,"(")
                    a=substr($0,1,n)

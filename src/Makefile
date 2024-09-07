@@ -11,6 +11,13 @@ help: ##  show help
 	              { sub(/^[^:]*:/,"",$$1); \
 				          printf("$(LOUD)%10s$(SOFT) %s\n",$$1,$$2)}'
 
+mac: setup 
+	brew install -q lua htop gawk 
+
+setup: ##
+	chmod +x ./lua
+	[ -f "noml.lua" ] && chmod +x ./noml.lua
+ 
 push: ##  commit to main
 	git add *;git commit -am save;git push;git status
 
@@ -24,7 +31,7 @@ Pandoc =           \
  --include-after=../etc/foot.html   \
  --highlight-style tango 
 
-all: ../src/*.lua ../docs/*.html
+all: ../src/*.lua ../docs/*.html setup
 
 %.lua : %.md           
 	echo "$@ ..."
