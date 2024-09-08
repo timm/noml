@@ -16,7 +16,7 @@ Pandoc =           \
  -H ../etc/favicon.html \
  --include-before=../etc/head.html \
  --include-after=../etc/foot.html   \
- --highlight-style tango 
+ --highlight-style kate 
 
 help: ## show help
 	grep '^[a-z].*:.*##' $(MAKEFILE_LIST) \

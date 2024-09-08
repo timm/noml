@@ -9,9 +9,10 @@ a:hover {
 } 
 
 body { padding:10px; 
+       background-color: #D3D3D3;
        max-width: 700px; 
        font-size: small;  
        font-family: monospace, "Roboto", "Helvetica", "Arial", sans-serif; }
 
-pre  { border: 1px dashed #CCC; 
-       padding: 10px; font-size: small; background-color: #F6F6F6; }
+pre  { padding: 10px; font-size: small;
+       background-color: #FFF; }
