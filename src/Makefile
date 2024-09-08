@@ -1,19 +1,19 @@
 SHELL:= /bin/bash#
 .SILENT:
 
-LOUD=\033[1;34m 
-SOFT=\033[0m
+LOUD = \033[1;34m#
+SOFT = \033[0m#
 
 MUST  = lua gawk pandoc
 MAYBE = watch figlet htop ranger ncdu bat tree 
 SILLY = tty-clock ../etc/bsdgames-osx.rb
 
-Pandoc =           \
- -s                 \
- --css my.css        \
- -f markdown          \
- --mathjax             \
- -H ../etc/favicon.html \
+Pandoc =                     \
+ -s                           \
+ --css my.css                  \
+ -f markdown                    \
+ --mathjax                       \
+ -H ../etc/favicon.html           \
  --include-before=../etc/head.html \
  --include-after=../etc/foot.html   \
  --highlight-style kate 
@@ -42,14 +42,14 @@ push: ## commit to main
 all: ../src/*.lua ../docs/*.html setup
 
 %.lua : %.md           
-	echo "... $@"
+	1>&2 echo "... $@"
 	gawk -f ../etc/md2lua.awk $< > $@
 	luac -p $@
 
 ../docs/index.html : ../src/noml.md 
-	echo "... $@"
-	 sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
+	1>&2 echo "... $@"
+	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
 
 ../docs/%.html : ../src/%.md    
-	echo "... $@"
+	1>&2 echo "... $@"
 	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)

@@ -49,7 +49,7 @@ OPTIONS:
   -m m      int   Bayes param       = 3
   -r ranges int   max num of bins   = 10
   -s seed   int   random seed       = 1234567891
-  -t train  str   csv file          = ../../../moot/optimize/misc/auto93.csv
+  -t train  str   csv file          =  ../../moot/optimize/misc/auto93.csv
   -T Top    float best set size     = .5]]
 
 local NUM,SYM,COLS,DATA,l = {},{},{},{},{}
@@ -73,7 +73,7 @@ function COLS:new(names,     all,x,y,col) --> COLS
     col = l.push(all, (is:find"^[A-Z]" and NUM or SYM):new(i,is))
     if not is:find"X$" then
       l.push(is:find"[!+-]$" and y or x, col) end end
-  return l.new(COLS, {names, all=all, x=x, y=y}) end
+  return l.new(COLS, {names=names, all=all, x=x, y=y}) end
 
 function DATA:new() -->  DATA
   return l.new(DATA, {rows={}, cols=nil}) end
@@ -203,13 +203,18 @@ function DATA:acquire(score, rows) --> row
   for i,t in pairs(rows or {}) do l.push( done, t) end
   for i,t in pairs(self.rows)  do l.push(#done < the.begin and done or todo, t) end
   while #done < the.Break do
+    print(1)
     top, todo = self:guess(todo, done, score or function(B,R) return B-R end)
+    print(2)
     l.push(done, top) 
     done = self:clone(done):sort().rows end
   return done end
 
 function DATA:guess(todo, done, score) --> row
   local best,rest,fun,tmp,out,j,k
+print(3)
+  print(self:clone(done))
+print(4)
   best,rest = self:clone(done):bestRest()
   fun = function(t) return score(best:like(t,#done,2), rest:like(t,#done,2)) end
   tmp, out = {},{}
@@ -305,10 +310,10 @@ l.pop = table.remove  --> any
 l.fmt = string.format --> str
 
 function l.map(t,fun,     u) --> list
-  u={}; for k,v in pairs(t) do u[1+#u]=fun(v)  end; return u end
+  u={}; for _,v in pairs(t) do u[1+#u] = fun(v)  end; return u end
 
 function l.maps(t,fun,    u) --> list
-  u={}; for k,v in pairs(t) do u[k]  =fun(k,v) end; return u end
+  u={}; for k,v in pairs(t) do u[1+#u]=fun(k,v)  end; return u end
 
 l.filter  = l.map
 l.filters = l.maps
@@ -322,8 +327,8 @@ function l.max(t, fun,      most,out) --> X
   most,fun = -l.big,fun or function(x) return x end
   l.map(t, function(x) local tmp=fun(x); if tmp > most then most,out=tmp,x end end)
   return out end
-  
-function l.new(klass, obj) --> t2 
+ 
+function l.new(klass, obj) --> obj 
   klass.__index    = klass
   klass.__tostring = klass.__tostring or l.o
   return setmetatable(obj,klass) end
@@ -372,12 +377,12 @@ function l.csv(file, fun,      src,s,cells,n) --> nil
 function l.trim( s ) --> str
   return s:match"^%s*(.-)%s*$" end
 
-function l.o(x,     list,hash) --> str
+function l.o(x,     f,g) --> str
   if type(x) == "number" then return l.fmt("%g",x) end
   if type(x) ~= "table"  then return tostring(x)   end
-  list = function(x)   return l.o(x) end
-  hash = function(k,v) if not l.o(k):find"^_"  then return l.fmt(":%s %s", k, l.o(x[k])) end end 
-  return "{" .. table.concat(#x>0 and l.map(x,list) or l.sort(l.filters(x,hash))," ").."}" end
+  f=function(x)   return l.o(x) end
+  g=function(k,v) return l.o(k):find"^_" and nil or l.fmt(":%s %s",k,l.o(x[k])) end 
+  return "{" .. table.concat(#x>0 and l.map(x,f) or l.sort(l.maps(x,g))," ").."}" end
 
 function l.oo(x) --> nil
   print(l.o(x)) end
@@ -409,7 +414,7 @@ function go.all(_,     status,msg,fails,todos)
 
 function go.train(x) the.train = x end
 
-function go.seed(x) the.seed = l.coerce(x); math.randomseed(the.seed) end
+function go.seed(x) the.seed=l.coerce(x); math.randomseed(the.seed) end
 
 function go.sort(_,     t)
   t = l.sort({10,1,2,3,1,4,1,1,2,4,2,1}, function(a,b) return a>b end)
@@ -443,8 +448,10 @@ function go.acq(_,      d,toBe,t,asIs,repeats,start)
   for _,t in pairs(d.rows) do l.push(asIs, d:chebyshev(t)) end
   repeats = 20
   start = os.clock()
-  for i=1,repeats do l.push(toBe, d:chebyshev(d:shuffle():acquire()[1])) end
-  l.oo{secs = (os.clock() - start)/repeats, asIs=l.median(asIs), toBe=l.median(toBe)} end
+print(d:shuffle():acquire())
+  --for i=1,repeats do l.push(toBe, d:chebyshev(d:shuffle():acquire()[1])) end
+  --l.oo{secs = (os.clock() - start)/repeats, asIs=l.median(asIs), toBe=l.median(toBe)} 
+end
 
 function go.br(_,     both,best,rest)
   both = DATA:new():csv(the.train)
@@ -464,7 +471,7 @@ function go.doc(_)  os.execute(
 help:gsub("\n%s+-%S%s(%S+)[^=]+=%s+(%S+)", function(k,v) the[k]= l.coerce(v) end)
 math.randomseed(the.seed)
 
-if arg[0]:find"min.lua" then
+if arg[0]:find"noml.lua" then
   for i,s in pairs(arg) do 
     s = s:sub(2)
     if go[s] then go[s]( arg[i+1] ) end end end
