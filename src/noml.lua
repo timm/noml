@@ -172,34 +172,35 @@ function DATA:dist(a, b,       fun) --> num
   fun = function(col) return col:dist(a[col.i], b[col.i])^the.p end
   return sum(self.cols.x, fun) / (#self.cols.x)^(1/the.p) end
 
-function DATA:twoFar(rows,sortp,    most,a,b,c,d,tmp) --> row,row
+function DATA:twoFar(repeats,rows,sortp,    most,a0,b0,a,b,d) --> row,row
   most = 0
-  for i=1,the.fars do 
-    a,b = l.any(rows), l.any(rows)
-    tmp = self:dist(a,b)
-    if tmp > most then most,c,d = tmp,a,b end end
-  if sortp and self:chebyshev(d) < self:chebyshev(c) then c,d = d,c end
-  return most,c,d end
+  for i=1,repeats do 
+    a0,b0 = l.any(rows), l.any(rows)
+    d = self:dist(a0,b0)
+    if d > most then most,a,b = d,a0,b0 end end
+  if sortp and self:chebyshev(b) < self:chebyshev(a) then a,b = a,b end
+  return most,a,b end
 
 function DATA:half(rows, sortp) --> float,rows,rows,row,row
   local lefts,rights,left,right,cos,fun = {},{}
-  c, left,right = self:twoFar(rows, sortp)
-  cos = function(r,a,b) return (a^2 + c^2 - b^2) / (2*c+ 1E-32) end 
-  fun = function(r)     return {cos(self.dist(r,left), self.dist(r,right)),  r} end
-  for i,row in pairs(sort(map(rows, cos), lt(1))) do
-    l.push(i <= #rows//2 and lefts or rights, row) end
+  c, left,right = self:twoFar(the.far, rows, sortp)
+  cos = function(a,b) return (a^2 + c^2 - b^2) / (2*c+ 1E-32) end 
+  fun = function(r) return {d   = cos(self:dist(r,left), self:dist(r,right)),
+                            row = r} end
+  for i,one in pairs(sort(map(rows, fun), lt"d")) do
+    l.push(i <= #rows//2 and lefts or rights, one.row) end
   return self.dist(left,rights[1]), lefts, rights, left, right end
 
 -- tree, where,
-function DATA:branch(rows, stop) --> rows,rows
-  bests = {}
-  fun = function(rows, stop)
-          if #rows > stop 
-          then _, lefts, __, left, ___ = self:half(rows,true)
-               bests[l.id(left)] = left
-               rows = fun(lefts,stop) end
-          return rows end
-  return fun(rows, stop or #rows^the.leaf), bests end
+function DATA:branch(rows, stop,      done,keep,fun) --> rows,rows
+  done = {}
+  keep = function(row) done[l.id(row)] = row end
+  grow = function(rows, stop)
+           if #rows <= stop then return rows end 
+           _, lefts, __, left, right = self:half(rows,true)
+           map({left,right}, keep)
+           return grow(lefts,stop) end
+  return grow(rows, stop or #rows^the.leaf), done end
 --  
 -- 
 -- ## Goals
