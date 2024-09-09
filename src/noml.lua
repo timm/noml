@@ -19,6 +19,7 @@
 --   - row  = list[ atom | "?" ]
 --   - rows = list[ row ]
 --   - klasses = dict[str,rows]
+--   - COL = NUM | SYM
 -- - Settings are stored in `the` (and this variable is 
 --   parsed from the `help` string at top of file).
 -- - Test cases are stored in the `go` table and the test 
@@ -47,6 +48,7 @@ OPTIONS:
   -h              show help            
   -k k      int   Bayes param       = 0
   -m m      int   Bayes param       = 3
+  -p p      int   distance power    = 2
   -r ranges int   max num of bins   = 10
   -s seed   int   random seed       = 1234567891
   -t train  str   csv file          =  ../../moot/optimize/misc/auto93.csv
@@ -150,6 +152,27 @@ function SYM:entropy(     fun) --> float
   fun = function(n) return n/self.n * math.log(n/self.n,2) end
   return -l.sum(self.has, fun) end
 -- 
+-- 
+-- ## Distance
+-- 
+
+function NUM:dist(a, b) --> num
+  if a=="?" and b=="?" then return 1 end
+  a,b = self:norm(a), self:norm(b)
+  a = a != "?" and a or (b < .5 and 1 or 0)
+  b = b != "?" and b or (a < .5 and 1 or 0)
+  return math.abs(a - b) end
+
+function SYM:dist(a, b) -> 0,1
+  return x==y and 0 or 1 end
+
+function DATA:dist(a, b, cols,       fun) --> num
+  fun = function(col) return col:dist(a[col.i], b[col.i])^the.p end
+  return sum(cols or self.cols.x, fun) / (#self.cols.x)^(1/the.p) end
+
+function DATA:twoFar(rows) --> row,row
+  fun
+--  
 -- 
 -- ## Goals
 -- 
@@ -357,6 +380,8 @@ function l.down(fun) --> function
 function l.keys(t,    u) --> list
   u={}; for k,_ in pairs(t) do l.push(u,k) end return l.sort(u) end   
 
+function l.any(t) --> any
+  return t[math.rad
 function l.shuffle(t,    j) --> list
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
   return t end

@@ -19,6 +19,7 @@
   - row  = list[ atom | "?" ]
   - rows = list[ row ]
   - klasses = dict[str,rows]
+  - COL = NUM | SYM
 - Settings are stored in `the` (and this variable is 
   parsed from the `help` string at top of file).
 - Test cases are stored in the `go` table and the test 
@@ -44,9 +45,12 @@ OPTIONS:
   -c cut    int   items to sort     = 100
   -C Cohen  float small effect      = .35
   -e elite  int   elite sample size = 4
+  -f fars   int   samples for far   = 30
   -h              show help            
   -k k      int   Bayes param       = 0
+  -l leaf   float leaf size         = .5
   -m m      int   Bayes param       = 3
+  -p p      int   distance power    = 2
   -r ranges int   max num of bins   = 10
   -s seed   int   random seed       = 1234567891
   -t train  str   csv file          =  ../../moot/optimize/misc/auto93.csv
@@ -150,6 +154,53 @@ function SYM:entropy(     fun) --> float
   fun = function(n) return n/self.n * math.log(n/self.n,2) end
   return -l.sum(self.has, fun) end
 ```
+
+## Distance
+
+```lua
+function NUM:dist(a:num, b:num) --> num
+  if a=="?" and b=="?" then return 1 end
+  a,b = self:norm(a), self:norm(b)
+  a = a != "?" and a or (b < .5 and 1 or 0)
+  b = b != "?" and b or (a < .5 and 1 or 0)
+  return math.abs(a - b) endion
+
+function SYM:dist(a:atom, b:atom) --> 0,1
+  return x==y and 0 or 1 end
+
+function DATA:dist(a:row, b:row,       fun) --> num
+  fun = function(col) return col:dist(a[col.i], b[col.i])^the.p end
+  return sum(self.cols.x, fun) / (#self.cols.x)^(1/the.p) end
+
+function DATA:twoFar(rows,?sortp:bool,    most,a,b,c,d,tmp) --> row,row
+  most = 0
+  for i=1,the.fars do 
+    a,b = l.any(rows), l.any(rows)
+    tmp = self:dist(a,b)
+    if tmp > most then most,c,d = tmp,a,b end end
+  if sortp and self:chebyshev(d) < self:chebyshev(c) then c,d = d,c end
+  return most,c,d end
+
+function DATA:half(rows, ?sortp:bool) --> float,rows,rows,row,row
+  local lefts,rights,left,right,cos,fun = {},{}
+  c, left,right = self:twoFar(rows, sortp)
+  cos = function(r,a,b) return (a^2 + c^2 - b^2) / (2*c+ 1E-32) end 
+  fun = function(r)     return {cos(self.dist(r,left), self.dist(r,right)),  r} end
+  for i,row in pairs(sort(map(rows, cos), lt(1))) do
+    l.push(i <= #rows//2 and lefts or rights, row) end
+  return self.dist(left,rights[1]), lefts, rights, left, right
+
+-- tree, where,
+function DATA:branch(rows:rows, ?stop:int) --> rows,rows
+  bests = {}
+  fun = function(rows, stop)
+          if #rows > stop 
+          then _, lefts, __, left, ___ = self:half(rows,true)
+               bests[l.id(left)] = left
+               rows = fun(lefts,stop) end
+          return rows end
+  return fun(rows, stop or #rows^the.leaf), bests end
+``` 
 
 ## Goals
 
@@ -309,6 +360,8 @@ l.big = 1E32          --> num
 l.pop = table.remove  --> any
 l.fmt = string.format --> str
 
+function l.id(t) return t[#t] end
+
 function l.map(t:list,fun:function,     u) --> list
   u={}; for _,v in pairs(t) do u[1+#u] = fun(v)  end; return u end
 
@@ -356,6 +409,9 @@ function l.down(fun:function) --> function
 
 function l.keys(t:list,    u) --> list
   u={}; for k,_ in pairs(t) do l.push(u,k) end return l.sort(u) end   
+
+function l.any(t:list) --> any
+  return t[math.random(#t)] end
 
 function l.shuffle(t:list,    j) --> list
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end

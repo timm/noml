@@ -32,6 +32,9 @@ setup: ## set file permissions
 	chmod +x ./lua
 	[ -f "noml.lua" ] && chmod +x ./noml.lua
 
+sh: ## run a shell
+	bash --init-file  ../etc/dotbashrc -i
+
 robots: ## exterminate!!
 		/opt/homebrew/opt/bsdgames-osx/bin/robots
 
