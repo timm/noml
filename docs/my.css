@@ -1,22 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
 
-a:link { 
-  text-decoration: none; 
-} 
+:root {
+  /* Set sans-serif & mono fonts */
+  --sans-font: -apple-system, BlinkMacSystemFont, "Avenir Next", Avenir,
+    "Nimbus Sans L", Roboto, "Noto Sans", "Segoe UI", Arial, Helvetica,
+    "Helvetica Neue", sans-serif;
+  --mono-font: Consolas, Menlo, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+}
 
-a:hover { 
-  text-decoration: underline; 
-} 
+html {
+  /* Set the font globally */
+  font-family: var(--sans-font);
+  scroll-behavior: smooth;
+       font-size: small;  
+}
+
+a:link { text-decoration: none; } 
+a:hover { text-decoration: underline; } 
+
 
 body { padding:10px; 
        background-color: #D3D3D3;
        max-width: 700px; 
-       font-size: small;  
-       font-family: monospace, "Roboto", "Helvetica", "Arial", sans-serif; }
+     }
 
-pre  { padding: 10px; font-size: small;
-       xbackground-color: #ECECEC; 
+pre  { padding: 10px; 
+  font-family: var(--mono-font);
        background-color: #DCDCDC;
-       padding-left: 20px;
-       border-left: 2px dotted #999;
+       font-size: small;  
 }
+
+code { 
+       font-family: var(--mono-font); }
