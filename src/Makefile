@@ -35,10 +35,7 @@ setup: ## set file permissions
 robots: ## exterminate!!
 		/opt/homebrew/opt/bsdgames-osx/bin/robots
 
-OLD=$(shell test -z "$$(git status --porcelain)" )
-
 push: ## commit to main
-	echo $(OLD)
 	- echo -en "$(LOUD)Why this push? $(SOFT)" ;  read x ; git commit -am "$$x" ;  git push
 	- git status
 
