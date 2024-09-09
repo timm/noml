@@ -1,5 +1,5 @@
 SHELL:= /bin/bash#
-.SILENT:
+.SILENT: # no output
 
 LOUD = \033[1;34m#
 SOFT = \033[0m#
