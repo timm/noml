@@ -168,7 +168,7 @@ function NUM:dist(a:num, b:num) --> num
 function SYM:dist(a:atom, b:atom) --> 0,1
   return x==y and 0 or 1 end
 
-function DATA:dist(a:row, b:row,       fun) --> num
+function DATA:xMinko(a:row, b:row,       fun) --> num
   fun = function(col) return col:dist(a[col.i], b[col.i])^the.p end
   return sum(self.cols.x, fun) / (#self.cols.x)^(1/the.p) end
 
@@ -176,20 +176,20 @@ function DATA:twoFar(repeats:int,rows,?sortp:bool,    most,a0,b0,a,b,d) --> row,
   most = 0
   for i=1,repeats do 
     a0,b0 = l.any(rows), l.any(rows)
-    d = self:dist(a0,b0)
+    d = self:xMinko(a0,b0)
     if d > most then most,a,b = d,a0,b0 end end
-  if sortp and self:chebyshev(b) < self:chebyshev(a) then a,b = a,b end
+  if sortp and self:yCheby(b) < self:yCheby(a) then a,b = a,b end
   return most,a,b end
 
 function DATA:half(rows, ?sortp:bool) --> float,rows,rows,row,row
   local lefts,rights,left,right,cos,fun = {},{}
   c, left,right = self:twoFar(the.far, rows, sortp)
   cos = function(a,b) return (a^2 + c^2 - b^2) / (2*c+ 1E-32) end 
-  fun = function(r) return {d   = cos(self:dist(r,left), self:dist(r,right)),
+  fun = function(r) return {d   = cos(self:xMinko(r,left), self:xMinko(r,right)),
                             row = r} end
   for i,one in pairs(sort(map(rows, fun), lt"d")) do
     l.push(i <= #rows//2 and lefts or rights, one.row) end
-  return self.dist(left,rights[1]), lefts, rights, left, right end
+  return self.xMinko(left,rights[1]), lefts, rights, left, right end
 
 -- tree, where,
 function DATA:branch(rows:rows, ?stop:int,    done,label,grow) --> rows,rows
@@ -214,8 +214,8 @@ function DATA:tree(rows:rows, ?stop:int, ?fun:function,   done,label,grow)
            cut, lefts, rights, left, right = self:half(rows,true)
            label(left)
            label(right)
-           here.lefts  = grow(lefts, function(r) return self:dist(r,left) < cut end)
-           here.rights = grow(rights,function(r) return self:dist(r,left) > cut end)
+           here.lefts  = grow(lefts, function(r) return self:xMinko(r,left) < cut end)
+           here.rights = grow(rights,function(r) return self:xMinko(r,left) > cut end)
            return here end
   return grow(rows), done end
 ``` 
@@ -223,18 +223,15 @@ function DATA:tree(rows:rows, ?stop:int, ?fun:function,   done,label,grow)
 ## Goals
 
 ```lua
-function DATA:chebyshev(row:row,    tmp,d) --> 0..1
-  d=0; for _,col in pairs(self.cols.y) do
-         tmp = math.abs(col.goal - col:norm(row[col.i]))
-         if tmp > d then d = tmp end end
-  return d end
+function DATA:yCheby(row:row) --> 0..1
+  return max(self.cols.y, function(c) return math.abs(c.goal - c:norm(row[c.i])) end) end
 
 function DATA:shuffle() --> DATA
   self.rows = l.shuffle(self.rows)
 	return self end
 
 function DATA:sort(    fun) --> DATA
-  fun = function(row) return self:chebyshev(row) end
+  fun = function(row) return self:yCheby(row) end
   self.rows = l.sort(self.rows, function(a,b) return fun(a) < fun(b) end)
   return self end
 
@@ -513,7 +510,7 @@ function go.bayes(_,      d,fun)
 function go.cheb(_,      d,num)
   d   = DATA:new():csv(the.train) 
   num = NUM:new()
-  for _,t in pairs(d.rows) do num:add(d:chebyshev(t)) end
+  for _,t in pairs(d.rows) do num:add(d:yCheby(t)) end
   print(num.mu, num.sd) end
 
 function go.acq(_,      d,toBe,t,asIs,repeats,start)
