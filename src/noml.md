@@ -161,9 +161,9 @@ function SYM:entropy(     fun) --> float
 function NUM:dist(a:num, b:num) --> num
   if a=="?" and b=="?" then return 1 end
   a,b = self:norm(a), self:norm(b)
-  a = a != "?" and a or (b < .5 and 1 or 0)
-  b = b != "?" and b or (a < .5 and 1 or 0)
-  return math.abs(a - b) endion
+  a = a ~= "?" and a or (b < .5 and 1 or 0)
+  b = b ~= "?" and b or (a < .5 and 1 or 0)
+  return math.abs(a - b) end
 
 function SYM:dist(a:atom, b:atom) --> 0,1
   return x==y and 0 or 1 end
@@ -188,7 +188,7 @@ function DATA:half(rows, ?sortp:bool) --> float,rows,rows,row,row
   fun = function(r)     return {cos(self.dist(r,left), self.dist(r,right)),  r} end
   for i,row in pairs(sort(map(rows, cos), lt(1))) do
     l.push(i <= #rows//2 and lefts or rights, row) end
-  return self.dist(left,rights[1]), lefts, rights, left, right
+  return self.dist(left,rights[1]), lefts, rights, left, right end
 
 -- tree, where,
 function DATA:branch(rows:rows, ?stop:int) --> rows,rows

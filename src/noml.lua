@@ -45,8 +45,10 @@ OPTIONS:
   -c cut    int   items to sort     = 100
   -C Cohen  float small effect      = .35
   -e elite  int   elite sample size = 4
+  -f fars   int   samples for far   = 30
   -h              show help            
   -k k      int   Bayes param       = 0
+  -l leaf   float leaf size         = .5
   -m m      int   Bayes param       = 3
   -p p      int   distance power    = 2
   -r ranges int   max num of bins   = 10
@@ -159,19 +161,45 @@ function SYM:entropy(     fun) --> float
 function NUM:dist(a, b) --> num
   if a=="?" and b=="?" then return 1 end
   a,b = self:norm(a), self:norm(b)
-  a = a != "?" and a or (b < .5 and 1 or 0)
-  b = b != "?" and b or (a < .5 and 1 or 0)
+  a = a ~= "?" and a or (b < .5 and 1 or 0)
+  b = b ~= "?" and b or (a < .5 and 1 or 0)
   return math.abs(a - b) end
 
-function SYM:dist(a, b) -> 0,1
+function SYM:dist(a, b) --> 0,1
   return x==y and 0 or 1 end
 
-function DATA:dist(a, b, cols,       fun) --> num
+function DATA:dist(a, b,       fun) --> num
   fun = function(col) return col:dist(a[col.i], b[col.i])^the.p end
-  return sum(cols or self.cols.x, fun) / (#self.cols.x)^(1/the.p) end
+  return sum(self.cols.x, fun) / (#self.cols.x)^(1/the.p) end
 
-function DATA:twoFar(rows) --> row,row
-  fun
+function DATA:twoFar(rows,sortp,    most,a,b,c,d,tmp) --> row,row
+  most = 0
+  for i=1,the.fars do 
+    a,b = l.any(rows), l.any(rows)
+    tmp = self:dist(a,b)
+    if tmp > most then most,c,d = tmp,a,b end end
+  if sortp and self:chebyshev(d) < self:chebyshev(c) then c,d = d,c end
+  return most,c,d end
+
+function DATA:half(rows, sortp) --> float,rows,rows,row,row
+  local lefts,rights,left,right,cos,fun = {},{}
+  c, left,right = self:twoFar(rows, sortp)
+  cos = function(r,a,b) return (a^2 + c^2 - b^2) / (2*c+ 1E-32) end 
+  fun = function(r)     return {cos(self.dist(r,left), self.dist(r,right)),  r} end
+  for i,row in pairs(sort(map(rows, cos), lt(1))) do
+    l.push(i <= #rows//2 and lefts or rights, row) end
+  return self.dist(left,rights[1]), lefts, rights, left, right end
+
+-- tree, where,
+function DATA:branch(rows, stop) --> rows,rows
+  bests = {}
+  fun = function(rows, stop)
+          if #rows > stop 
+          then _, lefts, __, left, ___ = self:half(rows,true)
+               bests[l.id(left)] = left
+               rows = fun(lefts,stop) end
+          return rows end
+  return fun(rows, stop or #rows^the.leaf), bests end
 --  
 -- 
 -- ## Goals
@@ -332,6 +360,8 @@ l.big = 1E32          --> num
 l.pop = table.remove  --> any
 l.fmt = string.format --> str
 
+function l.id(t) return t[#t] end
+
 function l.map(t,fun,     u) --> list
   u={}; for _,v in pairs(t) do u[1+#u] = fun(v)  end; return u end
 
@@ -381,7 +411,8 @@ function l.keys(t,    u) --> list
   u={}; for k,_ in pairs(t) do l.push(u,k) end return l.sort(u) end   
 
 function l.any(t) --> any
-  return t[math.rad
+  return t[math.random(#t)] end
+
 function l.shuffle(t,    j) --> list
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
   return t end
