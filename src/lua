@@ -1,4 +1,0 @@
-#/usr/bin/env bash
-make all
-l=`which lua`
-$l $*

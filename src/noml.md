@@ -1,16 +1,16 @@
-#!/usr/bin/env ./lua
+#!/usr/bin/env ./loua
 -- <!-- vim: set ts=2 sw=2 et :  -->   
 % The NoML Manifesto   
 % _Less, but better, analytics ("better"= faster, cheaper, explicable). Mostly instance-based AI. No complex models. Really simple code._
 
 ## About
-- Using as few dependent variables as possible...
+- Using as few dependent variables as possible..
 - ...incrementally build models that recognize (best,rest) 
   examples (where "best"  can be  defined by  multiple goals). 
         
 ### For this code:
 - The raw source files are in markdown, where
-  type annotations are allowed for function arguments and return types. In those annocations "?" denotes
+  type annotations are allowed for function arguments and return types.  In those annocations "?" denotes
    "optional argument" A tiny pre-processor[^md2lua] generates
    Lua source code by stripping out the annotations.
 - There are some specific local types:
@@ -41,8 +41,8 @@ USAGE:
 OPTIONS:
   -all            run test suite
   -b begin  int   initial samples   = 4   -- 
-  -B Break  int   max samples       = 30
-  -c cut    int   items to sort     = 100
+  -B Break  int   max samples       = 20
+  -c cut    int   items to sort     = 1024
   -C Cohen  float small effect      = .35
   -e elite  int   elite sample size = 4
   -f fars   int   samples for far   = 30
@@ -223,8 +223,9 @@ function DATA:tree(rows:rows, ?stop:int, ?fun:function,   done,label,grow)
 ## Goals
 
 ```lua
-function DATA:yDist(row:row) --> 0..1
-  return max(self.cols.y, function(c) return math.abs(c.goal - c:norm(row[c.i])) end) end
+function DATA:yDist(row:row,     fun) --> 0..1
+  fun = function(col) return math.abs(col.goal - col:norm(row[col.i])) end
+  return l.max(self.cols.y, fun) end
 
 function DATA:shuffle() --> DATA
   self.rows = l.shuffle(self.rows)
@@ -269,30 +270,19 @@ function DATA:acquire(score:function, rows:rows) --> row
   for i,t in pairs(rows or {}) do l.push( done, t) end
   for i,t in pairs(self.rows)  do l.push(#done < the.begin and done or todo, t) end
   while #done < the.Break do
-    print(1)
     top, todo = self:guess(todo, done, score or function(B,R) return B-R end)
-    print(2)
     l.push(done, top) 
     done = self:clone(done):sort().rows end
   return done end
 
 function DATA:guess(todo:rows, done:rows, score:function) --> row
-  local best,rest,fun,tmp,out,j,k
-print(3)
-  print(self:clone(done))
-print(4)
+  local best,rest,fun,tmp,out,j,k,cut
   best,rest = self:clone(done):bestRest()
   fun = function(t) return score(best:like(t,#done,2), rest:like(t,#done,2)) end
   tmp, out = {},{}
-  for i,t in pairs(todo) do l.push(tmp, {i <= the.cut and fun(t) or 0, t}) end
+  cut = math.min(the.cut, #todo)/#todo; print(cut)
+  for i,t in pairs(todo) do l.push(tmp, {math.random() < cut and fun(t) or 0, t}) end
   for _,z in pairs(l.sort(tmp, l.lt(1))) do l.push(out, z[2]) end
-  return self:demoteBadGusses(out) end
-
-function DATA:demoteBadGusses(out:list[contrast],    half,saved) --> list[constrast]
-  half,saved = the.cut//2,{}
-  for i=half, the.cut        do l.push(saved,out[i]) end
-  for i=the.cut+1, #out-half do out[i-half] = out[i] end
-  for i,x in pairs(saved)    do out[#out-half + i ] = x end
   return l.pop(out), out end
 ```
 
@@ -391,10 +381,10 @@ function l.sum(t:list,?fun:function,      out) --> num
   l.map(t,function(x) out = out + fun(x) end)
   return out end
 
-function l.max(t:list[X], ?fun:function,      most,out) --> X
-  most,fun = -l.big,fun or function(x) return x end
-  l.map(t, function(x) local tmp=fun(x); if tmp > most then most,out=tmp,x end end)
-  return out end
+function l.max(t:list[X], ?fun:function,      most) --> X
+  most,fun = -l.big, fun or function(x) return x end
+  l.map(t, function(x) local tmp=fun(x); if tmp > most then most=tmp end end)
+  return most end
  
 function l.new(klass:table, obj:table) --> obj 
   klass.__index    = klass
@@ -483,9 +473,18 @@ function go.all(_,     status,msg,fails,todos)
     else print(l.green("pass")) end end
   os.exit(fails) end 
 
-function go.train(x) the.train = x end
+function go.cut(x) the.cut = l.coerce(x) end  
+function go.train(x) the.train = x end  
 
 function go.seed(x) the.seed=l.coerce(x); math.randomseed(the.seed) end
+
+function go.sum(_,  t)
+  fun = function(x) return -x end
+  assert(-10 == l.sum({1,2,3,4}, fun), "gosummax fail") end
+
+function go.max(_,  fun)
+  fun = function(x) return -x end
+  assert(-10 == l.max({1,3,10,-10,5,5},fun), "go.max fail") end
 
 function go.sort(_,     t)
   t = l.sort({10,1,2,3,1,4,1,1,2,4,2,1}, function(a,b) return a>b end)
@@ -511,17 +510,18 @@ function go.cheb(_,      d,num)
   d   = DATA:new():csv(the.train) 
   num = NUM:new()
   for _,t in pairs(d.rows) do num:add(d:yDist(t)) end
-  print(num.mu, num.sd) end
+  mu,sd = num.mu, num.sd
+  assert(0.69 < mu and mu < 0.7 and 0.16 < sd and sd < 0.17,"bad cheb") end 
 
 function go.acq(_,      d,toBe,t,asIs,repeats,start)
   d = DATA:new():csv(the.train) 
   asIs,toBe = {},{}
-  for _,t in pairs(d.rows) do l.push(asIs, d:chebyshev(t)) end
+  for _,t in pairs(d.rows) do l.push(asIs, d:yDist(t)) end
   repeats = 20
   start = os.clock()
-print(d:shuffle():acquire())
-  --for i=1,repeats do l.push(toBe, d:chebyshev(d:shuffle():acquire()[1])) end
-  --l.oo{secs = (os.clock() - start)/repeats, asIs=l.median(asIs), toBe=l.median(toBe)} 
+  for i=1,repeats do l.push(toBe, d:yDist(d:shuffle():acquire()[1])) end
+  l.oo(l.sort(toBe))
+  l.oo{secs = (os.clock() - start)/repeats, asIs=l.median(asIs), toBe=l.median(toBe)} 
 end
 
 function go.br(_,     both,best,rest)

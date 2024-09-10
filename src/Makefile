@@ -29,8 +29,8 @@ mac: setup ## mac os/x install instructions
 	brew install -q $(MUST) $(MAYBE) $(SILLY)
 
 setup: ## set file permissions
-	chmod +x ./lua
-	[ -f "noml.lua" ] && chmod +x ./noml.lua
+	chmod +x ./loua
+	chmod +x *.lua
 
 sh: ## run a shell
 	bash --init-file  ../etc/dotbashrc -i

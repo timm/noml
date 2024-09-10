@@ -213,3 +213,5 @@ autocmd vimenter * hi Normal guibg=NONE ctermbg=NONE
 autocmd vimenter * hi EndOfBuffer guibg=NONE ctermbg=NONE
 noremap <F9> <Esc>:syntax sync fromstart<CR>
 inoremap <F9> <C-o>:syntax sync fromstart<CR>
+
+set syntax spell toplevel
