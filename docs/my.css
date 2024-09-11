@@ -9,7 +9,7 @@
 
 html {
   /* Set the font globally */
-  font-family: var(--sans-font);
+  font-family: var(--mono-font);
   scroll-behavior: smooth;
        font-size: small;  
 }
