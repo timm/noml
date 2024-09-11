@@ -280,8 +280,9 @@ function DATA:guess(todo, done, score) --> row
   best,rest = self:clone(done):bestRest()
   fun = function(t) return score(best:like(t,#done,2), rest:like(t,#done,2)) end
   tmp, out = {},{}
-  cut = math.min(the.cut, #todo)/#todo; print(cut)
-  for i,t in pairs(todo) do l.push(tmp, {math.random() < cut and fun(t) or 0, t}) end
+  -- cut = math.min(the.cut, #todo)/#todo
+  for i,t in pairs(todo) do l.push(tmp, {fun(t),t}) end 
+  --{math.random() < cut and fun(t) or -l.big, t}) end
   for _,z in pairs(l.sort(tmp, l.lt(1))) do l.push(out, z[2]) end
   return l.pop(out), out end
 -- 
