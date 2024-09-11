@@ -41,7 +41,7 @@ USAGE:
 OPTIONS:
   -all            run test suite
   -b begin  int   initial samples   = 4   -- 
-  -B Break  int   max samples       = 20
+  -B Break  int   max samples       = 30
   -c cut    int   items to sort     = 1024
   -C Cohen  float small effect      = .35
   -e elite  int   elite sample size = 4
@@ -276,18 +276,21 @@ function DATA:acquire(score:function, rows:rows) --> row
   return done end
 
 function DATA:guess(todo:rows, done:rows, score:function) --> row
-  local best,rest,fun,tmp,out,j,k,cut
+  local best,rest,fun,tmp,out,j,k,cut,tmp1
   best,rest = self:clone(done):bestRest()
-  fun = function(t) return score(best:like(t,#done,2), rest:like(t,#done,2)) end
-  tmp, out = {},{}
-  -- cut = math.min(the.cut, #todo)/#todo
-  for i,t in pairs(todo) do l.push(tmp, {fun(t),t}) end 
-  --{math.random() < cut and fun(t) or -l.big, t}) end
-  for _,z in pairs(l.sort(tmp, l.lt(1))) do l.push(out, z[2]) end
+  fun = function(t,     b,r) 
+          b,r= best:like(t,#done,2), rest:like(t,#done,2)
+          return score(b,r) end
+  tmp,out = {},{}
+  cut = math.min(the.cut, #todo)
+  for i,t in pairs(todo) do l.push(tmp, {i < cut and fun(t) or -l.big, t}) end
+  tmp1={}
+  for i,z in pairs(l.sort(tmp, l.gt(1))) do tmp1[i]=z[1]; l.push(out, z[2]) end
+  l.oo(tmp1)
   return l.pop(out), out end
 ```
 
- ## Contrasts
+## Contrasts
 
 ```lua
 local CONTRAST={}
