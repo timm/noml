@@ -8,7 +8,7 @@
 -- - ...incrementally build models that recognize (best,rest) 
 --   examples (where "best"  can be  defined by  multiple goals). 
 --         
--- ### For this code:
+-- ### For this code
 -- - The raw source files are in markdown, where
 --   type annotations are allowed for function arguments and return types.  In those annocations "?" denotes
 --    "optional argument" A tiny pre-processor[^md2lua] generates
@@ -442,16 +442,16 @@ function l.trim( s ) --> str
 function l.o(x,     f,g) --> str
   if type(x) == "number" then return l.fmt("%g",x) end
   if type(x) ~= "table"  then return tostring(x)   end
-  f = function(x) return l.o(x) end
-  g = function(k,v) return l.o(k):find"^_" and nil or l.fmt(":%s %s",k,l.o(x[k])) end 
+  f=function(x)   return l.o(x) end
+  g=function(k,v) return l.o(k):find"^_" and nil or l.fmt(":%s %s",k,l.o(x[k])) end 
   return "{" .. table.concat(#x>0 and l.map(x,f) or l.sort(l.maps(x,g))," ").."}" end
 
 function l.oo(x) --> nil
   print(l.o(x)) end
 
 function l.yellow(s) return "\27[33m" .. s .. "\27[0m" end
-function l.green( s) return "\27[32m" .. s .. "\27[0m" end
-function l.red(   s) return "\27[31m" .. s .. "\27[0m" end
+function l.green(s)  return "\27[32m" .. s .. "\27[0m" end
+function l.red(s)    return "\27[31m" .. s .. "\27[0m" end
 -- 
 -- 
 -- ## Main
@@ -521,7 +521,6 @@ function go.acq(_,      d,toBe,t,asIs,repeats,start)
   repeats = 20
   start = os.clock()
   for i=1,repeats do l.push(toBe, d:yDist(d:shuffle():acquire()[1])) end
-  l.oo(l.sort(toBe))
   l.oo{secs = (os.clock() - start)/repeats, asIs=l.median(asIs), toBe=l.median(toBe)} 
 end
 

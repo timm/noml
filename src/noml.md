@@ -8,7 +8,7 @@
 - ...incrementally build models that recognize (best,rest) 
   examples (where "best"  can be  defined by  multiple goals). 
         
-### For this code:
+### For this code
 - The raw source files are in markdown, where
   type annotations are allowed for function arguments and return types.  In those annocations "?" denotes
    "optional argument" A tiny pre-processor[^md2lua] generates
@@ -521,7 +521,6 @@ function go.acq(_,      d,toBe,t,asIs,repeats,start)
   repeats = 20
   start = os.clock()
   for i=1,repeats do l.push(toBe, d:yDist(d:shuffle():acquire()[1])) end
-  l.oo(l.sort(toBe))
   l.oo{secs = (os.clock() - start)/repeats, asIs=l.median(asIs), toBe=l.median(toBe)} 
 end
 
