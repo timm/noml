@@ -31,6 +31,7 @@ mac: setup ## mac os/x install instructions
 setup: ## set file permissions
 	chmod +x ./loua
 	chmod +x *.lua
+	git config pull.rebase false
 
 sh: ## run a shell
 	bash --init-file  ../etc/dotbashrc -i
