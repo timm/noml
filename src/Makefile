@@ -1,12 +1,12 @@
 SHELL:= /bin/bash#
-.SILENT: # no output
+#.SILENT: # no output
 
 LOUD = \033[1;34m#
 SOFT = \033[0m#
 
 MUST  = lua gawk pandoc
 MAYBE = watch figlet htop ranger ncdu bat tree 
-SILLY = tty-clock ../etc/bsdgames-osx.rb
+#SILLY = tty-clock ../etc/bsdgames-osx.rb
 
 Pandoc =                     \
  -s                           \
@@ -27,6 +27,9 @@ help: ## show help
 
 mac: setup ## mac os/x install instructions
 	brew install -q $(MUST) $(MAYBE) $(SILLY)
+	mkdir -p ~/.vim
+	if [[ ! -d ~/.vim/bundle ]]; then  git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim; fi
+	vim +'PlugInstall --sync' +qa
 
 setup: ## set file permissions
 	git config pull.rebase false
