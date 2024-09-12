@@ -1,5 +1,7 @@
 BEGIN            { pre="-- " }
-NR <=2           { print $0; next }
+/^%/             { $0 = "-- " $0 }
+NR==1            { print "#!/usr/bin/env lua"; next }
+NR==2            { print $0; next }
 /^function /     { gsub(/\?/,"")
                    n=index($0,"(")
                    a=substr($0,1,n)

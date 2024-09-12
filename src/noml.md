@@ -1,4 +1,3 @@
-#!/usr/bin/env ./loua
 -- <!-- vim: set ts=2 sw=2 et :  -->   
 % The NoML Manifesto   
 % _Less, but better, analytics ("better"= faster, cheaper, explicable). Mostly instance-based AI. No complex models. Really simple code._
@@ -10,7 +9,7 @@
         
 ### For this code
 - The raw source files are in markdown, where
-  type annotations are allowed for function arguments and return types.  In those annocations "?" denotes
+  type annotations are allowed for function arguments and return types.  In those annotations "?" denotes
    "optional argument" A tiny pre-processor[^md2lua] generates
    Lua source code by stripping out the annotations.
 - There are some specific local types:
@@ -42,7 +41,7 @@ OPTIONS:
   -all            run test suite
   -b begin  int   initial samples   = 4   -- 
   -B Break  int   max samples       = 30
-  -c cut    int   items to sort     = 1024
+  -c cut    int   items to sort     = 100
   -C Cohen  float small effect      = .35
   -e elite  int   elite sample size = 4
   -f fars   int   samples for far   = 30
@@ -267,8 +266,9 @@ function DATA:like(row:row, n:int, nClasses:int) --> num
 function DATA:acquire(score:function, rows:rows) --> row
   local todo,done,top
   todo, done = {},{}
-  for i,t in pairs(rows or {}) do l.push( done, t) end
-  for i,t in pairs(self.rows)  do l.push(#done < the.begin and done or todo, t) end
+  for _,rows in pairs{rows or {}, self.rows} do
+    for _,row in pairs(rows) do
+      l.push(#done < the.begin and done or todo, row) end end
   while #done < the.Break do
     top, todo = self:guess(todo, done, score or function(B,R) return B-R end)
     l.push(done, top) 
@@ -276,15 +276,14 @@ function DATA:acquire(score:function, rows:rows) --> row
   return done end
 
 function DATA:guess(todo, done, score) --> row
-  local best,rest,fun,tmp,out,j,k
+  local out,cut,best,rest,fun,top,j,k = {}, math.min(the.cut,#todo)/#todo
   best,rest = self:clone(done):bestRest()
-  fun = function(t,     b,r) 
-          b,r= best:like(t,#done,2), rest:like(t,#done,2)
-          return score(b,r) end
-  tmp,out = {},{}
-  for i,t in pairs(todo) do l.push(tmp, {fun(t), t}) end
-  for i,t in pairs(l.sort(tmp,l.lt(1))) do l.push(out, t[2]) end
-  return l.pop(out), out end
+  fun = function(i,t,    s) 
+          s = math.random()>cut and 0 or score(best:like(t,#done,2), rest:like(t,#done,2))
+          return {s,t} end
+  for i,t in pairs(l.sort(l.maps(todo,fun), l.gt(1))) do 
+    if i==1 then top=t[2] else l.push(out, t[2]) end end
+  return top, out end
 ```
 
 ## Contrasts
@@ -309,7 +308,7 @@ function CONTRAST:entropy(     p1,p2)
 
 function CONTRAST:score(    b,r)
   b,r = self.bests/self.B,self.rests/self.R
-  return b>r and b^2/(b + r + 1E-32) or 0 end
+  return b^2/(b + r + 1E-32) end
 
 function CONTRAST:combined(other,dull,small,      k,e0,e1,e2)
   k = self:combine(other)
@@ -508,11 +507,11 @@ function go.bayes(_,      d,fun)
     if n==1 or n==#d.rows or (n%30)==0 then print(n, t[#t], fun(t)) end end end
 
 function go.cheb(_,      d,num)
-  d   = DATA:new():csv(the.train) 
+  d   = DATA:new():csv(the.train):sort() 
   num = NUM:new()
   for _,t in pairs(d.rows) do num:add(d:yDist(t)) end
   mu,sd = num.mu, num.sd
-  assert(0.69 < mu and mu < 0.7 and 0.16 < sd and sd < 0.17,"bad cheb") end 
+  assert(0.69 < mu and mu < 0.7 and 0.16 < sd and sd < 0.17,"bad cheb") end
 
 function go.acq(_,      d,toBe,t,asIs,repeats,start)
   d = DATA:new():csv(the.train) 
@@ -525,6 +524,16 @@ function go.acq(_,      d,toBe,t,asIs,repeats,start)
 end
 
 function go.br(_,     both,best,rest)
+  both = DATA:new():csv(the.train)
+  best,rest = both:bestRest(.5)
+  for i,row in pairs(best.rows) do 
+    print(i,l.fmt("%.2f",both:yDist(row)),l.o(row))  end
+  print""
+  for i,row in pairs(rest.rows) do 
+    if i==1 or i%30==0 then 
+      print(i+#best.rows,l.fmt("%.2f",both:yDist(row)),l.o(row)) end end end 
+
+function go.contrasts(_,     both,best,rest)
   both = DATA:new():csv(the.train)
   best,rest = both:bestRest(.5)
   for i,c in pairs(best:contrasts(rest,both)) do 

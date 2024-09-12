@@ -30,6 +30,7 @@ alias fgrep='fgrep --color=auto'
 alias h="history"
 alias ls="ls -G "      
 alias vi="vim -u $here/etc/_dotvimrc"
+alias lua="make all; lua "
 
 export BASH_SILENCE_DEPRECATION_WARNING=1
 export PATH="$PWD:/opt/homebrew/bin:$PATH"
