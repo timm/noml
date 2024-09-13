@@ -5,34 +5,35 @@
 BEGIN { FS="," }
 NR==1 { split($0,names,FS); DATA(data0,names) }
 
+function add(i,x,    f) { f=i.is"add"; return @f(i,x) }
+
 function DATA(i, names) {
-  has(i,"rows")
-  has(i,"cols")
-  has(i,"x")
-  has(i,"y")
-  for(i in names) {
-    name = names[i]
-    j= array(i.cols)
-    what = name  ~/^[A-Z]/ ? "NUM" : "SYM"
-    @what(i.cols[j],i,name) 
-    if (name ~ /X$/) continue 
-    name ~ /[+-!/ ? y[i] : x[i] }
+  i.is = "DATA" 
+  have(i,"rows cols x y")
+  for(k in names) _init(i,k,names[k]) }
+
+function _init(i,k,name) {
+  i.cols[k].txt = name
+  what = name  ~/^[A-Z]/ ? "NUM" : "SYM"
+  @what(i.cols[k],i,name) 
+  if (name ~ /X$/) return 
+  if (name ~ /[+-!]/) 
+    i.y[k] = name ~ /-$/ ? 0 : 1 
+  else 
+    i.x[k] }
     
-function COL(i,at,txt) {
+function NUM(i,at,txt) {
   i.at=at
   i.txt=txt 
-  i.goal = txt ~ /-$/ ? 0 : 1 }
-
-function NUM(i,at,txt) {
-  COL(i,at,txt)
   i.n = i.mu = i.m2 =  0 
   i.lo=1E32; i.hi = -1E32 }
 
 function SYM(i,at,txt) {
-  COL(i,at,txt)
+  i.at=at
+  i.txt=txt 
   i.n = i.most = 0
   i.mode = ""
-  array(i,"has") }
+  has(i,"has") }
 
 function array(i,k) { 
   if (k) 
@@ -40,7 +41,12 @@ function array(i,k) {
   } else 
     return array(i, length(a)+1)}
 
-function has(i, k, f)       { f=f?f:"Obj"; array(i,k); @f(i[k])      }
+function have(i,s,     a,k) {
+ split(s,a," ")
+ for(k in a) has(i,a[k]) }
+
+function has(i, k, f)       { 
+  f=f?f:"Obj"; array(i,k); @f(i[k])      }
 function haS(i, k, f, x)    {              array(i,k); @f(i[k],x)    }
 function hAS(i, k, f, x, y) {              array(i,k); @f(i[k],x,y)  }
 ```

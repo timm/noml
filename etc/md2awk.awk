@@ -1,8 +1,12 @@
-BEGIN            { pre= "# " }
+BEGIN            { FS="[ (]"
+                   pre= "# " }
 /^%/             { $0 = "# " $0 }
 NR==1            { print "#!/usr/bin/env gawk -f"; next }
 NR==2            { print $0; next }
-/^function /     { gsub(/\?/,"")
+                 { gsub(/ _/," "Klass,$0) }
+/^function /     { 
+                   if ($2 ~ /[A-Z]+/) Klass = $2
+                   gsub(/\?/,"")
                    n = index($0,"(")
                    a = substr($0,1,n)
                    b = substr($0,n+1)
