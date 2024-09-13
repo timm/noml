@@ -1,11 +1,12 @@
 SHELL:= /bin/bash#
-#.SILENT: # no output
+.SILENT: # no output
 
 LOUD = \033[1;34m#
+HIGH = \033[1;33m#
 SOFT = \033[0m#
 
 MUST  = lua gawk pandoc
-MAYBE = watch figlet htop ranger ncdu bat tree 
+MAYBE = watch figlet htop ranger ncdu bat tree vim
 #SILLY = tty-clock ../etc/bsdgames-osx.rb
 
 Pandoc =                     \
@@ -24,12 +25,17 @@ help: ## show help
 	| gawk 'BEGIN {FS="##"; print "\n$(LOUD)make$(SOFT) [OPTIONS]\n"} \
 	              {sub(/:.*/,"",$$1); \
                  printf("$(LOUD)%10s$(SOFT) %s\n",$$1,$$2)}'
+	echo -e "$(HIGH)"; cat ../etc/frog.txt; echo -e "$(SOFT)"
 
 mac: setup ## mac os/x install instructions
 	brew install -q $(MUST) $(MAYBE) $(SILLY)
+
+vim: ## vim install
 	mkdir -p ~/.vim
-	if [[ ! -d ~/.vim/bundle ]]; then  git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim; fi
-	vim +'PlugInstall --sync' +qa
+	if [[ ! -d ~/.vim/bundle ]]; \
+	then git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim; \
+	fi
+	vim +'PluginInstall --sync' +qa
 
 setup: ## set file permissions
 	git config pull.rebase false
