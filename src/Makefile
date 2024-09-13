@@ -52,6 +52,10 @@ push: ## commit to main
 
 all: ../src/*.lua ../docs/*.html setup
 
+%.awk : %.mkd         
+	1>&2 echo "... $@"
+	gawk -f ../etc/md2awk.awk $< > $@
+
 %.lua : %.md           
 	1>&2 echo "... $@"
 	gawk -f ../etc/md2lua.awk $< > $@

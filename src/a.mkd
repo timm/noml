@@ -1,0 +1,46 @@
+# vim : filetype=md : 
+% NOML
+
+```awk
+BEGIN { FS="," }
+NR==1 { split($0,names,FS); DATA(data0,names) }
+
+function DATA(i, names) {
+  has(i,"rows")
+  has(i,"cols")
+  has(i,"x")
+  has(i,"y")
+  for(i in names) {
+    name = names[i]
+    j= array(i.cols)
+    what = name  ~/^[A-Z]/ ? "NUM" : "SYM"
+    @what(i.cols[j],i,name) 
+    if (name ~ /X$/) continue 
+    name ~ /[+-!/ ? y[i] : x[i] }
+    
+function COL(i,at,txt) {
+  i.at=at
+  i.txt=txt 
+  i.goal = txt ~ /-$/ ? 0 : 1 }
+
+function NUM(i,at,txt) {
+  COL(i,at,txt)
+  i.n = i.mu = i.m2 =  0 
+  i.lo=1E32; i.hi = -1E32 }
+
+function SYM(i,at,txt) {
+  COL(i,at,txt)
+  i.n = i.most = 0
+  i.mode = ""
+  array(i,"has") }
+
+function array(i,k) { 
+  if (k) 
+    {i[k][0]; delete i[j][0]; return k
+  } else 
+    return array(i, length(a)+1)}
+
+function has(i, k, f)       { f=f?f:"Obj"; array(i,k); @f(i[k])      }
+function haS(i, k, f, x)    {              array(i,k); @f(i[k],x)    }
+function hAS(i, k, f, x, y) {              array(i,k); @f(i[k],x,y)  }
+```

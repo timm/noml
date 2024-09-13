@@ -279,7 +279,7 @@ function DATA:guess(todo, done, score) --> row
   local out,cut,best,rest,fun,top,j,k = {}, math.min(the.cut,#todo)/#todo
   best,rest = self:clone(done):bestRest()
   fun = function(i,t,    s) 
-          s = math.random()>cut and 0 or score(best:like(t,#done,2), rest:like(t,#done,2))
+          s = math.random()>cut and -big or score(best:like(t,#done,2), rest:like(t,#done,2))
           return {s,t} end
   for i,t in pairs(l.sort(l.maps(todo,fun), l.gt(1))) do 
     if i==1 then top=t[2] else l.push(out, t[2]) end end
