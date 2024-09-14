@@ -43,7 +43,7 @@ class NUM(o):
    
   def div(i): return i.sd
 
-  def merges(bins, small):
+  def merges(i.bins, small):
     bins = sorted(bins.items(), key=lambda z:z[1])
     out = [bins[1]]
     for j,bin in enumerate(bins):
@@ -83,7 +83,7 @@ class SYM(o):
     if i.n < tiny or j.n < tiny or k.ent() <= (i.n*i.ent() + j.n*j.ent())/k.n:
       return k
 
-  def merges(bins, _): return sorted(bins.items(),lambda z:z[1])
+  def merges(i,bins, _): return sorted(bins.items(),lambda z:z[1])
 
   def mid(i): return i.mode
 
