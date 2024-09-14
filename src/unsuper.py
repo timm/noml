@@ -265,7 +265,7 @@ class eg:
 
   def cluster(_):
     d = DATA().csv(the.train); # print(d.div())
-    n=NUM(init=[ d.yDist(row) for row in d.rows ])
+    n = NUM(init=[ d.yDist(row) for row in d.rows ])
     print(o(lo=n.lo,mid=n.mu, hi=n.hi, div=n.sd))
     print("kmeans",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.kmeans()]))
     print("halves",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.halves(sortp=True)]))
