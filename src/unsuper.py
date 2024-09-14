@@ -165,15 +165,16 @@ class DATA(o):
   def csv(i,file): [i.add(row) for row in csv(file)]; return i
   def div(i): return [f"{col.div():.3f}" for col in i.cols]
 
-  def twoFar(i,rows,sortp=False):
-    a,b = max([(random.choice(rows), random.choice(rows)) for _ in range(20)],
-              key=lambda z: i.xDist(z[0],z[1]))
+  def twoFar(i,rows,sortp=False,above=None):
+    a,b = max([((above or random.choice(rows)), 
+                random.choice(rows)) for _ in range(20)], 
+               key=lambda z: i.xDist(z[0],z[1]))
     if sortp and i.yDist(a) < i.yDist(b): a,b = b,a
     return a,b, i.xDist(a,b)
 
-  def half(i,rows, sortp=False):
+  def half(i,rows, sortp=False,above=None):
     lefts,rights = [],[]
-    left,right,c = i.twoFar(rows,sortp)
+    left,right,c = i.twoFar(rows,sortp=sortp,above=above)
     def cos(a,b): return (a**2 + c**2 - b**2) / (2*c+ 1E-32) 
     def fun(r)  : return cos(i.xDist(r,left), i.xDist(r,right))
     for j,row in enumerate(sorted(rows, key=fun)):
@@ -183,13 +184,13 @@ class DATA(o):
   def halves(i,min=.5, samples=512,depth=4, sortp=False):
     leafs, rows = [], random.choices(i.rows, k=samples)
     stop = len(rows)**min
-    def tree(depth,rows):
+    def tree(depth,rows,above=None):
       if depth <= 0 or  len(rows) < 2*stop:
         leafs.append(i.clone(rows))
       else:
-        lefts, rights, *_ = i.half(rows, sortp=sortp)
-        tree(depth-1, lefts)
-        tree(depth-1, rights)
+        lefts, rights, left,right,_ = i.half(rows, sortp=sortp)
+        tree(depth-1, lefts, left)
+        tree(depth-1, rights, right)
     tree(depth,rows) 
     return leafs
 
@@ -243,7 +244,7 @@ def cli(d):
 def pretty(x):
   if isinstance(x,float): return f"{x:g}"
   if not isinstance(x,dict): return f"{x}"
-  return "(" + ' '.join(f":{k} {v}" for k,v in x.items() if str(k)[0] != "_") + ")"
+  return "(" + ' '.join(f":{k} {pretty(v)}" for k,v in x.items() if str(k)[0] != "_") + ")"
                        
 #---------------------------------------------------------------
 #            
@@ -264,6 +265,8 @@ class eg:
 
   def cluster(_):
     d = DATA().csv(the.train); # print(d.div())
+    n=NUM(init=[ d.yDist(row) for row in d.rows ])
+    print(o(lo=n.lo,mid=n.mu, hi=n.hi, div=n.sd))
     print("kmeans",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.kmeans()]))
     print("halves",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.halves(sortp=True)]))
 
