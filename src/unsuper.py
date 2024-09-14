@@ -9,7 +9,7 @@ class o:
   def __repr__(i): return  i.__class__.__name__ + str(i.__dict__)
 
 the = o(bins=10, p=2, seed=1234567891, 
-        train="../../moot/optimize/misc/auto93.csv")
+        train="../../moot/optimize/config/SS-A.csv")
 
 class NUM(o):
   def __init__(i,init=[],at=0,txt=" "): 
@@ -124,18 +124,19 @@ class DATA(o):
     lefts,rights = [],[]
     left,right,c = i.twoFar(rows,sortp)
     def cos(a,b): return (a**2 + c**2 - b**2) / (2*c+ 1E-32) 
-    for j,row in enumerate(sorted(rows, key=lambda r: cos(i.xDist(r,left), i.xDist(r,right)))):
+    def fun(r)  : return cos(i.xDist(r,left), i.xDist(r,right))
+    for j,row in enumerate(sorted(rows, key=fun)):
       (lefts if j <= len(rows)/2 else rights).append(row) 
     return lefts, rights, left, right, i.xDist(left,rights[0]) 
 
-  def halves(i,min=.5, samples=512, depth=4):
+  def halves(i,min=.5, samples=512, depth=4, sortp=False):
     leafs, rows = [], random.choices(i.rows, k=samples)
     stop = len(rows)**min
     def tree(depth,rows):
-      if depth < 1 or  len(rows) < 2*stop:
+      if depth < 0 or  len(rows) < 2*stop:
         leafs.append(i.clone(rows))
       else:
-        lefts, rights, *_ = i.half(rows, sortp=False)
+        lefts, rights, *_ = i.half(rows, sortp=sortp)
         tree(depth-1, lefts)
         tree(depth-1, rights)
     tree(depth,rows) 
@@ -176,14 +177,14 @@ def main():
   n = NUM([5, 5, 9, 9, 9, 10, 5, 10, 10])      ;assert 2.29 < n.sd < 2.30 and n.mu==8
   s = SYM("aaaabbc")                           ;assert s.mode == "a"      and 1.37 < s.ent() < 1.38
   n = 0
-  assert 3192 == sum(len(row) for i,row in enumerate(csv(the.train)))
+  #assert 3192 == sum(len(row) for i,row in enumerate(csv(the.train)))
   d = DATA().csv(the.train); print(d.div())
   print("kmeans",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.kmeans()]))
-  print("halves",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.halves()]))
+  print("halves",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.halves(sortp=True)]))
   t1=nano()
-  for _ in range(10**2): d.kmeans()
+  for _ in range(64): d.kmeans()
   t2=nano()
-  for _ in range(10**2): d.halves()
+  for _ in range(64): d.halves()
   t3=nano()
   print("k", t2-t1)
   print("h", t3-t2)
