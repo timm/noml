@@ -3,6 +3,11 @@ from fileinput import FileInput as file_or_stdin
 R = random.random
 cos, log, sqrt = math.cos, math.log, math.sqrt
 from time import time_ns as nano
+#---------------------------------------------------------------------
+#                  _         
+#   _   _   ._   _|_  o   _  
+#  (_  (_)  | |   |   |  (_| 
+#                         _| 
 
 class o:
   def __init__(i,**d): i.__dict__.update(**d)
@@ -15,6 +20,11 @@ the = o( # first letters must be unique; updatable via cli using cli(the.__dict_
   train = "../../moot/optimize/misc/auto93.csv"
 )
 
+#---------------------------------------------------------------------
+#             
+#   _   _   | 
+#  (_  (_)  | 
+            
 class COL(o):
   def bins(i,groups: dict[str,list]): # -> list[SYM]:
     n,out = 0,{}
@@ -30,6 +40,11 @@ class COL(o):
     w = sum(bin.n * bin.ent() for bin in out)/n
     return w,out
  
+#---------------------------------------------------------------------
+#                  
+#  |\ |  | |  |\/| 
+#  | \|  |_|  |  | 
+                 
 class NUM(COL):
   def __init__(i,init=[],at=0,txt=" "): 
     i.at, i.txt, i.goal         = at, txt, (0 if txt[-1] == "-" else 1)
@@ -80,6 +95,12 @@ class NUM(COL):
 
   def norm(i,x): return x if x=="?" else (x - i.lo) / (i.hi - i.lo + 1E-32)
 
+#---------------------------------------------------------------------
+#   __            
+#  (_   \_/  |\/| 
+#  __)   |   |  | 
+#                 
+
 class SYM(COL):
   def __init__(i,init=[],at=0,txt=" "): 
     i.n, i.at, i.txt, i.has = 0, at, txt, {}
@@ -116,6 +137,11 @@ class SYM(COL):
   def mid(i): return i.mode
 
   def xDist(i,x,y): return 1 if x=="?" and y=="?" else x!=y
+
+#---------------------------------------------------------------------
+#   _         ___       
+#  | \   /\    |    /\  
+#  |_/  /--\   |   /--\ 
 
 class DATA(o):
   def __init__(i):
@@ -188,6 +214,10 @@ class DATA(o):
     return max(abs(col.norm(row[col.at]) - col.goal) for col in i.y)
 
 #---------------------------------------------------------------
+#            
+#  |  o  |_  
+#  |  |  |_) 
+
 def gauss(mu=0, sd=1):
   return mu + sd * sqrt(-2*log(R()))* cos(2*math.pi*R())
 
@@ -214,7 +244,12 @@ def pretty(x):
   if isinstance(x,float): return f"{x:g}"
   if not isinstance(x,dict): return f"{x}"
   return "(" + ' '.join(f":{k} {v}" for k,v in x.items() if str(k)[0] != "_") + ")"
-
+                       
+#---------------------------------------------------------------
+#            
+#   _  _|_   _.  ._  _|_ 
+#  _>   |_  (_|  |    |_ 
+                       
 def eg_main():
   n = NUM( [gauss(10,2) for _ in range(1000)]) ;assert 9.9 < n.mu < 10.1  and 1.9 < n.sd < 2.1
   n = NUM([5, 5, 9, 9, 9, 10, 5, 10, 10])      ;assert 2.29 < n.sd < 2.30 and n.mu==8
@@ -240,9 +275,7 @@ def eg_halves():
     print("expected entropy if dividing on this feature:",pretty(w))
     for bin in bins:
       print("\t",bin.txt,bin.span)
-  
 
-#---------------------------------------------------------------
 cli(the.__dict__)
 random.seed(the.seed)
 eg_halves()
