@@ -43,7 +43,7 @@ class NUM(o):
    
   def div(i): return i.sd
 
-  def merges(i.bins, small):
+  def merges(i,bins, small):
     bins = sorted(bins.items(), key=lambda z:z[1])
     out = [bins[1]]
     for j,bin in enumerate(bins):
@@ -135,7 +135,7 @@ class DATA(o):
       if depth < 1 or  len(rows) < 2*stop:
         leafs.append(i.clone(rows))
       else:
-        lefts, rights, *_ = i.half(rows, sortp=True)
+        lefts, rights, *_ = i.half(rows, sortp=False)
         tree(depth-1, lefts)
         tree(depth-1, rights)
     tree(depth,rows) 
