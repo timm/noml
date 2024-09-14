@@ -30,12 +30,12 @@ def add(i,x):
         (i.y if x.txt[-1] in "+-!" else i.x).append(x)
   return x
 
-data = DATA()
-for i,row in enumerate(csv(file)):
-  if i==0:
-    for at,txt in enumerate(names): 
-      add(data.cols, (NUM if txt[0].isupper() else SYM)(at,txt))
-    continue
+def adds(data, src):
+  for i,row in enumerate(src):
+    if i==0:
+      for at,txt in enumerate(row):
+        add(data.cols, (NUM if txt[0].isupper() else SYM)(at,txt))
+      continue
 
 def pretty(x):
   if isinstance(x,float): return f"{x:g}"
