@@ -250,32 +250,48 @@ def pretty(x):
 #   _  _|_   _.  ._  _|_ 
 #  _>   |_  (_|  |    |_ 
                        
-def eg_main():
-  n = NUM( [gauss(10,2) for _ in range(1000)]) ;assert 9.9 < n.mu < 10.1  and 1.9 < n.sd < 2.1
-  n = NUM([5, 5, 9, 9, 9, 10, 5, 10, 10])      ;assert 2.29 < n.sd < 2.30 and n.mu==8
-  s = SYM("aaaabbc")                           ;assert s.mode == "a"      and 1.37 < s.ent() < 1.38
-  n = 0
-  #assert 3192 == sum(len(row) for i,row in enumerate(csv(the.train)))
-  d = DATA().csv(the.train); # print(d.div())
-  print("kmeans",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.kmeans()]))
-  print("halves",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.halves(sortp=True)]))
-  t1=nano(); [d.kmeans() for _ in range(10)]
-  t2=nano(); [d.halves() for _ in range(10)]
-  t3=nano()
-  print("kmeans/halves", (t2-t1)/(t3-t2))
-  groups = {chr(j+65): data.rows for j,data in  enumerate(d.halves())}
-  for col in d.x:
-    col.bins(groups)
+class eg:
+  def num(_):
+    n = NUM( [gauss(10,2) for _ in range(1000)]) ;assert 9.9 < n.mu < 10.1  and 1.9 < n.sd < 2.1
+    n = NUM([5, 5, 9, 9, 9, 10, 5, 10, 10])      ;assert 2.29 < n.sd < 2.30 and n.mu==8
 
-def eg_halves():
-  d = DATA().csv(the.train); # print(d.div())
-  groups = {chr(j+65): data.rows for j,data in  enumerate(d.halves())}
-  for w,bins in sorted(col.bins(groups) for col in d.x):
-    print("")
-    print("expected entropy if dividing on this feature:",pretty(w))
-    for bin in bins:
-      print("\t",bin.txt,bin.span)
+  def sym(_):
+    s = SYM("aaaabbc") ;assert s.mode == "a"      and 1.37 < s.ent() < 1.38
 
+  def csv(_):
+    n = 0
+    assert 3192 == sum(len(row) for i,row in enumerate(csv(the.train)))
+
+  def cluster(_):
+    d = DATA().csv(the.train); # print(d.div())
+    print("kmeans",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.kmeans()]))
+    print("halves",sorted([f"{d.yDist(data.mid()):.2f}" for data in d.halves(sortp=True)]))
+
+  def clusters(_):
+    d = DATA().csv(the.train); # print(d.div())
+    t1=nano(); [d.kmeans() for _ in range(10)]
+    t2=nano(); [d.halves() for _ in range(10)]
+    t3=nano()
+    print("kmeans/halves", (t2-t1)/(t3-t2))
+
+  def bins(_):
+    d = DATA().csv(the.train); # print(d.div())
+    groups = {chr(j+65): data.rows for j,data in  enumerate(d.halves())}
+    for col in d.x:
+      col.bins(groups)
+
+  def weight(_):
+    d = DATA().csv(the.train); # print(d.div())
+    groups = {chr(j+65): data.rows for j,data in  enumerate(d.halves())}
+    for w,bins in sorted(col.bins(groups) for col in d.x):
+      print("")
+      print("expected entropy if dividing on this feature:",pretty(w))
+      for bin in bins:
+        print("\t",bin.txt,bin.span)
+ 
+noop = lambda *_: _
 cli(the.__dict__)
 random.seed(the.seed)
-eg_halves()
+for i,s in enumerate(sys.argv):
+   getattr(eg,s[1:],noop)(i+1)
+
