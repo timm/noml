@@ -6,7 +6,7 @@ HIGH = \033[1;33m#
 SOFT = \033[0m#
 
 MUST  = lua gawk pandoc
-MAYBE = watch figlet htop ranger ncdu bat tree vim
+MAYBE = watch figlet htop ranger ncdu bat tree vim a2ps ghostscript
 #SILLY = tty-clock ../etc/bsdgames-osx.rb
 
 Pandoc =                     \
@@ -69,12 +69,32 @@ all: ../src/*.lua ../docs/*.html setup
 	1>&2 echo "... $@"
 	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
 
-eg1:; python3 less.py                                         -kmeans2  |sort -n |cat -n
-ega:; python3 less.py -t ../../moot/optimize/config/SS-A.csv  -kmeans2  |sort -n |cat -n
-egb:; python3 less.py -t ../../moot/optimize/config/SS-B.csv  -kmeans2  |sort -n |cat -n
-egc:; python3 less.py -t ../../moot/optimize/config/SS-C.csv  -kmeans2  |sort -n |cat -n
-egd:; python3 less.py -t ../../moot/optimize/config/SS-D.csv  -kmeans2  |sort -n |cat -n
-ege:; python3 less.py -t ../../moot/optimize/config/SS-E.csv  -kmeans2  |sort -n |cat -n
-egf:; python3 less.py -t ../../moot/optimize/config/SS-F.csv  -kmeans2  |sort -n |cat -n
-egg:; python3 less.py -t ../../moot/optimize/config/SS-G.csv  -kmeans2  |sort -n |cat -n
+~/tmp/%.pdf: %.py  ## make doco: .py ==> .pdf
+	mkdir -p ~/tmp
+	echo "pdf-ing $@ ... "
+	a2ps                 \
+		-Br                 \
+		--chars-per-line=90 \
+		--file-align=fill      \
+		--line-numbers=1        \
+		--pro=color               \
+		--left-title=""            \
+		--borders=no             \
+	    --left-footer="$<  "               \
+	    --right-footer="page %s. of %s#"               \
+		--columns 3                 \
+		-M letter                     \
+	  -o	 $@.ps $<
+	ps2pdf $@.ps $@; rm $@.ps
+	open $@
+
+
+eg1:; python3 mink.py                                         -kmeans2  |sort -n |cat -n
+ega:; python3 mink.py -t ../../moot/optimize/config/SS-A.csv  -kmeans2  |sort -n |cat -n
+egb:; python3 mink.py -t ../../moot/optimize/config/SS-B.csv  -kmeans2  |sort -n |cat -n
+egc:; python3 mink.py -t ../../moot/optimize/config/SS-C.csv  -kmeans2  |sort -n |cat -n
+egd:; python3 mink.py -t ../../moot/optimize/config/SS-D.csv  -kmeans2  |sort -n |cat -n
+ege:; python3 mink.py -t ../../moot/optimize/config/SS-E.csv  -kmeans2  |sort -n |cat -n
+egf:; python3 mink.py -t ../../moot/optimize/config/SS-F.csv  -kmeans2  |sort -n |cat -n
+egg:; python3 mink.py -t ../../moot/optimize/config/SS-G.csv  -kmeans2  |sort -n |cat -n
 
