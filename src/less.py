@@ -155,19 +155,22 @@ class eg:
 
   def kmeans2(_): 
     d         = datas(DATA(),csv(the.train))
-    n=NUM()
-    [num(n,yDist(d,x)) for x in d.rows]
-    print(f"mu= {n.mu:.3f}, 'zero'= {n.lo+0.35*n.sd:.3f}")
+    n0=NUM()
+    [num(n0,yDist(d,x)) for x in d.rows]
     fun       = lambda d1:yDist(d, mids(d1))
     k1=12; k2=6; k3=6
+    print("#best","#","asIs","zero", "rand", "(sd)","row",sep="\t| ")
     for _ in range(20):
+      n=NUM()
+      [num(n,yDist(d,r)) for r in clone(d,random.choices(d.rows,k=k1+k2+k3)).rows]
       clusters1 = kmeans(d, k=k1)
       rows1     = sorted(clusters1, key=fun)[0].rows
       clusters2 = kmeans(clone(d,rows1),k=k2)
       rows2     = sorted(clusters2, key=fun)[0].rows
-      random.shuffle(rows2)
-      row       = sorted(rows2[:k3], key=lambda r:yDist(d,r))[0]
-      print(f"{yDist(d,row):.3f}",k1+k2+k3,row,sep="\t")
+      row       = sorted(random.choices(rows2,k=k3), key=lambda r:yDist(d,r))[0]
+      print(f"{yDist(d,row):.2f}",k1+k2+k3,
+            f"{n0.mu:.2f},\t| {n0.lo+0.35*n0.sd:.2f}",
+            f"{n.mu:.2f},\t| {n.sd:.2f}",row,the.train,sep="\t| ")
 
 #-----------------------------------------------------------------------
 random.seed(the.seed)
