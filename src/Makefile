@@ -68,3 +68,6 @@ all: ../src/*.lua ../docs/*.html setup
 ../docs/%.html : ../src/%.md    
 	1>&2 echo "... $@"
 	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
+
+eg1:
+	python3 less.py   -kmeans2  |sort -n |cat -n
