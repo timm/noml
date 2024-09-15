@@ -95,20 +95,6 @@ def kmeans(data1, k=16, loops=10, samples=512):
     return loop(loops-1, [mids(data2) for data2 in d.values()]) if loops else d.values()
   return loop(loops, rows[:k])
 
-def distant(data,mids):
-  mids =  sorted(mids, key=lambda r: yDist(data,r))
-  A,B = mids[0], mids[-1]
-  y1=yDist(data,A)
-  y2=yDist(data,B)
-  print(A,y1) 
-  print(B,y2)
-  c = xDist(data,A,B)
-  print("c",c)
-  d = lambda r1,r2: xDist(data,r1,r2)
-  cos = lambda r:(d(A,r)**2 + c**2 - d(B,r)**2)/(2*c)
-  for row in sorted(data.rows, key=cos):
-     print(cos(row), yDist(data,row),row)
-
 #-----------------------------------------------------------------------
 def entropy(d):
   N = sum(n for n in d.values())
@@ -164,7 +150,7 @@ class eg:
     d = datas(DATA(),csv(the.train))
     print(pretty(sorted([yDist(d, mids(x)) for x in kmeans(d)])))
 
-  def dist(_): 
+  def kmeans2(_): 
     d    = datas(DATA(),csv(the.train))
     fun  = lambda d1:yDist(d, mids(d1))
     rows = sorted(kmeans(d,k=12,samples=512), key=fun)[0].rows
