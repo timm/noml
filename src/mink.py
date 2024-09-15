@@ -212,4 +212,4 @@ class eg:
 random.seed(the.seed)
 cli(the.__dict__)
 for i,s in enumerate(sys.argv):
-  getattr(eg,s[1:], lambda _:_)()
+  getattr(eg, s[1:], lambda:1)()
