@@ -69,7 +69,7 @@ all: ../src/*.lua ../docs/*.html setup
 	1>&2 echo "... $@"
 	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
 
-eg1:; python3 less.py   -kmeans2  |sort -n |cat -n
+eg1:; python3 less.py                                         -kmeans2  |sort -n |cat -n
 ega:; python3 less.py -t ../../moot/optimize/config/SS-A.csv  -kmeans2  |sort -n |cat -n
 egb:; python3 less.py -t ../../moot/optimize/config/SS-B.csv  -kmeans2  |sort -n |cat -n
 egc:; python3 less.py -t ../../moot/optimize/config/SS-C.csv  -kmeans2  |sort -n |cat -n
