@@ -1,36 +1,46 @@
-"""
-mink.py
+#                                      __         
+#                   __                /\ \        
+#      ___ ___     /\_\        ___    \ \ \/'\    
+#    /' __` __`\   \/\ \     /' _ `\   \ \ , <    
+#    /\ \/\ \/\ \   \ \ \    /\ \/\ \   \ \ \\`\  
+#    \ \_\ \_\ \_\   \ \_\   \ \_\ \_\   \ \_\ \_\
+#     \/_/\/_/\/_/    \/_/    \/_/\/_/    \/_/\/_/
 
-In this code UPPERCASE functions are constrictors and lowercase
-versions of that constructor are functions that add one item and
-lowercase plus a "s" add multiple items. e.g. DATA, SYM and constructors
-and data,sym are functions to add one iteam to a DATA or a SYM.
-And datas adds may rows.
 """
-from typing import Any as any
-from typing import List, Dict, Type, Callable, Generator
+In this code:
+- UPPERCASE functions are constrictors
+- lowercase versions of that constructor name are functions that add 1 item
+- lowercase plus a "s" add multiple items
+
+e.g. 
+- DATA, SYM, NUM are constructors
+- `data`, `sym`, `num` are functions that add 1 item to DATA,SYM or NUM
+- `datas` is a function that adds many rows to DATA
+
+"""
+import random,sys,ast,re
 from time import time_ns as nano
-import random,math,sys,ast,re,os
 from fileinput import FileInput as file_or_stdin
-R, cos, log, sqrt = random.random, math.cos, math.log, math.sqrt
 
 class o:
   def __init__(i,**d): i.__dict__.update(**d)
   def __repr__(i): return  i.__class__.__name__ + pretty(i.__dict__)
 
-type number  = float  | int   #
-type atom    = number | bool | str # and sometimes "?"
-type row     = list[atom]
-type rows    = list[row]
-type classes = dict[str,rows] # `str` is the class name
-type SYM     = o
-type DATA    = o
-type NUM     = o
+#-----------------------------------------------------------------------
+number  = float  | int   #
+atom    = number | bool | str # and sometimes "?"
+row     = list[atom]
+rows    = list[row]
+classes = dict[str,rows] # `str` is the class name
+COL     = o
+SYM     = COL
+NUM     = COL
+DATA    = o
 
-the = o( 
-  buckets = 10, 
-  p       = 2, 
-  seed    = 1234567891, 
+the = o(
+  buckets = 10,
+  p       = 2,
+  seed    = 1234567891,
   train   = "../../moot/optimize/misc/auto93.csv"
 )
 
@@ -77,8 +87,9 @@ def NUM(c=0, x=" "):
 def clone(i:DATA, rows=[]):
   return datas(data(DATA(), i.cols.names),rows)
 
-#   _.   _|   _| 
-#  (_|  (_|  (_| 
+#       ._    _|   _.  _|_   _  
+#  |_|  |_)  (_|  (_|   |_  (/_ 
+#       |                       
 
 def sym(i:SYM, v:atom): 
   i.n += 1
@@ -96,30 +107,31 @@ def num(i:NUM, v:number):
 def datas(i,src): [data(i,row) for row in src]; return i
 
 def data(i:DATA, row):
-  def goalp(v)  : return v[-1] in "+-!"
   def nump(v)   : return v[0].isupper()
+  def goalp(v)  : return v[-1] in "+-!"
   def ignorep(v): return v[-1] == "X"
-  def cell(col) : (sym if col.This is SYM else num)(col, row[col.c]) 
-  def head(c,v):
+  def update(col): (sym if col.This is SYM else num)(col, row[col.c]) 
+  def create(c,v):
     col = (NUM if nump(v) else SYM)(c,v)
-    i.cols.all.append(col)
+    i.cols.all += [col]
     if not ignorep(v):
-      (i.cols.y    if goalp(v) else i.cols.x   ).append(col)
-  if i.cols.all:
+      (i.cols.y if goalp(v) else i.cols.x).append(col)
+
+  if i.cols.names: # true if we have already seen the header row
     i.rows += [row]
-    [cell(col) for cols in [i.cols.x, i.cols.y] for col in cols if row[col.c] != "?"]
+    [update(col) for cols in [i.cols.x,i.cols.y] for col in cols if row[col.c] != "?"]
   else:
     i.cols.names = row
-    [head(c,v) for c,v in enumerate(row)]
+    [create(c,v) for c,v in enumerate(row)]
   return i
 
 #   _.        _   ._     
 #  (_|  |_|  (/_  |   \/ 
 #    |                /  
 
-def mids(data)  : return [mid(col) for col in data.cols.all]
-def mid(i)      : return i.mu if i.This is NUM else max(i.has,key=i.has.get)
-def norm(i,x)   : return x if x=="?" else (x - i.lo) / (i.hi - i.lo + 1E-32)
+def mids(data): return [mid(col) for col in data.cols.all]
+def mid(i)    : return i.mu if i.This is NUM else max(i.has,key=i.has.get)
+def norm(i,x) : return x if x=="?" else (x - i.lo) / (i.hi - i.lo + 1E-32)
 
 def xDist(data, row1, row2):
   def dist(x,a,b):
@@ -129,6 +141,7 @@ def xDist(data, row1, row2):
     a = a if a != "?" else (1 if b<.5 else 0)
     b = b if b != "?" else (1 if a<.5 else 0)
     return abs(a - b)
+
   d = sum(dist(x, row1[x.c], row2[x.c])**the.p for x in data.cols.x)
   return d**(1/the.p) / len(data.cols.x)**(1/the.p)
 
@@ -139,8 +152,6 @@ def yDist(data, row):
 #  (_  |  |_|  _>   |_  (/_  |  
 
 def kmeans(data1, k=16, loops=10, samples=512):
-  samples = min(len(data1.rows),samples)
-  rows = random.choices(data1.rows, k=samples)
   def loop(loops, centroids):
     d = {}
     for row in rows:
@@ -148,38 +159,41 @@ def kmeans(data1, k=16, loops=10, samples=512):
       d[k] = d.get(k,None) or clone(data1)
       data(d[k],row)
     return loop(loops-1, [mids(data2) for data2 in d.values()]) if loops else d.values()
+
+  samples = min(len(data1.rows),samples)
+  rows = random.choices(data1.rows, k=samples)
   return loop(loops, rows[:k])
 #-----------------------------------------------------------------------
 class eg:
-  def the(_): print(the)
+  def the(): print(the)
 
-  def csv(_): 
+  def csv():
    for i,row in enumerate(csv(the.train)):
      if i % 30 == 0: print(i,row)
 
-  def datas(_): 
+  def datas():
     d = datas(DATA(),csv(the.train))
     print(mids(d))
     for col in d.cols.y:
       print(col)
 
-  def clones(_): 
+  def clones():
     d1 = datas(DATA(),csv(the.train))
     d2 = datas(clone(d1),d1.rows)
     for col in d1.cols.x: print(col)
     print("")
     for col in d2.cols.x: print(col)
 
-  def kmeans(_): 
+  def kmeans():
     d = datas(DATA(),csv(the.train))
     print(pretty(sorted([yDist(d, mids(x)) for x in kmeans(d)])))
 
-  def kmeans2(_): 
+  def kmeans2():
     d         = datas(DATA(),csv(the.train))
     n0=NUM()
     [num(n0,yDist(d,x)) for x in d.rows]
     fun       = lambda d1:yDist(d, mids(d1))
-    k1=12; k2=6; k3=6
+    k1=10; k2=4; k3=6
     print("#best","#","asIs","zero", "rand", "(sd)","row",sep="\t| ")
     for _ in range(20):
       n=NUM()
@@ -188,7 +202,8 @@ class eg:
       rows1     = sorted(clusters1, key=fun)[0].rows
       clusters2 = kmeans(clone(d,rows1),k=k2)
       rows2     = sorted(clusters2, key=fun)[0].rows
-      row       = sorted(random.choices(rows2,k=k3), key=lambda r:yDist(d,r))[0]
+      random.shuffle(rows2)
+      row       = sorted(rows2[:k3], key=lambda r:yDist(d,r))[0]
       print(f"{yDist(d,row):.2f}",k1+k2+k3,
             f"{n0.mu:.2f}\t| {n0.lo+0.35*n0.sd:.2f}",
             f"{n.mu:.2f}\t| {n.sd:.2f}",row,the.train,sep="\t| ")
@@ -197,4 +212,4 @@ class eg:
 random.seed(the.seed)
 cli(the.__dict__)
 for i,s in enumerate(sys.argv):
-  getattr(eg,s[1:], lambda _:_)(i+1)
+  getattr(eg,s[1:], lambda _:_)()
