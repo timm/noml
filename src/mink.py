@@ -49,7 +49,7 @@ def pretty(x):
   if isinstance(x,float)   : return f"{x:.3f}"
   if isinstance(x,list )   : return "["+', '.join([pretty(y) for y in x])+"]"
   if not isinstance(x,dict): return str(x)
-  return "(" + ' '.join(f":{k} {pretty(v)}" 
+  return "(" + ' '.join(f":{k} {pretty(v)}"
                         for k,v in x.items() if not str(k)[0].isupper()) + ")"
 
 def coerce(s):
@@ -57,27 +57,26 @@ def coerce(s):
   except Exception: return s
 
 def csv(file):
-  with file_or_stdin(None if file=="−" else file) as src: 
-    for line in src: 
+  with file_or_stdin(None if file=="−" else file) as src:
+    for line in src:
       line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
-      if line: 
+      if line:
         yield [coerce(s.strip()) for s in line.split(",")]
 
 def cli(d):
   for k,v in d.items():
     for c,arg in enumerate(sys.argv):
-      if arg=="-h": sys.exit(print(__doc__ or "")) 
+      if arg=="-h": sys.exit(print(__doc__ or ""))
       if arg in ["-"+k[0], "--"+k]: 
         d[k] = coerce(sys.argv[c+1])
         if k=="seed": random.seed(d[k])
 #-----------------------------------------------------------------------
 #   _  ._   _    _.  _|_   _  
 #  (_  |   (/_  (_|   |_  (/_ 
-
-def DATA(): 
+def DATA():
   return o(rows=[], cols=o(names=[],all=[],x=[],y=[]))
 
-def SYM(c=0, x=" "): 
+def SYM(c=0, x=" "):
   return o(This=SYM, c=c, txt=x, n=0, has={})
 
 def NUM(c=0, x=" "):
@@ -91,7 +90,7 @@ def clone(i:DATA, rows=[]):
 #  |_|  |_)  (_|  (_|   |_  (/_ 
 #       |                       
 
-def sym(i:SYM, v:atom): 
+def sym(i:SYM, v:atom):
   i.n += 1
   i.has[v] = 1 + i.has.get(v,0)
 
@@ -102,7 +101,7 @@ def num(i:NUM, v:number):
   d = v - i.mu
   i.mu += d / i.n
   i.m2 += d * (v - i.mu)
-  i.sd = 0 if i.n < 2 else (i.m2/(i.n - 1))**.5 
+  i.sd = 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
 
 def datas(i,src): [data(i,row) for row in src]; return i
 
@@ -110,7 +109,7 @@ def data(i:DATA, row):
   def nump(v)   : return v[0].isupper()
   def goalp(v)  : return v[-1] in "+-!"
   def ignorep(v): return v[-1] == "X"
-  def update(col): (sym if col.This is SYM else num)(col, row[col.c]) 
+  def update(col): (sym if col.This is SYM else num)(col, row[col.c])
   def create(c,v):
     col = (NUM if nump(v) else SYM)(c,v)
     i.cols.all += [col]
@@ -164,7 +163,7 @@ def kmeans(data1, k=16, loops=10, samples=512):
   rows = random.choices(data1.rows, k=samples)
   return loop(loops, rows[:k])
 #-----------------------------------------------------------------------
-class eg:
+class main:
   def the(): print(the)
 
   def csv():
@@ -212,4 +211,4 @@ class eg:
 random.seed(the.seed)
 cli(the.__dict__)
 for i,s in enumerate(sys.argv):
-  getattr(eg, s[1:], lambda:1)()
+  getattr(main, s[1:], lambda:1)()
