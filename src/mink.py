@@ -179,15 +179,15 @@ def xDist(i:DATA, row1:row, row2:row) -> number:
 def yDist(i:DATA, row:number) -> number:
   return max(abs(y.goal - y.norm(row[y.c])) for y in i.cols.y)
 
-@of("DISTANCE","guess centroids, move rows to nearest guess, move guess, repeat")
+@of("DISTANCE","guess centroids, move rows to nearest guess, update guess, repeat")
 def kmeans(i:DATA, k=10, n=10, samples=512):
   def loop(n, centroids):
     datas = {}
     for row in rows:
-      k = id(min(centroids, key=lambda r: i.xDist(r,row)))
+      k = id(min(centroids, key=lambda centroid: i.xDist(centroid,row)))
       datas[k] = datas.get(k,None) or i.clone()
       datas[k].add(row)
-    return loop(n-1, [data.mid() for data in datas.values()]) if n else datas.values()
+    return datas.values() if n==0 else loop(n-1, [d.mid() for d in datas.values()])
 
   random.shuffle(i.rows)
   rows = i.rows[:samples]
