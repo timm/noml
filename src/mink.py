@@ -136,7 +136,7 @@ def add(i:DATA, row:row):
 
   if i.cols.names: # true if we have already seen the header row
     i.rows += [row]
-    [col.add(row[col.c]) for l in [i.cols.x,i.cols.y] for col in l if row[col.c] != "?"]
+    [col.add(row[col.c]) for col in i.cols.all if row[col.c] != "?"]
   else:
     i.cols.names = row
     [create(c,v) for c,v in enumerate(row)]
