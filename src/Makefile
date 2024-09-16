@@ -89,6 +89,9 @@ all: ../src/*.lua ../docs/*.html setup
 	open $@
 
 
+heading:
+	- echo -en "$(LOUD)Heading? $(SOFT)" ;  read x ; figlet -W -f mini $$x | gawk '{print "#  " $$0}'
+
 eg1:; python3 mink.py                                         -kmeans2  |sort -n |cat -n
 ega:; python3 mink.py -t ../../moot/optimize/config/SS-A.csv  -kmeans2  |sort -n |cat -n
 egb:; python3 mink.py -t ../../moot/optimize/config/SS-B.csv  -kmeans2  |sort -n |cat -n
