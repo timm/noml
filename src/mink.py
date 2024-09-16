@@ -2,7 +2,7 @@
 mink,py: multi-objective optimization, using very few y labels.  
 (c) 2024, Tim Menzies <timm@ieee.org>, MIT license
 
-     k1, k2, k3 =  10,4,6   # total labels = k1+k2+k3
+     k1=k2=k3=10   # total labellings = k1+k2+k3
      rows = all rows
      for k in [k1,k2]:
         find k clusters within the rows (using kmeans)
