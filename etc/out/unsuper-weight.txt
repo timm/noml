@@ -1,0 +1,26 @@
+
+expected entropy if dividing on this feature: 2.77564
+	 origin o(:lo 1 :hi 1)
+	 origin o(:lo 2 :hi 2)
+	 origin o(:lo 3 :hi 3)
+
+expected entropy if dividing on this feature: 2.97082
+	 HpX o(:lo -inf :hi 71)
+	 HpX o(:lo 71 :hi 83)
+	 HpX o(:lo 83 :hi 94)
+	 HpX o(:lo 94 :hi 103)
+	 HpX o(:lo 103 :hi inf)
+
+expected entropy if dividing on this feature: 3.03875
+	 Model o(:lo -inf :hi 72)
+	 Model o(:lo 72 :hi 76)
+	 Model o(:lo 76 :hi inf)
+
+expected entropy if dividing on this feature: 3.10048
+	 Volume o(:lo -inf :hi 104)
+	 Volume o(:lo 104 :hi 181)
+	 Volume o(:lo 181 :hi inf)
+
+expected entropy if dividing on this feature: 3.18054
+	 Clndrs o(:lo -inf :hi 5)
+	 Clndrs o(:lo 5 :hi inf)
