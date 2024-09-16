@@ -180,18 +180,18 @@ def yDist(i:DATA, row:number) -> number:
   return max(abs(y.goal - y.norm(row[y.c])) for y in i.cols.y)
 
 @of("DISTANCE","guess centroids, move rows to nearest guess, move guess, repeat")
-def kmeans(i:DATA, k=16, loops=10, samples=512):
-  def loop(loops, centroids):
-    d = {}
+def kmeans(i:DATA, k=10, n=10, samples=512):
+  def loop(n, centroids):
+    datas = {}
     for row in rows:
       k = id(min(centroids, key=lambda r: i.xDist(r,row)))
-      d[k] = d.get(k,None) or i.clone()
-      d[k].add(row)
-    return loop(loops-1, [j.mid() for j in d.values()]) if loops else d.values()
+      datas[k] = datas.get(k,None) or i.clone()
+      datas[k].add(row)
+    return loop(n-1, [data.mid() for data in datas.values()]) if n else datas.values()
 
   random.shuffle(i.rows)
   rows = i.rows[:samples]
-  return loop(loops, rows[:k])
+  return loop(n, rows[:k])
 
 # -----------------------------------------------------------------------
 # ## Main
@@ -222,12 +222,14 @@ class main:
     print(pretty(sorted([d.yDist(d2.mid()) for d2 in d.kmeans()])))
 
   def kmeans2():
+    repeats=20
     d   = DATA().adds(csv(the.train))
     n0  = NUM().adds([d.yDist(row) for row in d.rows])
     fun = lambda d1:d.yDist(d1.mid())
     k1=k2=k3=10
-    print("#best","#","asIs","zero", "rand", "(sd)","row",sep="\t| ")
-    for _ in range(20):
+    print("# ",the.train)
+    print("#best","#","rept","asIs","zero", "rand", "(sd)","row",sep="\t| ")
+    for _ in range(repeats):
       n=NUM().adds(d.yDist(r) for r in d.clone(random.choices(d.rows,k=k1+k2+k3)).rows)
       clusters1 = d.kmeans(k=k1)
       rows1     = sorted(clusters1, key=fun)[0].rows
@@ -235,7 +237,7 @@ class main:
       rows2     = sorted(clusters2, key=fun)[0].rows
       random.shuffle(rows2)
       row       = sorted(rows2[:k3], key=lambda r:d.yDist(r))[0]
-      print(f"{d.yDist(row):.2f}",k1+k2+k3,
+      print(f"{d.yDist(row):.2f}",k1+k2+k3,repeats,
             f"{n0.mu:.2f}\t| {n0.lo+0.35*n0.sd:.2f}",
             f"{n.mu:.2f}\t| {n.sd:.2f}",row,the.train,sep="\t| ")
 
