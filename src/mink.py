@@ -32,7 +32,7 @@ classes = dict[str,rows] # `str` is the class name
 # A class for associative arrays.
 class o:
   def __init__(i,**d): i.__dict__.update(**d)
-  def __repr__(i)    : return  i.__class__.__name__ + pretty(i.__dict__)
+  def __repr__(i)    : return  i.__class__.__name__ + say(i.__dict__)
   def adds(i,lst=[]) : [i.add(x) for x in lst]; return i
 
 # My global settings
@@ -46,39 +46,6 @@ the = o(
 # -----------------------------------------------------------------------
 # ## Misc utils
 
-# Allow methods to be listed outside of the class XX: construct.
-def of(cat,doc):
-  def doit(fun):
-    fun.__doc__ = doc
-    setattr(inspect.getfullargspec(fun).annotations['i'],fun.__name__, fun)
-  return doit
-
-# Diversity of a set of symbol counts
-def ent(d:dict): 
-  N = sum(n for n in d.values())
-  return -sum(n/N * math.log(n/N,2) for n in d.values())
-
-# Pretty print.
-def pretty(x) -> str:
-  if isinstance(x,float)   : return f"{x:.3f}"
-  if isinstance(x,list )   : return "["+', '.join([pretty(y) for y in x])+"]"
-  if not isinstance(x,dict): return str(x)
-  return "(" + ' '.join(f":{k} {pretty(v)}" 
-                        for k,v in x.items() if not str(k)[0].isupper()) + ")"
-
-# String to atom.
-def coerce(s:str) -> atom:
-  try: return ast.literal_eval(s)
-  except Exception: return s
-
-# Iterate over csv file.
-def csv(file:str) -> Iterator[row]:
-  with file_or_stdin(None if file=="−" else file) as src: 
-    for line in src: 
-      line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
-      if line: 
-        yield [coerce(s.strip()) for s in line.split(",")]
-
 # Update dictionary via cli flag that match d's slots.
 def cli(d:dict) -> None:
   for k,v in d.items():
@@ -88,20 +55,56 @@ def cli(d:dict) -> None:
         d[k] = coerce(sys.argv[c+1])
         if k=="seed": random.seed(d[k])
 
+# String to atom.
+def coerce(s:str) -> atom:
+  try: return ast.literal_eval(s)
+  except Exception: return s
+
+# Iterate over csv file.
+def csv(file:str) -> Iterator[row]:
+  with file_or_stdin(None if file=="−" else file) as src: 
+    for line in src:
+      line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
+      if line:
+        yield [coerce(s.strip()) for s in line.split(",")]
+
+# Diversity of a set of symbol counts
+def ent(d:dict):
+  N = sum(n for n in d.values())
+  return -sum(n/N * math.log(n/N,2) for n in d.values())
+
+# Allow methods to be listed outside of the class XX: construct.
+def of(cat,doc):
+  def doit(fun):
+    fun.__doc__ = doc
+    setattr(inspect.getfullargspec(fun).annotations['i'],fun.__name__, fun)
+  return doit
+
+# Generates a string showing a recursive pretty print.
+def say(x) -> str:
+  if isinstance(x,float)   : return f"{x:.3f}"
+  if isinstance(x,list )   : return "["+', '.join([say(y) for y in x])+"]"
+  if not isinstance(x,dict): return str(x)
+  return "(" + ' '.join(f":{k} {say(v)}" for k,v in x.items() if not str(k)[0]=="_") + ")"
+
 # -----------------------------------------------------------------------
 # ## Classes and methods.
 
 # ### Create
 
-class COL(o): 
-  def __init__(i): return i
-
-# Summarize a stream of numbers.
-class SYM(COL):
-  def __init__(i,c=0,x=" "): 
-    i.c=c; i.txt=x; i.n=0; i.has={}; i.span=o(lo=1E32, hi=-1E32)
+class COL(o): ...
 
 # Summarize a stream of symbols.
+class SYM(COL):
+  def __init__(i,c=0,x=" "): i.c=c; i.txt=x; i.n=0; i.has={}
+
+# Summarize symbols seen in column y, within the span lo..hi of column x
+class BIN(SYM):
+  def __init__(i,*l,**d):
+    super().__init__(*l,**d)
+    i.span=o(lo=1E32, hi=-1E32)
+
+# Summarize a stream of numbers.
 class NUM(COL):
   def __init__(i,c=0, x=" "):
     i.c=c; i.txt=x; i.n=0; i.mu=0; i.m2=0; i.sd=0;
@@ -211,26 +214,36 @@ def kmeans(i:DATA, k=10, n=10, samples=512):
 # -----------------------------------------------------------------------
 # ## Discretization
 
+@of("DISCRETIZE","add to a  span")
+def addxy(i:BIN,x,y):
+  i.add(y)
+  if x < i.span.lo: i.span.lo = x
+  if x > i.span.hi: i.span.hi = x
+
+@of("DISCRETIZE","combine BINs that are small, or too complex")
+def combined(i:BIN, j:BIN, tiny=10):
+  k = BIN(i.c,i.txt)
+  k.span = o(lo = min(i.span.lo,j.span.lo), 
+             hi = max(i.span.hi, j.span.hi))
+  [k.add(x,n) for has in [i.has, j.has] for x,n in has.items()]
+  xpect = (i.n*ent(i.has) + j.n*ent(j.has))/k.n
+  if i.n < tiny or j.n < tiny or ent(k.has) <= xpect:
+    return k
+
 @of("DISCRETIZE","generate bins")
 def bins(i:COL, groups: dict[str,list]): # -> list[SYM]:
-  n,out = 0,{}
+  n,bins = 0,{}
   for y,rows in groups.items():
     for row in rows:
       x = row[i.c]
       if x != "?" :
         n     += 1
         b      = i.bin(x)
-        out[b] = out.get(b,None) or SYM(i.c, i.txt)
-        out[b].addxy(x,y)
-  out = i.merges(sorted(out.values(), key=lambda xy:xy.span.lo), n/the.buckets)
-  w = sum(bin.n * ent(bin.has) for bin in out)/n
-  return w,out
- 
-@of("DISCRETIZE","add to a  span")
-def addxy(i:SYM,x,y):
-  i.add(y)
-  if x < i.span.lo: i.span.lo = x
-  if x > i.span.hi: i.span.hi = x
+        bins[b] = bins.get(b,None) or BIN(i.c, i.txt)
+        bins[b].addxy(x,y)
+  bins = i.merges(sorted(bins.values(), key=lambda xy:xy.span.lo), n/the.buckets)
+  w = sum(bin.n * ent(bin.has) for bin in bins)/n
+  return w,bins
 
 @of("DISCRETIZE","map a number to a few values")
 def bin(i:NUM, x:atom): return int(i.cdf(x)*the.buckets)
@@ -247,7 +260,7 @@ def merges(i:NUM,bins, tiny):
     if j==0:
       out = [bins[0]]
     else:
-      if tmp := bin.merged(out[-1], tiny): out[-1] = tmp
+      if tmp := bin.combined(out[-1], tiny): out[-1] = tmp
       else: out += [bin]
   out[ 0].span.lo = -math.inf
   out[-1].span.hi =  math.inf
@@ -255,16 +268,6 @@ def merges(i:NUM,bins, tiny):
     if j>0:
        bin.span.lo = out[j-1].span.hi
   return out
-
-@of("DISCRETIZE","combine SYMs that are small, or too complex")
-def merged(i:SYM, j:SYM, tiny=10):
-  k = SYM(i.c,i.txt)
-  k.span = o(lo = min(i.span.lo,j.span.lo), 
-             hi = max(i.span.hi, j.span.hi))
-  [k.add(x,n) for has in [i.has, j.has] for x,n in has.items()]
-  xpect = (i.n*ent(i.has) + j.n*ent(j.has))/k.n
-  if i.n < tiny or j.n < tiny or ent(k.has) <= xpect:
-    return k
 
 # -----------------------------------------------------------------------
 # ## Main
@@ -292,7 +295,7 @@ class main:
 
   def kmeans():
     d = DATA().adds(csv(the.train))
-    print(pretty(sorted([d.yDist(d2.mid()) for d2 in d.kmeans()])))
+    print(say(sorted([d.yDist(d2.mid()) for d2 in d.kmeans()])))
 
   def kmeans2():
     repeats=20
@@ -319,7 +322,7 @@ class main:
     groups = {chr(j+65): data.rows for j,data in  enumerate(d.kmeans())}
     for w,bins in sorted(col.bins(groups) for col in d.cols.x):
       print("")
-      print("expected entropy if dividing on this feature:",pretty(w))
+      print("expected entropy if dividing on this feature:",say(w))
       for bin in bins:
         print("\t",bin.txt,bin.span)
 
