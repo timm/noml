@@ -69,6 +69,10 @@ all: ../src/*.lua ../docs/*.html setup
 	1>&2 echo "... $@"
 	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
 
+../docs/%.html : ../src/%.py
+	echo "$< ... "
+	gawk -f etc/py2html.awk $< | pandoc $(Pandoc) -o $@
+
 ~/tmp/%.pdf: %.py  ## make doco: .py ==> .pdf
 	mkdir -p ~/tmp
 	echo "pdf-ing $@ ... "
