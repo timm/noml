@@ -6,7 +6,7 @@ mink,py: multi-objective optimization, using very few y labels.
      rows = all rows
      for k in [k1,k2]:
         find k clusters within the rows (using kmeans)
-        sort(cluster centroids, ascending  on yDist)
+        sort(cluster centroids, ascending on yDist)
         rows = rows of best cluster
      rows = sort(any k3 items of rows, ascending on yDist)
      return rows[0]
@@ -97,12 +97,6 @@ class COL(o): ...
 # Summarize a stream of symbols.
 class SYM(COL):
   def __init__(i,c=0,x=" "): i.c=c; i.txt=x; i.n=0; i.has={}
-
-# Summarize symbols seen in column y, within the span lo..hi of column x
-class BIN(SYM):
-  def __init__(i,*l,**d):
-    super().__init__(*l,**d)
-    i.span=o(lo=1E32, hi=-1E32)
 
 # Summarize a stream of numbers.
 class NUM(COL):
@@ -214,13 +208,19 @@ def kmeans(i:DATA, k=10, n=10, samples=512):
 # -----------------------------------------------------------------------
 # ## Discretization
 
-@of("DISCRETIZE","add to a  span")
+# Summarize symbols seen in column y, within the span lo..hi of numeric column x.
+class BIN(SYM):
+  def __init__(i,*l,**d):
+    super().__init__(*l,**d)
+    i.span=o(lo=1E32, hi=-1E32)
+
+@of("UPDATE","add to a  span")
 def addxy(i:BIN,x,y):
   i.add(y)
-  if x < i.span.lo: i.span.lo = x
-  if x > i.span.hi: i.span.hi = x
+  i.span.lo = min(x, i.span.lo)
+  i.span.hi = max(x, i.span.hi)
 
-@of("DISCRETIZE","combine BINs that are small, or too complex")
+@of("CREATE","Combine two BINs if too small or complex. Else return nil.")
 def combined(i:BIN, j:BIN, tiny=10):
   k = BIN(i.c,i.txt)
   k.span = o(lo = min(i.span.lo,j.span.lo), 
@@ -254,19 +254,20 @@ def bin(i:SYM, x):  return x
 @of("DISCRETIZE","symbolic bins  discretize to themselves")
 def merges(i:SYM, bins, _): return bins
 
-@of("DISCRETIZE","combine adjacent ranges that are mergable")
+@of("DISCRETIZE","fuse together adjacent bins that can be combined.")
 def merges(i:NUM,bins, tiny):
+  out = [bins[0]]
   for j,bin in enumerate(bins):
-    if j==0:
-      out = [bins[0]]
-    else:
-      if tmp := bin.combined(out[-1], tiny): out[-1] = tmp
-      else: out += [bin]
+    if j>=0:
+      if combined := bin.combined(out[-1], tiny):
+        out[-1] = combined
+      else:
+        out += [bin]
   out[ 0].span.lo = -math.inf
   out[-1].span.hi =  math.inf
   for j,bin in enumerate(out):
     if j>0:
-       bin.span.lo = out[j-1].span.hi
+      bin.span.lo = out[j-1].span.hi
   return out
 
 # -----------------------------------------------------------------------
