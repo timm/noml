@@ -2,7 +2,7 @@
 mink,py: multi-objective optimization, using very few y labels.  
 (c) 2024, Tim Menzies <timm@ieee.org>, MIT license
 
-     k1=k2=k3=10   # total labellings = k1+k2+k3
+     k1=k2=k3=10   # total labels = k1+k2+k3
      rows = all rows
      for k in [k1,k2]:
         find k clusters within the rows (using kmeans)
@@ -18,7 +18,7 @@ not by class name (so, e.g. all the distance methods are together).
 # -----------------------------------------------------------------------
 # ## Some setup.
 from typing import List, Dict, Type, Callable, Generator, Iterator
-import inspect,random,sys,ast,re
+import inspect,random,math,sys,ast,re
 from time import time_ns as nano
 from fileinput import FileInput as file_or_stdin
 
@@ -52,6 +52,11 @@ def of(cat,doc):
     fun.__doc__ = doc
     setattr(inspect.getfullargspec(fun).annotations['i'],fun.__name__, fun)
   return doit
+
+# Diversity of a set of symbol counts
+def ent(d:dict): 
+  N = sum(n for n in d.values())
+  return -sum(n/N * math.log(n/N,2) for n in d.values())
 
 # Pretty print.
 def pretty(x) -> str:
@@ -88,12 +93,16 @@ def cli(d:dict) -> None:
 
 # ### Create
 
+class COL(o): 
+  def __init__(i): return i
+
 # Summarize a stream of numbers.
-class SYM(o):
-  def __init__(i,c=0,x=" "): i.c=c; i.txt=x; i.n=0; i.has={}
+class SYM(COL):
+  def __init__(i,c=0,x=" "): 
+    i.c=c; i.txt=x; i.n=0; i.has={}; i.span=o(lo=1E32, hi=-1E32)
 
 # Summarize a stream of symbols.
-class NUM(o):
+class NUM(COL):
   def __init__(i,c=0, x=" "):
     i.c=c; i.txt=x; i.n=0; i.mu=0; i.m2=0; i.sd=0;
     i.lo=1E32; i.hi=-1E32; i.goal = 0 if x[-1]=="-" else 1
@@ -109,19 +118,19 @@ def clone(i:DATA, rows:list=[]) -> DATA:
 # ### Update
 
 @of("UPDATE","increment symbol counts")
-def add(i:SYM,v:atom):
-  i.n += 1
-  i.has[v] = 1 + i.has.get(v,0)
+def add(i:SYM,v:atom, n=1):
+  i.n += n
+  i.has[v] = n + i.has.get(v,0)
 
 @of("UPDATE","increment numeric summary")
 def add(i:NUM, v:atom):
-  i.n += 1
-  i.lo = min(v, i.lo)
-  i.hi = max(v, i.hi)
-  d = v - i.mu
+  i.n  += 1
+  i.lo  = min(v, i.lo)
+  i.hi  = max(v, i.hi)
+  d     = v - i.mu
   i.mu += d / i.n
   i.m2 += d * (v - i.mu)
-  i.sd = 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
+  i.sd  = 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
 
 @of("UPDATE","increment a DATA with one new row")
 def add(i:DATA, row:row):
@@ -156,6 +165,12 @@ def norm(i:NUM, x:atom): #  -> 0..1
 
 @of("QUERY","map numbers 0..1 for min..max")
 def mid(i:DATA): return [col.mid() for col in i.cols.all]
+
+@of("QUERY","cumulative distribution")
+def cdf(i:NUM,x):
+  fun = lambda x: 1 - 0.5 * math.exp(-0.717*x - 0.416*x*x) 
+  z   = (x - i.mu) / i.sd
+  return  fun(x) if z>=0 else 1 - fun(-z) 
 
 # ### Distance
 
@@ -192,6 +207,64 @@ def kmeans(i:DATA, k=10, n=10, samples=512):
   random.shuffle(i.rows)
   rows = i.rows[:samples]
   return loop(n, rows[:k])
+
+# -----------------------------------------------------------------------
+# ## Discretization
+
+@of("DISCRETIZE","generate bins")
+def bins(i:COL, groups: dict[str,list]): # -> list[SYM]:
+  n,out = 0,{}
+  for y,rows in groups.items():
+    for row in rows:
+      x = row[i.c]
+      if x != "?" :
+        n     += 1
+        b      = i.bin(x)
+        out[b] = out.get(b,None) or SYM(i.c, i.txt)
+        out[b].addxy(x,y)
+  out = i.merges(sorted(out.values(), key=lambda xy:xy.span.lo), n/the.buckets)
+  w = sum(bin.n * ent(bin.has) for bin in out)/n
+  return w,out
+ 
+@of("DISCRETIZE","add to a  span")
+def addxy(i:SYM,x,y):
+  i.add(y)
+  if x < i.span.lo: i.span.lo = x
+  if x > i.span.hi: i.span.hi = x
+
+@of("DISCRETIZE","map a number to a few values")
+def bin(i:NUM, x:atom): return int(i.cdf(x)*the.buckets)
+
+@of("DISCRETIZE","symbols discretize to themselves")
+def bin(i:SYM, x):  return x
+
+@of("DISCRETIZE","symbolic bins  discretize to themselves")
+def merges(i:SYM, bins, _): return bins
+
+@of("DISCRETIZE","combine adjacent ranges that are mergable")
+def merges(i:NUM,bins, tiny):
+  for j,bin in enumerate(bins):
+    if j==0:
+      out = [bins[0]]
+    else:
+      if tmp := bin.merged(out[-1], tiny): out[-1] = tmp
+      else: out += [bin]
+  out[ 0].span.lo = -math.inf
+  out[-1].span.hi =  math.inf
+  for j,bin in enumerate(out):
+    if j>0:
+       bin.span.lo = out[j-1].span.hi
+  return out
+
+@of("DISCRETIZE","combine SYMs that are small, or too complex")
+def merged(i:SYM, j:SYM, tiny=10):
+  k = SYM(i.c,i.txt)
+  k.span = o(lo = min(i.span.lo,j.span.lo), 
+             hi = max(i.span.hi, j.span.hi))
+  [k.add(x,n) for has in [i.has, j.has] for x,n in has.items()]
+  xpect = (i.n*ent(i.has) + j.n*ent(j.has))/k.n
+  if i.n < tiny or j.n < tiny or ent(k.has) <= xpect:
+    return k
 
 # -----------------------------------------------------------------------
 # ## Main
@@ -240,6 +313,15 @@ class main:
       print(f"{d.yDist(row):.2f}",k1+k2+k3,repeats,
             f"{n0.mu:.2f}\t| {n0.lo+0.35*n0.sd:.2f}",
             f"{n.mu:.2f}\t| {n.sd:.2f}",row,the.train,sep="\t| ")
+
+  def weight():
+    d = DATA().adds(csv(the.train)); # print(d.div())
+    groups = {chr(j+65): data.rows for j,data in  enumerate(d.kmeans())}
+    for w,bins in sorted(col.bins(groups) for col in d.cols.x):
+      print("")
+      print("expected entropy if dividing on this feature:",pretty(w))
+      for bin in bins:
+        print("\t",bin.txt,bin.span)
 
 # -----------------------------------------------------------------------
 # ## Starting-ip
