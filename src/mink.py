@@ -220,6 +220,11 @@ def addxy(i:BIN,x,y):
   i.span.lo = min(x, i.span.lo)
   i.span.hi = max(x, i.span.hi)
 
+@of("Query","selects")
+def addxy(i:BIN, row):
+  v=  row[i.c] 
+  return v=="?" or i.span.lo <= v < i.span.hi
+
 @of("CREATE","Combine two BINs if too small or complex. Else return nil.")
 def combined(i:BIN, j:BIN, tiny=10):
   k = BIN(i.c,i.txt)
@@ -269,6 +274,10 @@ def merges(i:NUM,bins, tiny):
     if j>0:
       bin.span.lo = out[j-1].span.hi
   return out
+
+# -----------------------------------------------------------------------
+
+  
 
 # -----------------------------------------------------------------------
 # ## Main
