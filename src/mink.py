@@ -221,7 +221,7 @@ def addxy(i:BIN,x,y):
   i.span.hi = max(x, i.span.hi)
 
 @of("Query","selects")
-def addxy(i:BIN, row):
+def holds(i:BIN, row):
   v=  row[i.c] 
   return v=="?" or i.span.lo <= v < i.span.hi
 
@@ -276,9 +276,23 @@ def merges(i:NUM,bins, tiny):
   return out
 
 # -----------------------------------------------------------------------
-
-  
-
+# class NODE(o):
+#   def __init__(i,data,bin):
+#     i.kids, i.data, i.bin = [], data, bin
+#
+# def grow(i:DATA, binss:list[list[BIN]], lvl=0):
+#   bins = bins[lvl]
+#   tmp = {}
+#   for row in i.rows:
+#     for bin in bins:
+#       k = id(bin)
+#       if bin.holds(row):
+#          tmp[k] = tmp.get(k,None) or i.NODE(d.clone(),bin)
+#          tmp[[k].data.add(row)
+#          continue
+#   i.kids = tmp.values() 
+#   for kid in i.kids: kid.grow(bins,lvl+1)
+#
 # -----------------------------------------------------------------------
 # ## Main
 

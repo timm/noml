@@ -5,5 +5,9 @@
     "kmeans",
     "mergable",
     "Minkowski"
-  ]
+  ],
+  "editor.formatOnType": true,
+  "[commonlisp]": {
+    "editor.wordSeparators": "`|;:'\",()"
+  }
 }
