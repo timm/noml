@@ -1,7 +1,13 @@
 # vim: set filetype=awk :  
 # white space ^ == return
 
-func add(i,x:atom,    f) { f="add2"i.is; ^@f(i,x) }
+BEGIN {
+  the,p = 2
+  the.train = "../noot/..asd"
+}
+
+func add(i,x:atom,          f) { f="add2"i.is;   return @f(i,x) }
+func dist(i,x:atom,y:atom   f) { f="dist4"i.is;  return @f(i,x,y) }
 
 func DATA(i) {
   i.is="DATA"
@@ -11,7 +17,7 @@ func DATA(i) {
 func add2DATA(i:DATA, row:array,     r,c,v) {
   length(i.cols) ? _row(i, row, 1+length(i.rows)) : COLS(i.cols, row)
 
-function _row(i:DATA, row:array, r:int) {
+func _row(i:DATA, row:array, r:int) {
   for(c in i.cols.all) {
     v = i.rows[r][c] = row[v]
     if (v != "?") add(i.cols.all[c], v)  }}
@@ -61,19 +67,22 @@ func add2NUMi, x:num) {
 func norm(i:NUM, x:number) { #-->  0..1
   return x=="?" ? x : (x - i.lo) / (i.hi - i.lo + 10^-32) }
 
-@of("DISTANCE","between two symbols")
-def dist(i:SYM, a:atom, b:atom): return 1 if a==b=="?" else a != b
+func dist4SYM(i:SYM, a:atom, b:atom)  { #--> 0..1
+  return  a==b=="?" ? 1 : a != b }
 
-@of("DISTANCE","between two numbers")
-def dist(i:NUM, a:number, b:number) -> number:
-  if a==b=="?": return 1
-  a, b = i.norm(a), i.norm(b)
-  a = a if a != "?" else (1 if b<.5 else 0)
-  b = b if b != "?" else (1 if a<.5 else 0)
-  return abs(a - b)
+func dist4NUMS(i:NUM, a:number, b:number) { #--> number:
+  if (a==b=="?") return 1
+  a = norm(i,a)
+  b = norm(i,b)
+  a = a !="?" ? a : (b < .5 ? 1 : 0)
+  b = b !="?" ? b : (a < .5 ? 1 : 0)
+  return abs(a - b) }
 
-@of("DISTANCE","between two rows (x-value Minkowski)")
-def xDist(i:DATA, row1:row, row2:row) -> number:
+func xDist(i:DATA, row1:row, row2:row) { #--> number:
+  for(c in i.cols.x) {
+    n += 1
+    d += dist(i.cols.x[x], row1[c], row2[c])^the.p }
+  return (d/n) * (1/the.p) }
  
 #---------------------
 func new(i, ?k:atom) { 
@@ -91,4 +100,4 @@ func o(a:array, pre:str) {
 func oArray(a:list,   sep,s,i) {for(i in a) {s = s sep         o(a[i]); sep=" "}; return s}
 func oDict(d:dict,    sep,s,k) {for(k in d) {s = s sep ":"k " "o(d[k]); sep=" "}; return s}
    
-
+func abs(x) { return x < 0 ? -x : x }
