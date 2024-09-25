@@ -4,18 +4,25 @@
 BEGIN {
   the,p = 2
   the.train = "../noot/..asd"
+  the.most = 256
+  the.seed = 1234567891
 }
 
-func add(i,x:atom,          f) { f="add2"i.is;   return @f(i,x) }
-func dist(i,x:atom,y:atom   f) { f="dist4"i.is;  return @f(i,x,y) }
+func add(i,x:atom,           f) { f="add2"i.is;  return @f(i,x)   }
+func dist(i,x:atom,y:atom,   f) { f="dist4"i.is; return @f(i,x,y) }
+func mid(i,                  f) { f="mid4"i.is;  return @f(i)     }
 
 func DATA(i) {
   i.is="DATA"
   has(i,"rows")
   has(i,"cols") }
 
+func clone(i:DATA,!j:DATA) {
+   DATA(j)
+   add(j,i.cols.names) }
+
 func add2DATA(i:DATA, row:array,     r,c,v) {
-  length(i.cols) ? _row(i, row, 1+length(i.rows)) : COLS(i.cols, row)
+  length(i.cols) ? _row(i, row, rand() % the.most) : COLS(i.cols, row)
 
 func _row(i:DATA, row:array, r:int) {
   for(c in i.cols.all) {
@@ -25,7 +32,7 @@ func _row(i:DATA, row:array, r:int) {
 func COLS(i, names:list[str],     c,klass) {
   i.is="COLS"
   for(c in names) {
-    name = names[c]
+    i.names[c] = name = names[c]
     i[name ~ /[+-!]/ "y" : "x"][c]
     i.all[c].is = klass = name ~ /^[A-Z]/ ? "NUM" : "SYM"
     @klass(i.all[c], c, name) }}
@@ -37,6 +44,10 @@ func NUM(i, at:int, txt):str {
   i.hi   = -(i.lo = 1E32)
   i.mu   = i.m2 = i.sd = 0
   i.goal = txt ~ /-$/ ? 0 : 1 }
+
+func mid(i:NUM)              { return i.mu }
+func mid(i:SYM)              { return i.mode }
+func mid(i:DATA, !out:array) { for(c in i.cols.all) out[c] = mid(i.cols.all[c]) }
 
 func SYM(i, at:int, txt:str) {
   i.is   = "SYM"
@@ -83,7 +94,38 @@ func xDist(i:DATA, row1:row, row2:row) { #--> number:
     n += 1
     d += dist(i.cols.x[x], row1[c], row2[c])^the.p }
   return (d/n) * (1/the.p) }
- 
+
+func kmeans(i:data,k:int,n:int, samples: int,!datas:dict[str,DATA],
+            r,m,rs,mids,mids) {
+  for(r in i.rows) {
+    if (length(mids) < k)  {
+      m++
+      for(x in i.cols.x) mids[m][x] = i.rows[r][x] }
+    rs[r]
+    if (length(rs) > sample) break }
+  _kmansLoop(i,n, rs,mids,datas)
+}
+
+### how to return datas? move set p into a sub function. loop, don't call,_kmeans
+func _kmeansLoop(i,loop,rs,mids0,datas,     r,k,mids1) {
+  if (loop==0) return
+  delete datas
+  for(r in rs)  {
+    k = closest2DATA(i, i.rows[r], mids)
+    if (!(m in datas)) { datas[k].is="DATA"; clone(i, datas[k]) }
+    add(datas[k],i.rows[r]) }
+  for(k in datas) {
+    new(mids1,k)
+    mid(datas[k], mids1[k]) } 
+  _kmeansLoop(i,loop-1,rs,mids1, datas) }
+        
+func closest2DATA(i,row,rows,     lo,d,out) {   
+  lo=1E30
+  for(r in rows) {
+    d = xDist(i, row, rows[r])
+    if (d < lo) {lo=d; out=r} }
+  return out }
+
 #---------------------
 func new(i, ?k:atom) { 
   k = k ? k : length(i) + 1

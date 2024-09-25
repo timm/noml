@@ -214,6 +214,13 @@ class BIN(SYM):
     super().__init__(*l,**d)
     i.span=o(lo=1E32, hi=-1E32)
 
+  def __repr__(i):
+    lo, hi, txt = i.span.lo,  i.span.hi, i.txt
+    if lo == hi        : return f"{txt} == {lo}"
+    if lo == -math.inf : return f"{txt} < {hi}"
+    if hi ==  math.inf : return f"{txt} >= {lo}"
+    return f"{lo} <= {txt} < {hi}"
+
 @of("UPDATE","add to a  span")
 def addxy(i:BIN,x,y):
   i.add(y)
