@@ -76,6 +76,9 @@ def read(file):
   [data(data1,row) for row in src]
   return data1
 
+def norm(num1, x): 
+  return x if x=="?" else (x - num1.lo)/(num1.hi - num1.lo + 1/big)
+
 # -----------------------------------------------------------------------------
 def xdist(data,row1,row2):
   def sym(_,   x,y): return x != y
@@ -90,9 +93,6 @@ def xdist(data,row1,row2):
     d  += 1 if a==b=="?" else (num if col1.isNum else sym)(col1,a,b)**the.p
     n  += 1
   return (d/n) ** (1/the.p)
-
-def norm(num1, x): 
-  return x if x=="?" else (x - num1.lo)/(num1.hi - num1.lo + 1/big)
 
 def ydist(data1,row):
   return max(abs(col.goal - norm(col, row[col.at])) for col in data1.cols.y)
@@ -126,32 +126,31 @@ def diversity(data1,samples=512):
     rows  = sorted(datas, key=lambda d: ydist(data2, mid(d)))[0].rows
   return ydists(clone(done + shuffle(rows)[:n*2])).rows[0]
 
-def cluster(data1, rows=None, sortp=False);
-  def twoFar():
-    x,y = max((one(rows),one(rows)) for _ in range(the.far),key=lambda z: xdist(data1,*z))
-    if sortp and ydist(data1,y) < ydist(data1,x): x,y = y,x
-    return x, y, xdist(data1,x,y)
+def twoFars(data1, treep=True, sortp=False);
+  def X(x,y) : return xdist(data1,x,y)
+
+  def twoFar(above=None):
+    a,b = max(((above or one(rows)),one(rows)) for _ in range(the.far),key=lambda ab: X(*ab))
+    if sortp and ydist(data1,b) < ydist(data1,a): a,b=b,a
+    return a, b, X(a,b)
  
-   # XXXXX os A,B,C, readom forhis >
-  D   = lambda x,y    : xdist(data1,x,y)
-  cos = lambda r,a,b,C: (D(a,r)**2 + C**2 - D(b,r)**2)/(2*C + 1/big)
+  def half(rows, above=None):
+    cos   = lambda r,a,b,C : (X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big)
+    a,b,C = twoFar(above)
+    tmp   = sorted(rows, key=lambda r: cos(r,a,b,C))
+    mid   = int(len(rows) // 2)
+    return X(a,tmp[mid]), tmp[:mid], tmp[mid:], a, b
 
-  def half():
-    xs,ys,mid = [], [], int(len(rows) // 2)
-    x,y,C     = twoFar()
-    tmp       = sorted(rows, key=lambda r: cos(r,D(x,r), D(y,r). C))
-    return dist(x,tmp[mid]), tmp[:mid], tmp[mid:], x, y
+  def tree(rows, stop, lvl=0, above=None, fun=None):
+    cut, xs, ys, x, y = half(rows, above)
+    left  = lambda r: X(r,x) <= cut) 
+    right = lambda r: not left(r)
+    left,right= None,None
+    if stop < len(xs) < len(rows): left  = tree(xs, stop, lvl+1, x, left)
+    if stop < len(ys) < len(rows): right = tree(ys, stop, lvl+1, y, righ)
+    return  o(data=DATA(data1.cols.names), lvl=lvl, relevant=fun, left=left, right=right)
 
-  def tree(rows, stop, lvl=0, fun=None):
-    cut, xs, ys, x, y = half()
-    it = o(data=DATA(data1.cols.names), lvl=lvl, use=fun, left=None, right=None)
-    gox = lambda r: xdist(data1,r,xs) <= cut) 
-    goy = lambda r: not gox(r)
-    if stop < len(xs) < len(rows): it.left  = loop(xs, lvl+1, gox)
-    if stop < len(ys) < len(rows): it.right = loop(ys, lvl+1, goy)
-    return it
-
-  return loop(rows or data1.rows, len(rows)**the.leaf)
+  return (tree if Treep else branch)(data1.rows, len(data1.rows)**the.leaf)
 # -----------------------------------------------------------------------------
 def ent(d):
  N = sum(d.values())
