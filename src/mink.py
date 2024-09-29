@@ -233,7 +233,7 @@ def holds(i:BIN, row):
   return v=="?" or i.span.lo <= v < i.span.hi
 
 @of("CREATE","Combine two BINs if too small or complex. Else return nil.")
-def combined(i:BIN, j:BIN, tiny=10):
+def mergeAdjacent(i:BIN, j:BIN, tiny=10):
   k = BIN(i.c,i.txt)
   k.span = o(lo = min(i.span.lo,j.span.lo), 
              hi = max(i.span.hi, j.span.hi))
@@ -243,7 +243,7 @@ def combined(i:BIN, j:BIN, tiny=10):
     return k
 
 @of("DISCRETIZE","generate bins")
-def bins(i:COL, groups: dict[str,list]): # -> list[SYM]:
+def bins4Col(i:COL, groups: dict[str,list]): # -> list[SYM]:
   n,bins = 0,{}
   for y,rows in groups.items():
     for row in rows:
@@ -253,7 +253,7 @@ def bins(i:COL, groups: dict[str,list]): # -> list[SYM]:
         b      = i.bin(x)
         bins[b] = bins.get(b,None) or BIN(i.c, i.txt)
         bins[b].addxy(x,y)
-  bins = i.merges(sorted(bins.values(), key=lambda xy:xy.span.lo), n/the.buckets)
+  bins = i.mergeAdjacents(sorted(bins.values(), key=lambda xy:xy.span.lo), n/the.buckets)
   w = sum(bin.n * ent(bin.has) for bin in bins)/n
   return w,bins
 
@@ -267,11 +267,11 @@ def bin(i:SYM, x):  return x
 def merges(i:SYM, bins, _): return bins
 
 @of("DISCRETIZE","fuse together adjacent bins that can be combined.")
-def merges(i:NUM,bins, tiny):
+def mergeAdjacents(i:NUM,bins, tiny):
   out = [bins[0]]
   for j,bin in enumerate(bins):
     if j>=0:
-      if combined := bin.combined(out[-1], tiny):
+      if combined := bin.mergeAjecent(out[-1], tiny):
         out[-1] = combined
       else:
         out += [bin]
@@ -283,23 +283,25 @@ def merges(i:NUM,bins, tiny):
   return out
 
 # -----------------------------------------------------------------------
-# class NODE(o):
-#   def __init__(i,data,bin):
-#     i.kids, i.data, i.bin = [], data, bin
-#
-# def grow(i:DATA, binss:list[list[BIN]], lvl=0):
-#   bins = bins[lvl]
-#   tmp = {}
-#   for row in i.rows:
-#     for bin in bins:
-#       k = id(bin)
-#       if bin.holds(row):
-#          tmp[k] = tmp.get(k,None) or i.NODE(d.clone(),bin)
-#          tmp[[k].data.add(row)
-#          continue
-#   i.kids = tmp.values() 
-#   for kid in i.kids: kid.grow(bins,lvl+1)
-#
+class NODE(o):
+  def __init__(i,data,bin,lvl):
+    i.kids, i.data, i.bin, i.lvl = [], data, bin,0
+  def __repr__:
+    return f"{len(i.data.rows):-4g} {'|.. ' * i.lvl} {i.bin}"
+
+def grow(i:DATA, binss:list[list[BIN]], lvl=0):
+  bins = bins[lvl]
+  tmp = {}
+  for row in i.rows:
+    for bin in bins:
+      k = id(bin)
+      if bin.holds(row):
+         tmp[k] = tmp.get(k,None) or i.NODE(d.clone(),bin)
+         tmp[[k].data.add(row)
+         continue
+  i.kids = tmp.values() 
+  for kid in i.kids: kid.grow(bins,lvl+1)
+
 # -----------------------------------------------------------------------
 # ## Main
 

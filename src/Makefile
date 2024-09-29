@@ -105,3 +105,7 @@ ege:; python3 mink.py -t ../../moot/optimize/config/SS-E.csv  -kmeans2  |sort -n
 egf:; python3 mink.py -t ../../moot/optimize/config/SS-F.csv  -kmeans2  |sort -n |cat -n
 egg:; python3 mink.py -t ../../moot/optimize/config/SS-G.csv  -kmeans2  |sort -n |cat -n
 
+eg20:
+	$(foreach d,config hpo misc process, \
+		$(foreach f,$(wildcard ../../moot/optimize/$d/*.csv), \
+			 python3.13 at.py -t $f --ksqred ; ))
