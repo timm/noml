@@ -78,7 +78,7 @@ all: ../src/*.lua ../docs/*.html setup
 	echo "pdf-ing $@ ... "
 	a2ps                 \
 		-Br                 \
-		--chars-per-line=90 \
+		--chars-per-line=100 \
 		--file-align=fill      \
 		--line-numbers=1        \
 		--pro=color               \

@@ -102,45 +102,43 @@ def ydists(data1):
   data1.rows.sort(key=lambda row: ydist(data1,row))
   return data1
 
-def half(data1, rows, above, sortp, used):
+def half(data1, rows, top, sortp, used):
   used = used or {}
   def Y(a)  : used[id(a)]=a; return ydist(data1,a)
   def X(a,b): return xdist(data1,a,b)
-  def cos(r): return (X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big)   
-  a,b  = max([((above or one(rows)), one(rows)) for _ in range(the.far)], key=lambda ab: X(*ab))
+  def cos(r): return (X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big)
+  a,b  = max([((top or one(rows)), one(rows)) for _ in range(the.far)], key=lambda ab: X(*ab))
   a,b  = (b,a) if sortp and Y(b) < Y(a) else (a,b)
   C    = X(a,b)
-
   rows = sorted(rows, key=cos)
   n    = int(len(rows) // 2)
   return rows[:n], rows[n:], used
 
-def step(data1,rows=None,stop=None,above=None,sortp=None,used=None):
-  used = used or {}
+def step(data1,rows=None,stop=None,top=None,sortp=True,used=None):
   rows = rows or data1.rows
-  stop = stop or log(len(rows)/ (len(rows)**the.end),2)
-  return rows, stop, *half(data1, rows, above, sortp, used)
+  stop = stop or int(log(len(rows)/ (len(rows)**the.end),2))
+  return rows, stop, *half(data1, rows, top, sortp, used or {})
 
-def tree(data1, rows=None, stop=None, lvl=0, above=None):
-  rows, stop, left, right, _ = step(data1,rows,stop,above,False)
+def tree(data1, rows=None, stop=None, lvl=0, top=None):
+  rows, stop, left, right, _ = step(data1,rows,stop,top,False)
   return o(data  = DATA(data1.cols.names,rows), lvl=lvl, cut=right[0],
            left  = None if lvl > stop else tree(data1, left,  stop, lvl+1, left[0]),
            right = None if lvl > stop else tree(data1, right, stop, lvl+1, right[-1]))
 
-def best(data1, rows=None, stop=None, lvl=0, above=None, used=None):
-  rows, stop, left, right, used = step(data1,rows,stop,above,True,used)
+def slash(data1, rows=None, stop=None, lvl=0, top=None, used=None):
+  rows, stop, left, right, used = step(data1,rows,stop,top,True,used)
   return o(data = DATA(data1.cols.names,rows), lvl=lvl, cut=right[0],
-           left = None if lvl > stop else best(data1,left,stop,lvl+1, left[0]))
+           left = None if lvl > stop else slash(data1,left,stop,lvl+1, left[0]))
 
-def rest(data1, rows=None, stop=None, lvl=0, above=None, used=None):
-  rows, stop, _, right, used = step(data1,rows,stop,above,True,used)
+def slosh(data1, rows=None, stop=None, lvl=0, top=None, used=None):
+  rows, stop, _, right, used = step(data1,rows,stop,top,True,used)
   return o(data  = DATA(data1.cols.names,rows), lvl=lvl, cut=right[0],
-           right = None if lvl > stop else rest(data1, right, stop, lvl+1, right[-1]))
+           right = None if lvl > stop else slosh(data1, right, stop, lvl+1, right[-1]))
 
-def bestRest(data1, rows=None, stop=None, lvl=0, above=None, used=None):
-  rows, _, left, right, used = step(data1,rows,stop,above,True,used)
-  best(data1, left,  2, 1, left[0],   used) 
-  rest(data1, right, 2, 1, right[-1], used) 
+def slashslosh(data1, rows=None, stop=None, lvl=0, top=None, used=None):
+  rows, _, left, right, used = step(data1,rows)
+  slash(data1, left,  2, 1, left[0],   used)
+  slosh(data1, right, 2, 1, right[-1], used)
   return used
 
 # -----------------------------------------------------------------------------
