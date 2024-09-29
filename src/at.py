@@ -126,6 +126,32 @@ def diversity(data1,samples=512):
     rows  = sorted(datas, key=lambda d: ydist(data2, mid(d)))[0].rows
   return ydists(clone(done + shuffle(rows)[:n*2])).rows[0]
 
+def cluster(data1, rows=None, sortp=False);
+  def twoFar():
+    x,y = max((one(rows),one(rows)) for _ in range(the.far),key=lambda z: xdist(data1,*z))
+    if sortp and ydist(data1,y) < ydist(data1,x): x,y = y,x
+    return x, y, xdist(data1,x,y)
+ 
+   # XXXXX os A,B,C, readom forhis >
+  D   = lambda x,y    : xdist(data1,x,y)
+  cos = lambda r,a,b,C: (D(a,r)**2 + C**2 - D(b,r)**2)/(2*C + 1/big)
+
+  def half():
+    xs,ys,mid = [], [], int(len(rows) // 2)
+    x,y,C     = twoFar()
+    tmp       = sorted(rows, key=lambda r: cos(r,D(x,r), D(y,r). C))
+    return dist(x,tmp[mid]), tmp[:mid], tmp[mid:], x, y
+
+  def tree(rows, stop, lvl=0, fun=None):
+    cut, xs, ys, x, y = half()
+    it = o(data=DATA(data1.cols.names), lvl=lvl, use=fun, left=None, right=None)
+    gox = lambda r: xdist(data1,r,xs) <= cut) 
+    goy = lambda r: not gox(r)
+    if stop < len(xs) < len(rows): it.left  = loop(xs, lvl+1, gox)
+    if stop < len(ys) < len(rows): it.right = loop(ys, lvl+1, goy)
+    return it
+
+  return loop(rows or data1.rows, len(rows)**the.leaf)
 # -----------------------------------------------------------------------------
 def ent(d):
  N = sum(d.values())
