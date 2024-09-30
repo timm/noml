@@ -14,12 +14,14 @@ big = 1E32
 
 class o:
   def __init__(i,**d): i.__dict__.update(**d)
-  def __repr__(i)    : return  i.__class__.__name__ + say(i.__dict__)
+  def __repr__(i): return  i.__class__.__name__ + say(i.__dict__)
 
-the = o(p=2,
-        Samples=4,
-        seed=1234567891,
-        train="../../moot/optimize/misc/auto93.csv")
+the = o(end     = .25,
+        far     = 30,
+        p       = 2,
+        Samples = 4,
+        seed    = 1234567891,
+        train   = "../../moot/optimize/misc/auto93.csv")
 
 # -----------------------------------------------------------------------------
 def SYM(at=0, name=" "):
@@ -81,7 +83,7 @@ def norm(num1, x):
   return x if x=="?" else (x - num1.lo)/(num1.hi - num1.lo + 1/big)
 
 # -----------------------------------------------------------------------------
-def xdist(data,row1,row2):
+def xdist(data1,row1,row2):
   def sym(_,   x,y): return x != y
   def num(num1,x,y):
     x,y = norm(num1,x), norm(num1,y)
@@ -89,7 +91,7 @@ def xdist(data,row1,row2):
     y   = y if y != "?" else (1 if x < .5 else 0)
     return abs(x - y)
   n = d = 0
-  for col1 in data.cols.x:
+  for col1 in data1.cols.x:
     a,b = row1[col1.at], row2[col1.at]
     d  += 1 if a==b=="?" else (num if col1.isNum else sym)(col1,a,b)**the.p
     n  += 1
@@ -102,44 +104,38 @@ def ydists(data1):
   data1.rows.sort(key=lambda row: ydist(data1,row))
   return data1
 
-def half(data1, rows, top, sortp, used):
-  used = used or {}
-  def Y(a)  : used[id(a)]=a; return ydist(data1,a)
-  def X(a,b): return xdist(data1,a,b)
-  def cos(r): return (X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big)
-  a,b  = max([((top or one(rows)), one(rows)) for _ in range(the.far)], key=lambda ab: X(*ab))
-  a,b  = (b,a) if sortp and Y(b) < Y(a) else (a,b)
+def WALK(data1, sortp=True):
+  return o(data=data1, used={}, sortp=sortp,
+           stop=int(log(len(data1.rows)/ (len(data1.rows)**the.end),2)))
+
+def half(walk1, rows, top=None):
+  def Y(a)         : walk1.used[id(a)]=a; return ydist(walk1.data, a)
+  def X(a,b)       : return xdist(walk1.data, a,b)
+  def cos(r,a,b,C) : return (X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big)
+  a,b  = max([(top or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
+  a,b  = (b,a) if walk1.sortp and Y(b) < Y(a) else (a,b)
   C    = X(a,b)
-  rows = sorted(rows, key=cos)
+  rows = sorted(rows, key=lambda r:cos(r,a,b,C))
   n    = int(len(rows) // 2)
-  return rows[:n], rows[n:], used
+  return rows[:n], rows[n:]
 
-def step(data1,rows=None,stop=None,top=None,sortp=True,used=None):
-  rows = rows or data1.rows
-  stop = stop or int(log(len(rows)/ (len(rows)**the.end),2))
-  return rows, stop, *half(data1, rows, top, sortp, used or {})
+def tree(walk1, rows=None, lvl=0, top=None):
+  lefts, rights = half(walk1, rows or walk1.data.rows, top)
+  return o(data  = DATA(walk1.data.cols.names,rows), lvl=lvl, cut=rights[0],
+           left  = None if lvl > walk1.stop else tree(walk1, lefts,  lvl+1, lefts[0]),
+           right = None if lvl > walk1.stop else tree(walk1, rights, lvl+1, rights[-1]))
 
-def tree(data1, rows=None, stop=None, lvl=0, top=None):
-  rows, stop, left, right, _ = step(data1,rows,stop,top,False)
-  return o(data  = DATA(data1.cols.names,rows), lvl=lvl, cut=right[0],
-           left  = None if lvl > stop else tree(data1, left,  stop, lvl+1, left[0]),
-           right = None if lvl > stop else tree(data1, right, stop, lvl+1, right[-1]))
+def slash(walk1, rows=None, lvl=0, top=None):
+  lefts, rights = half(walk1, rows or walk1.data.rows, top)
+  if lvl>walk1.stop: return DATA(walk1.data.cols.names, rows) 
+  return slash(walk1, lefts, lvl+1, lefts[0])
 
-def slash(data1, rows=None, stop=None, lvl=0, top=None, used=None):
-  rows, stop, left, right, used = step(data1,rows,stop,top,True,used)
-  return o(data = DATA(data1.cols.names,rows), lvl=lvl, cut=right[0],
-           left = None if lvl > stop else slash(data1,left,stop,lvl+1, left[0]))
-
-def slosh(data1, rows=None, stop=None, lvl=0, top=None, used=None):
-  rows, stop, _, right, used = step(data1,rows,stop,top,True,used)
-  return o(data  = DATA(data1.cols.names,rows), lvl=lvl, cut=right[0],
-           right = None if lvl > stop else slosh(data1, right, stop, lvl+1, right[-1]))
-
-def slashslosh(data1, rows=None, stop=None, lvl=0, top=None, used=None):
-  rows, _, left, right, used = step(data1,rows)
-  slash(data1, left,  2, 1, left[0],   used)
-  slosh(data1, right, 2, 1, right[-1], used)
-  return used
+def showTree(data1, tree):
+  if tree:
+    print(f"{ydist(data1, mid(tree.data)):.3f}    ", end="")
+    print(f"{'|.. ' * tree.lvl}{len(tree.data.rows)}" )
+    for kid in ["left", "right"]:
+      showTree(data1, tree.__dict__.get(kid,None))
 
 # -----------------------------------------------------------------------------
 def ent(d):
@@ -180,28 +176,44 @@ def cli(d:dict) -> None:
 
 # -----------------------------------------------------------------------------
 class go:
-  def num():
+  def num(_):
     r = 256
     num1 = NUM()
     [col(num1, normal(10,2)) for _ in range(r)]
     assert 9.95 < num1.mu < 10 and 2 < num1.sd < 2.05,"go.num"
 
-  def data():
+  def data(_):
     data1 = read(the.train)
     [print(col) for col in data1.cols.x]
 
-  def xdist():
+  def xdist(_):
     data1 =  read(the.train)
     random.shuffle(data1.rows)
     d = lambda r:xdist(data1,data1.rows[0],r)
     for i,row in enumerate(sorted(data1.rows, key=d)):
       if i % 30 == 0: print(f"{d(row):.3f}",row)
 
-  def ydist():
+  def ydist(_):
     data1 = read(the.train)
     random.shuffle(data1.rows)
     for i,row in enumerate(ydists(data1).rows):
       if i % 30 == 0: print(f"{ydist(data1,row):.3f}",row)
+
+  def half(_):
+    data1 = read(the.train)
+    walk1 = WALK(data1)
+    lefts,rights = half(walk1, data1.rows)
+    print(len(lefts), len(rights), walk1.used.keys())
+
+  def tree(_):
+    data1 = read(the.train)
+    showTree(data1, tree( WALK(data1)))
+
+  def slash(_):
+    data1 = read(the.train)
+    walk1 = WALK(data1.rows)
+    slash(walk1, data1.rows)
+    #print(len(data2.rows), len(walk1.used.values()),ydist(data1, data2.rows[0]))
 
 # -----------------------------------------------------------------------------
 cli(the.__dict__)

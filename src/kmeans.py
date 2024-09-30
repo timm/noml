@@ -1,3 +1,13 @@
+def slosh(data1, rows=None, stop=None, lvl=0, top=None, used=None):
+  rows, stop, _, right, used = step(data1,rows,stop,top,True,used)
+  return o(data  = DATA(data1.cols.names,rows), lvl=lvl, cut=right[0],
+           right = None if lvl > stop else slosh(data1, right, stop, lvl+1, right[-1]))
+
+def slashslosh(data1, rows=None, stop=None, lvl=0, top=None, used=None):
+  rows, _, left, right, used = step(data1,rows)
+  slash(data1, left,  2, 1, left[0],   used)
+  slosh(data1, right, 2, 1, right[-1], used)
+  return used
 def kmeans(data1, k=10, loops=10, samples=512):
   def loop(n, centroids):
     datas = {}
