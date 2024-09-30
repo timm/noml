@@ -16,7 +16,7 @@ class o:
   def __init__(i,**d): i.__dict__.update(**d)
   def __repr__(i): return  i.__class__.__name__ + say(i.__dict__)
 
-the = o(end     = .25,
+the = o(end     = .5,
         far     = 30,
         p       = 2,
         Samples = 4,
@@ -97,45 +97,50 @@ def xdist(data1,row1,row2):
     n  += 1
   return (d/n) ** (1/the.p)
 
-def ydist(data1,row):
+def ydist(data1,row, used=None):
+  if used is not None: used[id(row)] = row
   return max(abs(col.goal - norm(col, row[col.at])) for col in data1.cols.y)
 
-def ydists(data1):
-  data1.rows.sort(key=lambda row: ydist(data1,row))
+def ydists(data1, used=None):
+  data1.rows.sort(key=lambda row: ydist(data1,row,used))
   return data1
 
 def WALK(data1, sortp=True):
   return o(data=data1, used={}, sortp=sortp,
-           stop=int(log(len(data1.rows)/ (len(data1.rows)**the.end),2)))
+           stop=log(len(data1.rows)/ (len(data1.rows)**the.end),2))
 
 def half(walk1, rows, top=None):
-  def Y(a)         : walk1.used[id(a)]=a; return ydist(walk1.data, a)
+  def Y(a)         : return ydist(walk1.data, a, walk1.used)
   def X(a,b)       : return xdist(walk1.data, a,b)
   def cos(r,a,b,C) : return (X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big)
-  a,b  = max([(top or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
+  top  = top or one(rows)
+  a,b  = max([(top, one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
   a,b  = (b,a) if walk1.sortp and Y(b) < Y(a) else (a,b)
   C    = X(a,b)
   rows = sorted(rows, key=lambda r:cos(r,a,b,C))
   n    = int(len(rows) // 2)
-  return rows[:n], rows[n:]
+  return rows[:n], rows[n:],a,b
 
 def tree(walk1, rows=None, lvl=0, top=None):
-  lefts, rights = half(walk1, rows or walk1.data.rows, top)
+  rows = rows or walk1.data.rows
+  if lvl>=walk1.stop or len(rows)<4: return DATA(walk1.data.cols.names, rows) 
+  lefts, rights, left, right = half(walk1, rows, top)
   return o(data  = DATA(walk1.data.cols.names,rows), lvl=lvl, cut=rights[0],
-           left  = None if lvl > walk1.stop else tree(walk1, lefts,  lvl+1, lefts[0]),
-           right = None if lvl > walk1.stop else tree(walk1, rights, lvl+1, rights[-1]))
+           left  = None if lvl >= walk1.stop else tree(walk1, lefts,  lvl+1, left),
+           right = None if lvl >= walk1.stop else tree(walk1, rights, lvl+1, right))
 
 def slash(walk1, rows=None, lvl=0, top=None):
-  lefts, rights = half(walk1, rows or walk1.data.rows, top)
-  if lvl>walk1.stop: return DATA(walk1.data.cols.names, rows) 
-  return slash(walk1, lefts, lvl+1, lefts[0])
+  rows = rows or walk1.data.rows
+  if lvl>=walk1.stop or len(rows)<4: return DATA(walk1.data.cols.names, rows),top 
+  lefts, rights,left,right = half(walk1, rows, top)
+  return slash(walk1, lefts, lvl+1, left)
 
-def showTree(data1, tree):
-  if tree:
-    print(f"{ydist(data1, mid(tree.data)):.3f}    ", end="")
-    print(f"{'|.. ' * tree.lvl}{len(tree.data.rows)}" )
+def showTree(data1, tree1):
+  if tree1:
+    print(f"{ydist(data1, mid(tree1.data)):.3f}    ", end="")
+    print(f"{'|.. ' * tree1.lvl}{len(tree1.data.rows)}" )
     for kid in ["left", "right"]:
-      showTree(data1, tree.__dict__.get(kid,None))
+      showTree(data1, tree1.__dict__.get(kid,None))
 
 # -----------------------------------------------------------------------------
 def ent(d):
@@ -207,13 +212,17 @@ class go:
 
   def tree(_):
     data1 = read(the.train)
-    showTree(data1, tree( WALK(data1)))
+    walk1 = WALK(data1)
+    print(walk1.stop)
+    showTree(data1, tree( walk1))
 
   def slash(_):
-    data1 = read(the.train)
-    walk1 = WALK(data1.rows)
-    slash(walk1, data1.rows)
-    #print(len(data2.rows), len(walk1.used.values()),ydist(data1, data2.rows[0]))
+    for _ in range(20):
+      data1 = read(the.train)
+      walk1 = WALK(data1)
+      data2,top= slash(walk1, data1.rows)
+      print(f"{len(data2.rows)} {ydist(data1, top, walk1.used):.3f}, {len(walk1.used.values()):>3}")
+    #print(len(data2.rows), len(walk1.used.values()),ydist(data2, data2.rows[0], walk1.used))
 
 # -----------------------------------------------------------------------------
 cli(the.__dict__)
