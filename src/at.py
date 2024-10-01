@@ -104,36 +104,35 @@ def ydists(data1):
   data1.rows.sort(key=lambda row: ydist(data1,row))
   return data1
 
-def WALK(data1, sortp=True):
-  return o(data=data1, used={}, sortp=sortp,
-           stop=log(len(data1.rows)/ (len(data1.rows)**the.end),2))
-
-def cluster(data1, optimize=False)
-  used = {}
-  def Y(a)   : used[id(a)] = a; return ydist(data1, a)
+def cluster(data1, rows=None, all=False)
+  labelled = {}
+  def Y(a)   : labelled[id(a)] = a; return ydist(data1, a)
   def X(a,b) : return xdist(data1, a,b)
 
-  def half(rows, sortp, top=None):
-    a,b  = max([(top or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
-    a,b  = (b,a) if sortp and Y(b) < Y(a) else (a,b)
-    C    = X(a,b)
-    rows = sorted(rows, key=lambda r:(X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big))
+  def half(rows, above=None, sortp=False):
+    l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
+    l,r  = (r,l) if sortp and Y(r) < Y(l) else (l,r)
+    C    = X(l,r)
+    rows = sorted(rows, key=lambda row:(X(row,l)**2 + C**2 - X(row,r)**2)/(2*C + 1/big))
     n    = int(len(rows) // 2)
-    return rows[:n], rows[n:],a,b
+    return rows[:n], l, rows[n:], r, rows[n-1], rows[n]
 
-  def tree(rows, stop, top=None, lvl=0):
-    if len(rows) >= 2*stop:
-      lefts, rights, left, right = half(rows, top, False)
-      return o(data  = DATA(walk1.data.cols.names,rows), lvl=lvl, cut=rights[0],
-               left  = tree(lefts,  stop, left,  lvl+1),
-               right = tree(rights, stop, right, lvl+1))
+  def tree(rows, above=None, lvl=0, gaurd=None):
+    if len(rows) >= stop:
+      ls, l, rs, r, lborder, rborder = half(rows, above, False)
+      return o(data  = DATA(data1.cols.names, rows), 
+               lvl   = lvl,
+               gaurd = gaurd,
+               left  = tree(ls, l, lvl+1, lambda row: X(row,lborder) <  X(row, rborder)),
+               right = tree(rs, r, lvl+1, lambda row: X(row,rborder) <= X(row, lborder)))
 
-  def branch(rows, stop, top=None, lvl=0):
-    if len(rows) >= 2*stop:
-      lefts, rights,left,right = half(rows, top, True)
-      return branch(lefts, stop, left, lvl+1)
+  def branch(rows, above=None, lvl=0):
+    if len(rows) >= stop:
+      ls, l, *_ = half(rows, above, True)
+      return branch(ls, l, lvl+1)
 
-  return (branch if optimize else tree)(data1.rows, len(data1.rows)^the.far)
+  stop = 2*len(rows or data1.rows)**the.far
+  return (tree if all else branch)(rows or data1.rows), labelled
 
 def showTree(data1, tree1):
   if tree1:
