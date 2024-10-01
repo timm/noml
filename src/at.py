@@ -97,43 +97,44 @@ def xdist(data1,row1,row2):
     n  += 1
   return (d/n) ** (1/the.p)
 
-def ydist(data1,row, used=None):
-  if used is not None: used[id(row)] = row
+def ydist(data1,row):
   return max(abs(col.goal - norm(col, row[col.at])) for col in data1.cols.y)
 
-def ydists(data1, used=None):
-  data1.rows.sort(key=lambda row: ydist(data1,row,used))
+def ydists(data1):
+  data1.rows.sort(key=lambda row: ydist(data1,row))
   return data1
 
 def WALK(data1, sortp=True):
   return o(data=data1, used={}, sortp=sortp,
            stop=log(len(data1.rows)/ (len(data1.rows)**the.end),2))
 
-def half(walk1, rows, top=None):
-  def Y(a)         : return ydist(walk1.data, a, walk1.used)
-  def X(a,b)       : return xdist(walk1.data, a,b)
-  def cos(r,a,b,C) : return (X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big)
-  top  = top or one(rows)
-  a,b  = max([(top, one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
-  a,b  = (b,a) if walk1.sortp and Y(b) < Y(a) else (a,b)
-  C    = X(a,b)
-  rows = sorted(rows, key=lambda r:cos(r,a,b,C))
-  n    = int(len(rows) // 2)
-  return rows[:n], rows[n:],a,b
+def cluster(data1, optimize=False)
+  used = {}
+  def Y(a)   : used[id(a)] = a; return ydist(data1, a)
+  def X(a,b) : return xdist(data1, a,b)
 
-def tree(walk1, rows=None, lvl=0, top=None):
-  rows = rows or walk1.data.rows
-  if lvl>=walk1.stop or len(rows)<4: return DATA(walk1.data.cols.names, rows) 
-  lefts, rights, left, right = half(walk1, rows, top)
-  return o(data  = DATA(walk1.data.cols.names,rows), lvl=lvl, cut=rights[0],
-           left  = None if lvl >= walk1.stop else tree(walk1, lefts,  lvl+1, left),
-           right = None if lvl >= walk1.stop else tree(walk1, rights, lvl+1, right))
+  def half(rows, sortp, top=None):
+    a,b  = max([(top or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
+    a,b  = (b,a) if sortp and Y(b) < Y(a) else (a,b)
+    C    = X(a,b)
+    rows = sorted(rows, key=lambda r:(X(r,a)**2 + C**2 - X(r,b)**2)/(2*C + 1/big))
+    n    = int(len(rows) // 2)
+    return rows[:n], rows[n:],a,b
 
-def slash(walk1, rows=None, lvl=0, top=None):
-  rows = rows or walk1.data.rows
-  if lvl>=walk1.stop or len(rows)<4: return DATA(walk1.data.cols.names, rows),top 
-  lefts, rights,left,right = half(walk1, rows, top)
-  return slash(walk1, lefts, lvl+1, left)
+  def tree(rows, stop, top=None, lvl=0):
+    if len(rows) > stop:
+      lefts, rights, left, right = half(rows, False, top)
+      return o(data  = DATA(walk1.data.cols.names,rows), lvl=lvl, cut=rights[0],
+               left  = tree(lefts,  stop, left,  lvl+1),
+               right = tree(rights, stop, right, lvl+1))
+
+  def branch(rows=None, lvl=0, top=None):
+    if len(rows) > stop:
+      lefts, rights,left,right = half(rows, True, top)
+      return slash(lefts, lvl+1, left) 
+
+  return (branch if optimize else tree)(data1.rows, len(data1.rows)^the.far)
+
 
 def showTree(data1, tree1):
   if tree1:
