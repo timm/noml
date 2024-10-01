@@ -104,9 +104,10 @@ def ydists(data1):
   data1.rows.sort(key=lambda row: ydist(data1,row))
   return data1
 
-def cluster(data1, rows=None, all=False)
-  labelled = {}
-  def Y(a)   : labelled[id(a)] = a; return ydist(data1, a)
+def cluster(data1, rows=None, all=False):
+  stop   = 2*len(rows or data1.rows)**the.far
+  labels = {}
+  def Y(a)   : labels[id(a)] = a; return ydist(data1, a)
   def X(a,b) : return xdist(data1, a,b)
 
   def half(rows, above=None, sortp=False):
@@ -117,22 +118,21 @@ def cluster(data1, rows=None, all=False)
     n    = int(len(rows) // 2)
     return rows[:n], l, rows[n:], r, rows[n-1], rows[n]
 
-  def tree(rows, above=None, lvl=0, gaurd=None):
+  def tree(rows, above=None, lvl=0, guard=None):
     if len(rows) >= stop:
       ls, l, rs, r, lborder, rborder = half(rows, above, False)
       return o(data  = DATA(data1.cols.names, rows), 
                lvl   = lvl,
-               gaurd = gaurd,
-               left  = tree(ls, l, lvl+1, lambda row: X(row,lborder) <  X(row, rborder)),
-               right = tree(rs, r, lvl+1, lambda row: X(row,rborder) <= X(row, lborder)))
+               guard = guard,
+               left  = tree(ls, l, lvl+1, lambda row: X(row,lborder) <  X(row,rborder)),
+               right = tree(rs, r, lvl+1, lambda row: X(row,lborder) >= X(row,rborder)))
 
   def branch(rows, above=None, lvl=0):
-    if len(rows) >= stop:
-      ls, l, *_ = half(rows, above, True)
-      return branch(ls, l, lvl+1)
+    if len(rows) < stop: return DATA(data1.cols.names, labels.values())
+    ls, l, *_ = half(rows, above, True)
+    return branch(ls, l, lvl+1)
 
-  stop = 2*len(rows or data1.rows)**the.far
-  return (tree if all else branch)(rows or data1.rows), labelled
+  return (tree if all else branch)(rows or data1.rows) 
 
 def showTree(data1, tree1):
   if tree1:
