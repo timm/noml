@@ -122,19 +122,18 @@ def cluster(data1, optimize=False)
     return rows[:n], rows[n:],a,b
 
   def tree(rows, stop, top=None, lvl=0):
-    if len(rows) > stop:
-      lefts, rights, left, right = half(rows, False, top)
+    if len(rows) >= 2*stop:
+      lefts, rights, left, right = half(rows, top, False)
       return o(data  = DATA(walk1.data.cols.names,rows), lvl=lvl, cut=rights[0],
                left  = tree(lefts,  stop, left,  lvl+1),
                right = tree(rights, stop, right, lvl+1))
 
-  def branch(rows=None, lvl=0, top=None):
-    if len(rows) > stop:
-      lefts, rights,left,right = half(rows, True, top)
-      return slash(lefts, lvl+1, left) 
+  def branch(rows, stop, top=None, lvl=0):
+    if len(rows) >= 2*stop:
+      lefts, rights,left,right = half(rows, top, True)
+      return branch(lefts, stop, left, lvl+1)
 
   return (branch if optimize else tree)(data1.rows, len(data1.rows)^the.far)
-
 
 def showTree(data1, tree1):
   if tree1:
