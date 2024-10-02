@@ -93,7 +93,7 @@ def norm(i:NUM, x) -> float:
 
 # -----------------------------------------------------------------------------
 def xdist(i:DATA, row1:row, row2:row) -> float:
-  def sym(_,   x,y): return x != y
+  def sym((_,   x,y): return x != y
   def num(num1, x,y):
     x,y = norm(num1,x), norm(num1,y)
     x   = x if x != "?" else (1 if y < .5 else 0)
@@ -113,11 +113,11 @@ def ydists(i:DATA) -> DATA:
   i.rows.sort(key=lambda r: ydist(i,r))
   return i
 
-def cluster(i:DATA, rows=None, all=False) -> o:
-    stop   = len(rows or i.rows)**the.end
+def cluster(data1:DATA, rows=None, all=False) -> o:
+    stop   = len(rows or data1.rows)**the.end
     labels = {}
-    def Y(a)   : labels[id(a)] = a; return ydist(i, a)
-    def X(a,b) : return xdist(i, a,b)
+    def Y(a)   : labels[id(a)] = a; return ydist(data1, a)
+    def X(a,b) : return xdist(data1, a,b)
   
     def half(rows, above=None, sortp=False):
       l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
@@ -125,24 +125,24 @@ def cluster(i:DATA, rows=None, all=False) -> o:
       C    = X(l,r)
       rows = sorted(rows, key=lambda row:(X(row,l)**2 + C**2 - X(row,r)**2)/(2*C + 1/big))
       n    = int(len(rows) // 2)
-      return rows[:n], l, rows[n:], r, rows[n-1], rows[n]
+      return rows[:n], l, rows[n:], r
   
     def tree(rows, above=None, lvl=0, guard=None):
       if len(rows) >= stop:
-        ls, l, rs, r, lborder, rborder = half(rows, above, False)
-        return o(data  = DATA(i.cols.names, rows), 
+        ls, l, rs, r = half(rows, above, False)
+        return o(data  = DATA(data1.cols.names, rows), 
                  lvl   = lvl,
                  guard = guard,
-                 left  = tree(ls, l, lvl+1, lambda row: X(row,lborder) <  X(row,rborder)),
-                 right = tree(rs, r, lvl+1, lambda row: X(row,lborder) >= X(row,rborder)))
+                 left  = tree(ls, l, lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
+                 right = tree(rs, r, lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])))
   
     def branch(rows, above=None, lvl=0):
       if len(rows) < stop: 
-        return ydists(DATA(i.cols.names, labels.values()))
+        return ydists(DATA(data1.cols.names, labels.values()))
       ls, l, *_ = half(rows, above, True)
       return branch(ls, l, lvl+1)
   
-    return (tree if all else branch)(rows or i.rows) 
+    return (tree if all else branch)(rows or data1.rows) 
 
 def showTree(i:DATA, tree1) -> None:
   if tree1:
