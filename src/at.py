@@ -113,36 +113,31 @@ def ydists(i:DATA) -> DATA:
   i.rows.sort(key=lambda r: ydist(i,r))
   return i
 
-def cluster(data1:DATA, rows=None, all=False) -> o:
-    stop   = len(rows or data1.rows)**the.end
-    labels = {}
-    def Y(a)   : labels[id(a)] = a; return ydist(data1, a)
-    def X(a,b) : return xdist(data1, a,b)
-  
-    def half(rows, above=None, sortp=False):
-      l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
-      l,r  = (r,l) if sortp and Y(r) < Y(l) else (l,r)
-      C    = X(l,r)
-      rows = sorted(rows, key=lambda row:(X(row,l)**2 + C**2 - X(row,r)**2)/(2*C + 1/big))
-      n    = int(len(rows) // 2)
-      return rows[:n], l, rows[n:], r
-  
-    def tree(rows, above=None, lvl=0, guard=None):
-      if len(rows) >= stop:
-        ls, l, rs, r = half(rows, above, False)
-        return o(data  = DATA(data1.cols.names, rows), 
-                 lvl   = lvl,
-                 guard = guard,
-                 left  = tree(ls, l, lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
-                 right = tree(rs, r, lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])))
-  
-    def branch(rows, above=None, lvl=0):
-      if len(rows) < stop: 
-        return ydists(DATA(data1.cols.names, labels.values()))
-      ls, l, *_ = half(rows, above, True)
-      return branch(ls, l, lvl+1)
-  
-    return (tree if all else branch)(rows or data1.rows) 
+def cluster(data1:DATA, rows=None, all=False) -> tuple[o,DATA]o:
+  stop   = len(rows or data1.rows)**the.end
+  labels = {}
+  def Y(a)   : labels[id(a)] = a; return ydist(data1, a)
+  def X(a,b) : return xdist(data1, a,b)
+
+  def half(rows, above=None, sortp=False):
+    l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
+    l,r  = (r,l) if sortp and Y(r) < Y(l) else (l,r)
+    C    = X(l,r)
+    rows = sorted(rows, key=lambda row:(X(row,l)**2 + C**2 - X(row,r)**2)/(2*C + 1/big))
+    n    = int(len(rows) // 2)
+    return rows[:n], l, rows[n:], r
+
+  def tree(rows, above=None, lvl=0, guard=None):
+    if len(rows) >= stop:
+      ls, l, rs, r = half(rows, above, False)
+      return o(
+        data = DATA(data1.cols.names, rows), 
+        lvl  = lvl,
+        guard= guard,
+        left = tree(ls,l,lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
+        righ = tree(rs,r,lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])) if all else None)
+
+  return tree(rows or data1.rows), ydists(DATA(data1.cols.names, labels.values()))
 
 def showTree(i:DATA, tree1) -> None:
   if tree1:
