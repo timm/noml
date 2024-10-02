@@ -1,9 +1,10 @@
 #!/usr/bin/env python3.13 -B
-"""
-- Functions with UP CASE names; e.g. `DATA`.
-- Instances have constructor names, plus a number; e.g. `data1`.
-- Functions with down case names are updaters; e.g. `data(data1,row)`
-"""
+# In this code:
+# - Functions with UP CASE names; e.g. `DATA`.
+# - Instances have constructor names, plus a number; e.g. `data1`.
+# - Functions with down case names are updaters; e.g. `data(data1,row)`
+from typing import Any as any
+from typing import List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
 from math import sqrt,log,cos, pi
 import random, sys, ast, re
@@ -23,16 +24,24 @@ the = o(end     = .5,
         seed    = 1234567891,
         train   = "../../moot/optimize/misc/auto93.csv")
 
+number        = float  | int   #
+atom          = number | bool | str # and sometimes "?"
+row           = list[atom]
+rows          = list[row]
+classes       = dict[str,rows] # `str` is the class name
+DATA,COLS,COL = o,o,o
+NUM,SYM       = COL,COL
+
 # -----------------------------------------------------------------------------
-def SYM(at=0, name=" "):
+def SYM(at=0, name=" ") -> SYM:
   return o(isNum=False, at=at, name=name, n=0,
            most=0, mode=None, has={})
 
-def NUM(at=0, name=" "):
+def NUM(at=0, name=" ") -> NUM:
   return o(isNum=True,  at=at, name=name, n=0,
            mu=0, m2=0, sd=0, lo=big, hi=-big, goal= 0 if name[-1]=="-" else 1)
 
-def COLS(names):
+def COLS(names: list[str]) -> COLS:
   all,x,y = [],[],[]
   for at,name in enumerate(names):
     a,z  = name[0], name[-1]
@@ -42,131 +51,133 @@ def COLS(names):
       (y if z in "+-!" else x).append(col)
   return o(names=names, all=all, x=x, y=y)
 
-def DATA(names, src=None):
+def DATA(names:list[str], src:list|Generator=None) -> DATA:
   data1 = o(rows=[], cols=COLS(names))
   [data(data1,row) for row in src or []]
   return data1
 
-def data(data1, row):
-  data1.rows += [row]
-  [col(col1, row[col1.at]) for col1 in data1.cols.all]
+def data(i:DATA, row) -> None:
+  i.rows += [row]
+  [col(col1, row[col1.at]) for col1 in i.cols.all]
 
-def col(col1, x):
+def col(i:COL, x) -> None:
   if x == "?" : return
-  col1.n += 1
-  if not col1.isNum:
-    tmp = col1.has[x] = 1 + col1.has.get(x,0)
-    if tmp > col1.most:
-      col1.most, col1.mode = tmp,x
+  i.n += 1
+  if not i.isNum:
+    tmp = i.has[x] = 1 + i.has.get(x,0)
+    if tmp > i.most:
+      i.most, i.mode = tmp,x
   else:
-    col1.lo  = min(x, col1.lo)
-    col1.hi  = max(x, col1.hi)
-    d        = x - col1.mu
-    col1.mu += d / col1.n
-    col1.m2 += d * (x - col1.mu)
-    col1.sd  = 0 if col1.n < 2 else (col1.m2/(col1.n - 1))**.5
+    i.lo  = min(x, i.lo)
+    i.hi  = max(x, i.hi)
+    d     = x - i.mu
+    i.mu += d / i.n
+    i.m2 += d * (x - i.mu)
+    i.sd  = 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
 
-def mid(data1):
-  tmp= [(col1.mu if col1.isNum else col1.mode) for col1 in data1.cols.all]
-  return min(data1.rows, key=lambda row: xdist(data1,row,tmp))
+def mid(i:DATA) -> row:
+  tmp= [(c.mu if c.isNum else c.mode) for c in i.cols.all]
+  return min(i.rows, key=lambda row: xdist(i,row,tmp))
 
-def div(data1):
-  return [(col1.sd if col1.isNum else ent(col1.has)) for col1 in data1.cols.all]
+def div(i:DATA) -> list[float]:
+  return [(c.sd if c.isNum else ent(c.has)) for c in i.cols.all]
 
-def read(file):
+def read(file:str) -> DATA:
   src = csv(file)
-  data1 = DATA(next(src))
-  [data(data1,row) for row in src]
-  return data1
+  i   = DATA(next(src))
+  [data(i,row) for row in src]
+  return i
 
-def norm(num1, x):
-  return x if x=="?" else (x - num1.lo)/(num1.hi - num1.lo + 1/big)
+def norm(i:NUM, x) -> float: 
+  return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1/big)
 
 # -----------------------------------------------------------------------------
-def xdist(data1,row1,row2):
+def xdist(i:DATA, row1:row, row2:row) -> float:
   def sym(_,   x,y): return x != y
-  def num(num1,x,y):
+  def num(num1, x,y):
     x,y = norm(num1,x), norm(num1,y)
     x   = x if x != "?" else (1 if y < .5 else 0)
     y   = y if y != "?" else (1 if x < .5 else 0)
     return abs(x - y)
   n = d = 0
-  for col1 in data1.cols.x:
-    a,b = row1[col1.at], row2[col1.at]
-    d  += 1 if a==b=="?" else (num if col1.isNum else sym)(col1,a,b)**the.p
+  for c in i.cols.x:
+    a,b = row1[c.at], row2[c.at]
+    d  += 1 if a==b=="?" else (num if c.isNum else sym)(c,a,b)**the.p
     n  += 1
   return (d/n) ** (1/the.p)
 
-def ydist(data1,row):
-  return max(abs(col.goal - norm(col, row[col.at])) for col in data1.cols.y)
+def ydist(i:DATA, row) -> float:
+  return max(abs(c.goal - norm(c, row[c.at])) for c in i.cols.y)
 
-def ydists(data1):
-  data1.rows.sort(key=lambda row: ydist(data1,row))
-  return data1
+def ydists(i:DATA) -> DATA:
+  i.rows.sort(key=lambda r: ydist(i,r))
+  return i
 
-def cluster(data1, rows=None, all=False):
-  stop   = 2*len(rows or data1.rows)**the.far
-  labels = {}
-  def Y(a)   : labels[id(a)] = a; return ydist(data1, a)
-  def X(a,b) : return xdist(data1, a,b)
+def cluster(i:DATA, rows=None, all=False) -> o:
+    stop   = len(rows or i.rows)**the.end
+    labels = {}
+    def Y(a)   : labels[id(a)] = a; return ydist(i, a)
+    def X(a,b) : return xdist(i, a,b)
+  
+    def half(rows, above=None, sortp=False):
+      l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
+      l,r  = (r,l) if sortp and Y(r) < Y(l) else (l,r)
+      C    = X(l,r)
+      rows = sorted(rows, key=lambda row:(X(row,l)**2 + C**2 - X(row,r)**2)/(2*C + 1/big))
+      n    = int(len(rows) // 2)
+      return rows[:n], l, rows[n:], r, rows[n-1], rows[n]
+  
+    def tree(rows, above=None, lvl=0, guard=None):
+      if len(rows) >= stop:
+        ls, l, rs, r, lborder, rborder = half(rows, above, False)
+        return o(data  = DATA(i.cols.names, rows), 
+                 lvl   = lvl,
+                 guard = guard,
+                 left  = tree(ls, l, lvl+1, lambda row: X(row,lborder) <  X(row,rborder)),
+                 right = tree(rs, r, lvl+1, lambda row: X(row,lborder) >= X(row,rborder)))
+  
+    def branch(rows, above=None, lvl=0):
+      if len(rows) < stop: 
+        return ydists(DATA(i.cols.names, labels.values()))
+      ls, l, *_ = half(rows, above, True)
+      return branch(ls, l, lvl+1)
+  
+    return (tree if all else branch)(rows or i.rows) 
 
-  def half(rows, above=None, sortp=False):
-    l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
-    l,r  = (r,l) if sortp and Y(r) < Y(l) else (l,r)
-    C    = X(l,r)
-    rows = sorted(rows, key=lambda row:(X(row,l)**2 + C**2 - X(row,r)**2)/(2*C + 1/big))
-    n    = int(len(rows) // 2)
-    return rows[:n], l, rows[n:], r, rows[n-1], rows[n]
-
-  def tree(rows, above=None, lvl=0, guard=None):
-    if len(rows) >= stop:
-      ls, l, rs, r, lborder, rborder = half(rows, above, False)
-      return o(data  = DATA(data1.cols.names, rows), 
-               lvl   = lvl,
-               guard = guard,
-               left  = tree(ls, l, lvl+1, lambda row: X(row,lborder) <  X(row,rborder)),
-               right = tree(rs, r, lvl+1, lambda row: X(row,lborder) >= X(row,rborder)))
-
-  def branch(rows, above=None, lvl=0):
-    if len(rows) < stop: return DATA(data1.cols.names, labels.values())
-    ls, l, *_ = half(rows, above, True)
-    return branch(ls, l, lvl+1)
-
-  return (tree if all else branch)(rows or data1.rows) 
-
-def showTree(data1, tree1):
+def showTree(i:DATA, tree1) -> None:
   if tree1:
-    print(f"{ydist(data1, mid(tree1.data)):.3f}    ", end="")
-    print(f"{'|.. ' * tree1.lvl}{len(tree1.data.rows)}" )
+    print(f"{ydist(i, mid(i.data)):.3f}    ", end="")
+    print(f"{'|.. ' * i.lvl}{len(i.data.rows)}" )
     for kid in ["left", "right"]:
-      showTree(data1, tree1.__dict__.get(kid,None))
+      showTree(i, i.__dict__.get(kid,None))
 
 # -----------------------------------------------------------------------------
-def ent(d):
+def ent(d:dict) -> float:
  N = sum(d.values())
  return [n/N*log(n/N,2) for n in d.values()]
 
-def say(x) -> str:
+def say(x:any) -> str:
   if isinstance(x,float)   : return f"{x:.3f}"
   if isinstance(x,list )   : return "["+', '.join([say(y) for y in x])+"]"
   if not isinstance(x,dict): return str(x)
   return "(" + ' '.join(f":{k} {say(v)}"
                         for k,v in x.items() if not str(k)[0]=="_") + ")"
 
-def coerce(s):
+def coerce(s:str) -> atom:
   try: return ast.literal_eval(s)
   except Exception: return s
 
-def csv(file):
+def csv(file:str) -> Generator:
   with file_or_stdin(None if file=="−" else file) as src:
     for line in src:
       line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
       if line:
         yield [coerce(s.strip()) for s in line.split(",")]
 
-def normal(mu,sd): return mu+sd*sqrt(-2*log(R())) * cos(2*pi*R())
+def normal(mu:float,sd:float) -> float: 
+    return mu+sd*sqrt(-2*log(R())) * cos(2*pi*R())
 
-def shuffle(lst):
+def shuffle(lst:list) -> list:
   random.shuffle(lst)
   return lst
 
@@ -205,15 +216,11 @@ class go:
 
   def half(_):
     data1 = read(the.train)
-    walk1 = WALK(data1)
-    lefts,rights = half(walk1, data1.rows)
-    print(len(lefts), len(rights), walk1.used.keys())
+    [print(row,ydist(data1,row)) for row in cluster(data1).rows]
 
   def tree(_):
     data1 = read(the.train)
-    walk1 = WALK(data1)
-    print(walk1.stop)
-    showTree(data1, tree( walk1))
+    showTree(data1, cluster( data1,all=True))
 
   def slash(_):
     for _ in range(20):
