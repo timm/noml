@@ -24,13 +24,13 @@ the = o(end     = .5,
         seed    = 1234567891,
         train   = "../../moot/optimize/misc/auto93.csv")
 
-number        = float  | int   #
-atom          = number | bool | str # and sometimes "?"
-row           = list[atom]
-rows          = list[row]
-classes       = dict[str,rows] # `str` is the class name
-DATA,COLS,COL = o,o,o
-NUM,SYM       = COL,COL
+number            = float  | int   #
+atom              = number | bool | str # and sometimes "?"
+row               = list[atom]
+rows              = list[row]
+classes           = dict[str,rows] # `str` is the class name
+DATA,COLS,NUM,SYM = o,o,o,o
+COL               = NUM | SYM
 
 # -----------------------------------------------------------------------------
 def SYM(at=0, name=" ") -> SYM:
@@ -113,13 +113,15 @@ def ydists(i:DATA) -> DATA:
   i.rows.sort(key=lambda r: ydist(i,r))
   return i
 
+class TREE(o): pass
+
 def cluster(data1:DATA, rows=None, all=False) -> tuple[o,DATA]o:
   stop   = len(rows or data1.rows)**the.end
   labels = {}
   def Y(a)  : labels[id(a)] = a; return ydist(data1, a)
   def X(a,b): return xdist(data1, a,b)
 
-  def half(rows, above=None, sortp=False):
+  def cut(rows, above=None, sortp=False):
     l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
     l,r  = (r,l) if sortp and Y(r) < Y(l) else (l,r)
     C    = X(l,r)
@@ -127,24 +129,25 @@ def cluster(data1:DATA, rows=None, all=False) -> tuple[o,DATA]o:
     n    = int(len(rows) // 2)
     return rows[:n], l, rows[n:], r
 
-  def tree(rows, above=None, lvl=0, guard=None):
+  def nodes(rows, above=None, lvl=0, guard=None):
     if len(rows) >= stop:
-      ls, l, rs, r = half(rows, above, False)
-      return o(
-        data= DATA(data1.cols.names, rows), 
-        lvl = lvl,
-        go  = guard,
-        left= tree(ls, l, lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
-        righ= tree(rs, r, lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])) if all else None
+      ls, l, rs, r = cut(rows, above, False)
+      data2 = DATA(data1.cols.names, rows) 
+      return TREE(
+        data  = data2, 
+        y     = ydist(data1, mid(data2)), 
+        lvl   = lvl, 
+        guard = guard 
+        left  = nodes(ls, l, lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
+        right = nodes(rs, r, lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])) if all else None)
 
-  return tree(rows or data1.rows), ydists(DATA(data1.cols.names, labels.values()))
+  return nodes(rows or data1.rows), ydists(DATA(data1.cols.names, labels.values()))
 
-def showTree(i:DATA, tree1) -> None:
-  if tree1:
-    print(f"{ydist(i, mid(i.data)):.3f}    ", end="")
-    print(f"{'|.. ' * i.lvl}{len(i.data.rows)}" )
-    for kid in ["left", "right"]:
-      showTree(i, i.__dict__.get(kid,None))
+def showTree(t:TREE) -> None:
+  if t:
+    print(f"{t.y:.3f}    ", end="")
+    print(f"{'|.. ' * t.lvl}{len(t.data.rows)}" )
+    [showTree(t.get(kid,None)) for kid in ["left", "right"]]
 
 # -----------------------------------------------------------------------------
 def ent(d:dict) -> float:
