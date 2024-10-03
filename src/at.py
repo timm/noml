@@ -93,7 +93,7 @@ def norm(i:NUM, x) -> float:
 
 # -----------------------------------------------------------------------------
 def xdist(i:DATA, row1:row, row2:row) -> float:
-  def sym((_,   x,y): return x != y
+  def sym(_,   x,y): return x != y
   def num(num1, x,y):
     x,y = norm(num1,x), norm(num1,y)
     x   = x if x != "?" else (1 if y < .5 else 0)
@@ -114,6 +114,11 @@ def ydists(i:DATA) -> DATA:
   return i
 
 def cluster(data1:DATA, rows=None, all=False) -> tuple[o,DATA]o:
+  stop   = len(rows or data1.rows)**the.end
+  labels = {}
+  def Y(a)  : labels[id(a)] = a; return ydist(data1, a)
+  def X(a,b): return xdist(data1, a,b)
+
   def half(rows, above=None, sortp=False):
     l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
     l,r  = (r,l) if sortp and Y(r) < Y(l) else (l,r)
@@ -129,13 +134,9 @@ def cluster(data1:DATA, rows=None, all=False) -> tuple[o,DATA]o:
         data= DATA(data1.cols.names, rows), 
         lvl = lvl,
         go  = guard,
-        left= tree(ls,l,lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
-        righ= tree(rs,r,lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])) if all else None
+        left= tree(ls, l, lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
+        righ= tree(rs, r, lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])) if all else None
 
-  def X(a,b): return xdist(data1, a,b)
-  def Y(a)  : labels[id(a)] = a; return ydist(data1, a)
-  labels = {}
-  stop   = len(rows or data1.rows)**the.end
   return tree(rows or data1.rows), ydists(DATA(data1.cols.names, labels.values()))
 
 def showTree(i:DATA, tree1) -> None:
