@@ -4,7 +4,7 @@
 # - Instances have constructor names, plus a number; e.g. `data1`.
 # - Functions with down case names are updaters; e.g. `data(data1,row)`
 from typing import Any as any
-from typing import List, Dict, Type, Callable, Generator
+from typing import Union,List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
 from math import sqrt,log,cos, pi
 import random, sys, ast, re
@@ -24,14 +24,13 @@ the = o(end     = .5,
         seed    = 1234567891,
         train   = "../../moot/optimize/misc/auto93.csv")
 
-number            = float  | int   #
-atom              = number | bool | str # and sometimes "?"
-row               = list[atom]
-rows              = list[row]
-classes           = dict[str,rows] # `str` is the class name
-DATA,COLS,NUM,SYM = o,o,o,o
-COL               = NUM | SYM
-
+number  = float  | int   #
+atom    = number | bool | str # and sometimes "?"
+row     = list[atom]
+rows    = list[row]
+classes = dict[str,rows] # `str` is the class name
+DATA,COLS,NUM,SYM, TREE = o,o,o,o,o
+COL  = NUM | SYM
 # -----------------------------------------------------------------------------
 def SYM(at=0, name=" ") -> SYM:
   return o(isNum=False, at=at, name=name, n=0,
@@ -115,13 +114,13 @@ def ydists(i:DATA) -> DATA:
 
 class TREE(o): pass
 
-def cluster(data1:DATA, rows=None, all=False) -> tuple[o,DATA]o:
+def cluster(data1:DATA, rows=None, sortp=False, all=False) -> tuple[TREE,DATA]:
   stop   = len(rows or data1.rows)**the.end
   labels = {}
   def Y(a)  : labels[id(a)] = a; return ydist(data1, a)
   def X(a,b): return xdist(data1, a,b)
 
-  def cut(rows, above=None, sortp=False):
+  def cut(rows, above=None):
     l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
     l,r  = (r,l) if sortp and Y(r) < Y(l) else (l,r)
     C    = X(l,r)
@@ -131,23 +130,24 @@ def cluster(data1:DATA, rows=None, all=False) -> tuple[o,DATA]o:
 
   def nodes(rows, above=None, lvl=0, guard=None):
     if len(rows) >= stop:
-      ls, l, rs, r = cut(rows, above, False)
+      ls, l, rs, r = cut(rows, above)
       data2 = DATA(data1.cols.names, rows) 
       return TREE(
         data  = data2, 
-        y     = ydist(data1, mid(data2)), 
+        y     = ydist(data1, l),
         lvl   = lvl, 
-        guard = guard 
+        guard = guard, 
         left  = nodes(ls, l, lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
         right = nodes(rs, r, lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])) if all else None)
 
-  return nodes(rows or data1.rows), ydists(DATA(data1.cols.names, labels.values()))
+  return (nodes(rows or data1.rows), # tree 
+          ydists(DATA(data1.cols.names, labels.values()))) # items labelled while making tree
 
 def showTree(t:TREE) -> None:
   if t:
-    print(f"{t.y:.3f}    ", end="")
-    print(f"{'|.. ' * t.lvl}{len(t.data.rows)}" )
-    [showTree(t.get(kid,None)) for kid in ["left", "right"]]
+    print(f"{t.y:.2f}    ", end="")
+    print(f"{'|.. ' * t.lvl}{len(t.data.rows):>4} " )
+    [showTree(t.__dict__.get(kid,None)) for kid in ["left", "right"]]
 
 # -----------------------------------------------------------------------------
 def ent(d:dict) -> float:
@@ -212,21 +212,14 @@ class go:
     for i,row in enumerate(ydists(data1).rows):
       if i % 30 == 0: print(f"{ydist(data1,row):.3f}",row)
 
-  def half(_):
+  def branch(_):
     data1 = read(the.train)
-    [print(row,ydist(data1,row)) for row in cluster(data1).rows]
+    _,labels=cluster(data1,sortp=True,all=False)
 
   def tree(_):
     data1 = read(the.train)
-    showTree(data1, cluster( data1,all=True))
-
-  def slash(_):
-    for _ in range(20):
-      data1 = read(the.train)
-      walk1 = WALK(data1)
-      data2,top= slash(walk1, data1.rows)
-      print(f"{len(data2.rows)} {ydist(data1, top, walk1.used):.3f}, {len(walk1.used.values()):>3}")
-    #print(len(data2.rows), len(walk1.used.values()),ydist(data2, data2.rows[0], walk1.used))
+    tree1,_=cluster(data1,sortp=True,all=True)
+    showTree(tree1)
 
 # -----------------------------------------------------------------------------
 cli(the.__dict__)
