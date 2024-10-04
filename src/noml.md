@@ -1,8 +1,9 @@
 -- <!-- vim: set ts=2 sw=2 et :  -->   
 % The NoML Manifesto   
-% _Less, but better, analytics ("better"= faster, cheaper, explicable). Mostly instance-based AI. No complex models. Really simple code._
+% _How to make and test defensible decisions from incomplete knowledge, while maturing your model of the world._
 
 ## About
+tHis code is about _less, but better_, analytics  where "better"= faster, cheaper, explicable, really simple to code, no complex models (mostly instance-based AI). 
 - Using as few dependent variables as possible..
 - ...incrementally build models that recognize (best,rest) 
   examples (where "best"  can be  defined by  multiple goals). 

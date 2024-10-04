@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.13 -B
 """
-seq.py : sequential model optimization (with inital diverse sampling)
+dismo.py : diverse sequential model optimization 
 (c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
 
 USAGE: 
@@ -23,9 +23,9 @@ from typing import Union,List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
 from math import sqrt,log,cos, pi
 import random, sys, ast, re
-R=random.random
-one=random.choice
 
+R   = random.random
+one = random.choice
 big = 1E32
 
 class o:
@@ -278,11 +278,12 @@ class go:
     showTree(tree1)
 
 # -----------------------------------------------------------------------------
-the = o(**{m[1]:coerce(m[2]) for m in 
-           re.finditer(r"\n\s*-\w+\s*--(\w+).*=\s*(\S+)", __doc__)})
-cli(the.__dict__)
+the = o(**{m[1]:coerce(m[2]) for m in re.finditer(r"\n\s*-\w+\s*--(\w+).*=\s*(\S+)", __doc__)})
 random.seed(the.seed)
 
-for i,s in enumerate(sys.argv):
-  if s[:2] == "--":
-    getattr(go, s[2:], lambda :1)(i)
+if __name__ == "__main__":
+  cli(the.__dict__)
+  random.seed(the.seed)
+  for i,s in enumerate(sys.argv):
+    if s[:2] == "--":
+      getattr(go, s[2:], lambda :print(f"no code for '{s}'"))(i)
