@@ -1,18 +1,20 @@
 #!/usr/bin/env python3.13 -B
+# 1-(1-.35/6)^80  = 0.991
+# 1-(1-.35/6)^100 = 0.9975
 """
-change.py: change your mind (via diverse sequential model optimization) 
+h2c.py: how to change your mind (via diverse sequential model optimization) 
 (c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
 
 USAGE: 
-  chmod +x change.py
-  ./change.py [OPTIONS]
+  chmod +x h2c.py
+  ./h2c.py [OPTIONS]
 
 OPTIONS:   
   -b --burst   initial number of samples         = 4
   -B --Brake   maximum number of samples         = 30
   -e --end     leaf cluster size                 = .5
   -f --far     samples for finding far points    = 30
-  -g --guesses max guesses per loop              = 256   
+  -g --guesses max guesses per loop              = 100   
   -k --k       low frequency Bayes hack          = 1
   -m --m       low frequency Bayes hack          = 2
   -p --p       distance formula exponent         = 2   
