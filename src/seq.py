@@ -1,8 +1,23 @@
 #!/usr/bin/env python3.13 -B
-# In this code:
-# - Functions with UP CASE names; e.g. `DATA`.
-# - Instances have constructor names, plus a number; e.g. `data1`.
-# - Functions with down case names are updaters; e.g. `data(data1,row)`
+"""
+seq.py : sequential model optimization (with inital diverse sampling)
+(c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
+
+USAGE: 
+  python3 seq.py [OPTIONS]
+
+OPTIONS:   
+  -e --end     float leaf cluster size                 = .5
+  -f --far     int   samples for finding far points    = 30
+  -k --k       int   low frequency Bayes hack          = 1
+  -m --m       int   low frequency Bayes hack          = 2
+  -p --p       int   distance formula exponent         = 2   
+  -s --seed    int   random number seed                = 1234567891   
+  -S --Samples int   initial samples                   = 4
+  -t --train   str   training csv file. row1 has names = ../../moot/optimize/misc/auto93.csv
+  --help print help
+"""
+
 from typing import Any as any
 from typing import Union,List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
@@ -17,20 +32,15 @@ class o:
   def __init__(i,**d): i.__dict__.update(**d)
   def __repr__(i): return  i.__class__.__name__ + say(i.__dict__)
 
-the = o(end     = .5,
-        far     = 30,
-        p       = 2,
-        Samples = 4,
-        seed    = 1234567891,
-        train   = "../../moot/optimize/misc/auto93.csv")
+number         = float  | int   #
+atom           = number | bool | str # and sometimes "?"
+row            = list[atom]
+rows           = list[row]
+classes        = dict[str,rows] # `str` is the class name
+NUM,SYM        = o,o
+COL            = NUM | SYM
+DATA,COLS,TREE = o,o,o
 
-number  = float  | int   #
-atom    = number | bool | str # and sometimes "?"
-row     = list[atom]
-rows    = list[row]
-classes = dict[str,rows] # `str` is the class name
-DATA,COLS,NUM,SYM, TREE = o,o,o,o,o
-COL  = NUM | SYM
 # -----------------------------------------------------------------------------
 def SYM(at=0, name=" ") -> SYM:
   return o(isNum=False, at=at, name=name, n=0,
@@ -114,7 +124,7 @@ def ydists(i:DATA) -> DATA:
 
 class TREE(o): pass
 
-def cluster(data1:DATA, rows=None, sortp=False, all=False) -> tuple[TREE,DATA]:
+def cluster(data1:DATA, rows=None, sortp=False, all=False, maxDepth=100) -> tuple[TREE,DATA]:
   stop   = len(rows or data1.rows)**the.end
   labels = {}
   def Y(a)  : labels[id(a)] = a; return ydist(data1, a)
@@ -129,7 +139,7 @@ def cluster(data1:DATA, rows=None, sortp=False, all=False) -> tuple[TREE,DATA]:
     return rows[:n], l, rows[n:], r
 
   def nodes(rows, above=None, lvl=0, guard=None):
-    if len(rows) >= stop:
+    if len(rows) >= stop and lvl < maxDepth:
       ls, l, rs, r = cut(rows, above)
       data2 = DATA(data1.cols.names, rows) 
       return TREE(
@@ -145,11 +155,52 @@ def cluster(data1:DATA, rows=None, sortp=False, all=False) -> tuple[TREE,DATA]:
 
 def showTree(t:TREE) -> None:
   if t:
-    print(f"{t.y:.2f}    ", end="")
-    print(f"{'|.. ' * t.lvl}{len(t.data.rows):>4} " )
+    mid1 = mid(t.data)
+    s1 = ', '.join([f"{mid1[c.at]:6.2f}"  for c in t.data.cols.y])
+    s2 = f"{'|.. ' * t.lvl}{len(t.data.rows):>4}" 
+    print(f"{t.y:.2f} | {s1:20} {s2}")
     [showTree(t.__dict__.get(kid,None)) for kid in ["left", "right"]]
 
 # -----------------------------------------------------------------------------
+def like(i:DATA, row:row, nall:int, nh:int) -> float:
+  def sym(sym1, x, prior):
+    return (sym1.has.get(x,0) + the.m*prior) / (sym1.n + the.m)
+  
+  def num(num1, x,_):
+    v     = num1.sd**2 + 1E-30
+    nom   = exp(-1*(x - num1.mu)**2/(2*v)) + 1E-32
+    denom = (2*pi*v) ** 0.5
+    return min(1, nom/(denom + 1E-32))
+
+  prior = (len(i.rows) + the.k) / (nall + the.k*nh)
+  likes = [(num if c.isNum else sym)(row[c.at], prior) for c in i.cols.x]
+  return sum(log(x) for x in likes + [prior] if x>0)
+
+def acquire(i:DATA, rows:rows, labels=None, score=Callable) -> rows:
+  labels = labels or {}
+  done   = labels.values()
+  def Y(a): labels[id(a)] = a; return ydist(i, a)
+
+  def guess(todo, done):
+    nBest = int(sqrt(len(done)))
+    nUse  = min(the.some,len(todo))/len(todo))
+    best  = DATA(i.cols.names, done[:nBest])
+    rest  = DATA(i.cols.names, done[nBest:])
+    key   = lambda row: 0 if R() > nUse else score(like(best, row, len(done), 2), 
+                                                   like(rest, row, len(done), 2))
+    return sort(todo, key=key)
+
+  m = max(0, the.start - len(done))
+  done += rows[:m]
+  done.sort(key=Y)
+  todo  = rows[m:]
+  while len(done) < the.stop:
+    top, *todo = guess(todo, done) 
+    done += [top]
+    done.sort(key=Y)
+  return done
+  
+## -----------------------------------------------------------------------------
 def ent(d:dict) -> float:
  N = sum(d.values())
  return [n/N*log(n/N,2) for n in d.values()]
@@ -189,6 +240,8 @@ def cli(d:dict) -> None:
 
 # -----------------------------------------------------------------------------
 class go:
+  def help(_): print(__doc__)
+
   def num(_):
     r = 256
     num1 = NUM()
@@ -213,17 +266,23 @@ class go:
       if i % 30 == 0: print(f"{ydist(data1,row):.3f}",row)
 
   def branch(_):
-    data1 = read(the.train)
-    _,labels=cluster(data1,sortp=True,all=False)
+    data1 = ydists(read(the.train))
+    n =  int(len(data1.rows)//2)
+    print(f"{ydist(data1, data1.rows[n]):.3}")
+    _,labels=cluster(data1,sortp=True,maxDepth=4, all=False)
+    print(f"{ydist(data1, labels.rows[0]):.3}")
 
   def tree(_):
     data1 = read(the.train)
-    tree1,_=cluster(data1,sortp=True,all=True)
+    tree1,_=cluster(data1,sortp=True,all=True,maxDepth=4)
     showTree(tree1)
 
 # -----------------------------------------------------------------------------
+the = o(**{m[1]:coerce(m[2]) for m in 
+           re.finditer(r"\n\s*-\w+\s*--(\w+).*=\s*(\S+)", __doc__)})
 cli(the.__dict__)
 random.seed(the.seed)
+
 for i,s in enumerate(sys.argv):
   if s[:2] == "--":
     getattr(go, s[2:], lambda :1)(i)
