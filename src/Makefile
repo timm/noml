@@ -56,6 +56,9 @@ all: ../src/*.lua ../docs/*.html setup
 	1>&2 echo "... $@"
 	gawk -f ../etc/md2awk.awk $< > $@
 
+pretty:
+	autopep8 -i --max-line-length 150 -a --indent-size 2 h2c.py
+
 %.lua : %.md           
 	1>&2 echo "... $@"
 	gawk -f ../etc/md2lua.awk $< > $@
