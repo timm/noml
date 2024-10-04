@@ -183,7 +183,7 @@ def acquire(i:DATA, rows:rows, labels=None, score=Callable) -> rows:
 
   def guess(todo, done):
     nBest = int(sqrt(len(done)))
-    nUse  = min(the.some,len(todo))/len(todo))
+    nUse  = int(min(the.some,len(todo))/len(todo)))
     best  = DATA(i.cols.names, done[:nBest])
     rest  = DATA(i.cols.names, done[nBest:])
     key   = lambda row: 0 if R() > nUse else score(like(best, row, len(done), 2), 
@@ -193,7 +193,7 @@ def acquire(i:DATA, rows:rows, labels=None, score=Callable) -> rows:
   m = max(0, the.start - len(done))
   done += rows[:m]
   done.sort(key=Y)
-  todo  = rows[m:]
+  todo = rows[m:]
   while len(done) < the.stop:
     top, *todo = guess(todo, done) 
     done += [top]
