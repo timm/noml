@@ -47,7 +47,10 @@ NUM,SYM        = o,o
 COL            = NUM | SYM
 DATA,COLS,TREE = o,o,o
 
-# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+#   _|   _.  _|_   _. 
+#  (_|  (_|   |_  (_| 
+
 def SYM(at=0, name=" ") -> SYM:
   return o(isNum=False, at=at, name=name, n=0,
            most=0, mode=None, has={})
@@ -71,43 +74,46 @@ def DATA(names:list[str], src:list|Generator=None) -> DATA:
   [data(data1,row) for row in src or []]
   return data1
 
-def data(i:DATA, row) -> None:
-  i.rows += [row]
-  [col(col1, row[col1.at]) for col1 in i.cols.all]
+def data(self:DATA, row) -> None:
+  self.rows += [row]
+  [col(c, row[c.at]) for c in self.cols.all]
 
-def col(i:COL, x) -> None:
+def col(self:COL, x) -> None:
   if x == "?" : return
-  i.n += 1
-  if not i.isNum:
-    tmp = i.has[x] = 1 + i.has.get(x,0)
-    if tmp > i.most:
-      i.most, i.mode = tmp,x
+  self.n += 1
+  if self.isNum:
+    self.lo  = min(x, self.lo)
+    self.hi  = max(x, self.hi)
+    d     = x - self.mu
+    self.mu += d / self.n
+    self.m2 += d * (x - self.mu)
+    self.sd  = 0 if self.n < 2 else (self.m2/(self.n - 1))**.5
   else:
-    i.lo  = min(x, i.lo)
-    i.hi  = max(x, i.hi)
-    d     = x - i.mu
-    i.mu += d / i.n
-    i.m2 += d * (x - i.mu)
-    i.sd  = 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
+    tmp = self.has[x] = 1 + self.has.get(x,0)
+    if tmp > self.most:
+      self.most, self.mode = tmp,x
 
-def mid(i:DATA) -> row:
-  tmp= [(c.mu if c.isNum else c.mode) for c in i.cols.all]
-  return min(i.rows, key=lambda row: xdist(i,row,tmp))
+def mid(self:DATA) -> row:
+  tmp= [(c.mu if c.isNum else c.mode) for c in self.cols.all]
+  return min(self.rows, key=lambda row: xdist(self,row,tmp))
 
-def div(i:DATA) -> list[float]:
-  return [(c.sd if c.isNum else ent(c.has)) for c in i.cols.all]
+def div(self:DATA) -> list[float]:
+  return [(c.sd if c.isNum else ent(c.has)) for c in self.cols.all]
 
 def read(file:str) -> DATA:
   src = csv(file)
-  i   = DATA(next(src))
-  [data(i,row) for row in src]
-  return i
+  self   = DATA(next(src))
+  [data(self,row) for row in src]
+  return self
 
-def norm(i:NUM, x) -> float: 
-  return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1/big)
+def norm(self:NUM, x) -> float: 
+  return x if x=="?" else (x - self.lo)/(self.hi - self.lo + 1/big)
 
 # -----------------------------------------------------------------------------
-def xdist(i:DATA, row1:row, row2:row) -> float:
+#   _|  o   _  _|_   _.  ._    _   _  
+#  (_|  |  _>   |_  (_|  | |  (_  (/_ 
+
+def xdist(self:DATA, row1:row, row2:row) -> float:
   def sym(_,   x,y): return x != y
   def num(num1, x,y):
     x,y = norm(num1,x), norm(num1,y)
@@ -115,26 +121,26 @@ def xdist(i:DATA, row1:row, row2:row) -> float:
     y   = y if y != "?" else (1 if x < .5 else 0)
     return abs(x - y)
   n = d = 0
-  for c in i.cols.x:
+  for c in self.cols.x:
     a,b = row1[c.at], row2[c.at]
     d  += 1 if a==b=="?" else (num if c.isNum else sym)(c,a,b)**the.p
     n  += 1
   return (d/n) ** (1/the.p)
 
-def ydist(i:DATA, row) -> float:
-  return max(abs(c.goal - norm(c, row[c.at])) for c in i.cols.y)
+def ydist(self:DATA, row) -> float:
+  return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
 
-def ydists(i:DATA) -> DATA:
-  i.rows.sort(key=lambda r: ydist(i,r))
-  return i
+def ydists(self:DATA) -> DATA:
+  self.rows.sort(key=lambda r: ydist(self,r))
+  return self
 
 class TREE(o): pass
 
-def cluster(data1:DATA, rows=None, sortp=False, all=False, maxDepth=100) -> tuple[TREE,DATA]:
-  stop   = len(rows or data1.rows)**the.end
+def cluster(self:DATA, rows=None, sortp=False, all=False, maxDepth=100) -> tuple[TREE,DATA]:
+  stop   = len(rows or self.rows)**the.end
   labels = {}
-  def Y(a)  : labels[id(a)] = a; return ydist(data1, a)
-  def X(a,b): return xdist(data1, a,b)
+  def Y(a)  : labels[id(a)] = a; return ydist(self, a)
+  def X(a,b): return xdist(self, a,b)
 
   def cut(rows, above=None):
     l,r  = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z:X(*z))
@@ -147,28 +153,32 @@ def cluster(data1:DATA, rows=None, sortp=False, all=False, maxDepth=100) -> tupl
   def nodes(rows, above=None, lvl=0, guard=None):
     if len(rows) >= stop and lvl < maxDepth:
       ls, l, rs, r = cut(rows, above)
-      data2 = DATA(data1.cols.names, rows) 
+      data2 = DATA(self.cols.names, rows) 
       return TREE(
         data  = data2, 
-        y     = ydist(data1, l),
+        y     = ydist(self, l),
         lvl   = lvl, 
         guard = guard, 
         left  = nodes(ls, l, lvl+1, lambda row: X(row,ls[-1]) <  X(row,rs[0])),
         right = nodes(rs, r, lvl+1, lambda row: X(row,ls[-1]) >= X(row,rs[0])) if all else None)
 
-  return (nodes(rows or data1.rows), # tree 
-          ydists(DATA(data1.cols.names, labels.values()))) # items labelled while making tree
+  return (nodes(rows or self.rows), # tree 
+          ydists(DATA(self.cols.names, labels.values()))) # items labelled while making tree
 
-def showTree(t:TREE) -> None:
-  if t:
-    mid1 = mid(t.data)
-    s1 = ', '.join([f"{mid1[c.at]:6.2f}"  for c in t.data.cols.y])
-    s2 = f"{'|.. ' * t.lvl}{len(t.data.rows):>4}" 
-    print(f"{t.y:.2f} | {s1:20} {s2}")
-    [showTree(t.__dict__.get(kid,None)) for kid in ["left", "right"]]
+def showTree(self:TREE) -> None:
+  if self:
+    mid1 = mid(self.data)
+    s1 = ', '.join([f"{mid1[c.at]:6.2f}"  for c in self.data.cols.y])
+    s2 = f"{'|.. ' * self.lvl}{len(self.data.rows):>4}" 
+    print(f"{self.y:.2f} | {s1:20} {s2}")
+    [showTree(self.__dict__.get(kid,None)) for kid in ["left", "right"]]
 
 # -----------------------------------------------------------------------------
-def like(i:DATA, row:row, nall:int, nh:int) -> float:
+#  |_    _.       _    _ 
+#  |_)  (_|  \/  (/_  _> 
+#            /           
+
+def like(self:DATA, row:row, nall:int, nh:int) -> float:
   def sym(sym1, x, prior):
     return (sym1.has.get(x,0) + the.m*prior) / (sym1.n + the.m)
   
@@ -178,24 +188,24 @@ def like(i:DATA, row:row, nall:int, nh:int) -> float:
     denom = (2*pi*v) ** 0.5
     return min(1, nom/(denom + 1E-32))
 
-  prior = (len(i.rows) + the.k) / (nall + the.k*nh)
-  likes = [(num if c.isNum else sym)(row[c.at], prior) for c in i.cols.x]
+  prior = (len(self.rows) + the.k) / (nall + the.k*nh)
+  likes = [(num if c.isNum else sym)(row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x>0)
 
-def acquire(i:DATA, rows:rows, labels=None, score=Callable) -> rows:
+def acquire(self:DATA, rows:rows, labels=None, score=Callable) -> rows:
   labels = labels or {}
-  def Y(a): labels[id(a)] = a; return ydist(i, a)
+  def Y(a): labels[id(a)] = a; return ydist(self, a)
 
   def guess(todo, done):
     nBest = int(len(done)**the.end)
-    nUse  = min(the.guesses,len(todo))/len(todo))
-    best  = DATA(i.cols.names, done[:nBest])
-    rest  = DATA(i.cols.names, done[nBest:])
+    nUse  = min(the.guesses,len(todo))/len(todo)
+    best  = DATA(self.cols.names, done[:nBest])
+    rest  = DATA(self.cols.names, done[nBest:])
     key   = lambda row: 0 if R() > nUse else score(like(best, row, len(done), 2), 
                                                    like(rest, row, len(done), 2))
     return sort(todo, key=key, reversed=True)
 
-  def loop(todo,done)
+  def loop(todo,done):
     while len(done) < the.Brake:
       top, *todo = guess(todo, done) 
       done += [top]
@@ -206,6 +216,9 @@ def acquire(i:DATA, rows:rows, labels=None, score=Callable) -> rows:
   return loop(rows[m:],  sorted(labels.values + rows[:m], key=Y)), labels
   
 ## -----------------------------------------------------------------------------
+#       _|_  o  |   _ 
+#  |_|   |_  |  |  _> 
+
 def ent(d:dict) -> float:
   N = sum(d.values())
   return [n/N*log(n/N,2) for n in d.values()]
@@ -243,15 +256,18 @@ def cli(d:dict) -> None:
         d[k] = coerce(sys.argv[c+1])
         if k=="seed": random.seed(d[k])
 
-# -----------------------------------------------------------------------------
-class go:
+# -----------------------------------------------------------------------------
+#  ._ _    _.  o  ._  
+#  | | |  (_|  |  | | 
+
+class main:
   def help(_): print(__doc__)
 
   def num(_):
     r = 256
     num1 = NUM()
     [col(num1, normal(10,2)) for _ in range(r)]
-    assert 9.95 < num1.mu < 10 and 2 < num1.sd < 2.05,"go.num"
+    assert 9.95 < num1.mu < 10 and 2 < num1.sd < 2.05,"main.num"
 
   def data(_):
     data1 = read(the.train)
@@ -283,7 +299,10 @@ class go:
     showTree(tree1)
 
 # -----------------------------------------------------------------------------
-the = o(**{m[1]:coerce(m[2]) for m in re.finditer(r"\n\s*-\w+\s*--(\w+).*=\s*(\S+)", __doc__)})
+#   _  _|_   _.  ._  _|_ 
+#  _>   |_  (_|  |    |_ 
+
+the = o(**{m[1]:coerce(m[2]) for m in re.finditer(r"--(\w+).*=\s*(\S+)", __doc__)})
 random.seed(the.seed)
 
 if __name__ == "__main__":
@@ -291,4 +310,4 @@ if __name__ == "__main__":
   random.seed(the.seed)
   for i,s in enumerate(sys.argv):
     if s[:2] == "--":
-      getattr(go, s[2:], lambda :print(f"no code for '{s}'"))(i)
+      getattr(main, s[2:], lambda _:print(f"'{s}' not known"))(i)
