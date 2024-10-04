@@ -1,20 +1,24 @@
 #!/usr/bin/env python3.13 -B
 """
-dismo.py : diverse sequential model optimization 
+change.py: change your mind (via diverse sequential model optimization) 
 (c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
 
 USAGE: 
-  python3 seq.py [OPTIONS]
+  chmod +x change.py
+  ./change.py [OPTIONS]
 
 OPTIONS:   
-  -e --end     float leaf cluster size                 = .5
-  -f --far     int   samples for finding far points    = 30
-  -k --k       int   low frequency Bayes hack          = 1
-  -m --m       int   low frequency Bayes hack          = 2
-  -p --p       int   distance formula exponent         = 2   
-  -s --seed    int   random number seed                = 1234567891   
-  -S --Samples int   initial samples                   = 4
-  -t --train   str   training csv file. row1 has names = ../../moot/optimize/misc/auto93.csv
+  -b --burst   initial number of samples         = 4
+  -B --Brake   maximum number of samples         = 30
+  -e --end     leaf cluster size                 = .5
+  -f --far     samples for finding far points    = 30
+  -g --guesses max guesses per loop              = 256   
+  -k --k       low frequency Bayes hack          = 1
+  -m --m       low frequency Bayes hack          = 2
+  -p --p       distance formula exponent         = 2   
+  -s --seed    random number seed                = 1234567891   
+  -S --Samples initial samples                   = 4
+  -t --train   training csv file. row1 has names = ../../moot/optimize/misc/auto93.csv
   --help print help
 """
 
@@ -178,32 +182,31 @@ def like(i:DATA, row:row, nall:int, nh:int) -> float:
 
 def acquire(i:DATA, rows:rows, labels=None, score=Callable) -> rows:
   labels = labels or {}
-  done   = labels.values()
   def Y(a): labels[id(a)] = a; return ydist(i, a)
 
   def guess(todo, done):
-    nBest = int(sqrt(len(done)))
-    nUse  = min(the.some,len(todo))/len(todo))
+    nBest = int(len(done)**the.end)
+    nUse  = min(the.guesses,len(todo))/len(todo))
     best  = DATA(i.cols.names, done[:nBest])
     rest  = DATA(i.cols.names, done[nBest:])
     key   = lambda row: 0 if R() > nUse else score(like(best, row, len(done), 2), 
                                                    like(rest, row, len(done), 2))
-    return sort(todo, key=key)
+    return sort(todo, key=key, reversed=True)
 
-  m = max(0, the.start - len(done))
-  done += rows[:m]
-  done.sort(key=Y)
-  todo = rows[m:]
-  while len(done) < the.stop:
-    top, *todo = guess(todo, done) 
-    done += [top]
-    done.sort(key=Y)
-  return done
+  def loop(todo,done)
+    while len(done) < the.Brake:
+      top, *todo = guess(todo, done) 
+      done += [top]
+      done.sort(key=Y)
+    return done
+
+  m = max(0, the.burst - len(labels.values))
+  return loop(rows[m:],  sorted(labels.values + rows[:m], key=Y)), labels
   
 ## -----------------------------------------------------------------------------
 def ent(d:dict) -> float:
- N = sum(d.values())
- return [n/N*log(n/N,2) for n in d.values()]
+  N = sum(d.values())
+  return [n/N*log(n/N,2) for n in d.values()]
 
 def say(x:any) -> str:
   if isinstance(x,float)   : return f"{x:.3f}"
@@ -223,8 +226,8 @@ def csv(file:str) -> Generator:
       if line:
         yield [coerce(s.strip()) for s in line.split(",")]
 
-def normal(mu:float,sd:float) -> float: 
-    return mu+sd*sqrt(-2*log(R())) * cos(2*pi*R())
+def normal(mu:float, sd:float) -> float: 
+  return mu + sd * sqrt(-2*log(R())) * cos(2*pi*R())
 
 def shuffle(lst:list) -> list:
   random.shuffle(lst)
