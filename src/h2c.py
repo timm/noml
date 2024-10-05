@@ -1,7 +1,8 @@
 #!/usr/bin/env python3.13 -B
+# -*-coding: utf-8 -*-
+# autopep8 -i --max-line-length 100 -a --indent-size 2 h2c.py
 # 1-(1-.35/6)^80  = 0.991
 # 1-(1-.35/6)^100 = 0.9975
-# code formatted via autopep8 -i --max-line-length 150 -a --indent-size 2 h2c.py
 
 #      .------.
 #      | H    | Bad <----.  planning= (better - bad)
@@ -20,20 +21,29 @@ SAGE:
  ./h2c.py [OPTIONS]
 
 OPTIONS:
-  -b --burst   initial number of samples      = 4
-  -B --Brake   maximum number of samples      = 30
   -e --end     leaf cluster size              = .5
   -f --far     samples for finding far points = 30
   -g --guesses max guesses per loop           = 100
   -h --help    show help                      = False
   -k --k       low frequency Bayes hack       = 1
+  -l --lives   number of tolerated failures   = 7
   -m --m       low frequency Bayes hack       = 2
   -p --p       distance formula exponent      = 2
-  -s --seed    random number seed             = 1234567891
-  -S --Samples initial samples                = 4
+  -r --rseed   random number seed             = 1234567891
+  -s --start   init number of labels          = 4
+  -S --Stop    max number of labels           = 30
   -t --train   training csv file.             = ../../moot/optimize/misc/auto93.csv
   --help print help
 """
+
+__author__ = "Tim Menzies"
+__copyright__ = "Copyright 2024, Tim Menzies"
+__credits__ = ["Dieter Rams (less, but better)"]
+__license__ = "BSD two-clause"
+__version__ = "0.6.0"
+__maintainer__ = "Tim Menzies"
+__email__ = "timm@ieee.org"
+__status__ = "work in progress"
 
 from typing import Any as any
 from typing import Union, List, Dict, Type, Callable, Generator
@@ -46,9 +56,9 @@ one = random.choice
 big = 1E32
 
 class o:
+  "Simple struct with easy init and pretty print." 
   def __init__(i, **d): i.__dict__.update(**d)
   def __repr__(i): return i.__class__.__name__ + say(i.__dict__)
-
 
 number = float | int   #
 atom = number | bool | str  # and sometimes "?"
@@ -163,7 +173,8 @@ def ydists(self: DATA) -> DATA:
 class TREE(o):
   pass
 
-def cluster(self: DATA, rows=None, sortp=False, all=False, maxDepth=100) -> tuple[TREE, DATA]:
+def cluster(self: DATA, 
+            rows=None, sortp=False, all=False, maxDepth=100) -> tuple[TREE, DATA]:
   "Recursively divide data via 2 distance points. Return all the tree or just best branch."
   stop = len(rows or self.rows)**the.end
   labels = {}
@@ -237,14 +248,14 @@ def acquire(self: DATA, rows: rows, labels=None, score=Callable) -> rows:
     return sorted(todo, key=key, reversed=True)
 
   def loop(todo, done):
-    while len(done) < the.Brake:
+    while len(done) < the.Stop:
       top, *todo = guess(todo, done)
       done += [top]
       done.sort(key=Y)
     return done
 
-  m = max(0, the.burst - len(labels.values))
-  return loop(rows[m:], sorted(labels.values + rows[:m], key=Y)), labels
+  m = max(0, the.start - len(labels.values()))
+  return labels, loop(rows[m:], sorted(rows[:m] + labels.values(), key=Y))
 
 ## -----------------------------------------------------------------------------
 #       _|_  o  |   _
@@ -255,13 +266,21 @@ def ent(d: dict) -> float:
   N = sum(d.values())
   return [n/N*log(n/N, 2) for n in d.values()]
 
-def say(x: any) -> str:
-  "Recursive pretty print of anything."
-  if isinstance(x, float)   : return f"{x:.3f}"
-  if isinstance(x, list )   : return "["+', '.join([say(y) for y in x])+"]"
-  if not isinstance(x, dict): return str(x)
-  return "(" + ' '.join(f":{k} {say(v)}"
-                        for k, v in x.items() if not str(k)[0] == "_") + ")"
+def normal(mu: float, sd: float) -> float:
+  "Sample from a gaussian."
+  return mu + sd * sqrt(-2*log(R())) * cos(2*pi*R())
+
+def cli(d: dict) -> None:
+  "Update a dictionary from command-line flags. Maybe reset seed or exit showing help."
+  for k, v in d.items():
+    for c, arg in enumerate(sys.argv):
+      if arg == "-h":
+        sys.exit(print(__doc__ or ""))
+      if arg in ["-"+k[0], "--"+k]:
+        after = sys.argv[c+1] if c < len(sys.argv) - 1 else "" 
+        d[k] = coerce("False" if v=="True" else ("True" if v=="False" else after))
+  if seed := d.get("rseed",None): random.seed(seed)
+  if d.get("help",None): sys.exit(print(__doc__))
 
 def coerce(s: str) -> atom:
   "Turn a string into an int,float,bool or string."
@@ -276,27 +295,18 @@ def csv(file: str) -> Generator:
       if line:
         yield [coerce(s.strip()) for s in line.split(",")]
 
-def normal(mu: float, sd: float) -> float:
-  "Sample from a gaussian."
-  return mu + sd * sqrt(-2*log(R())) * cos(2*pi*R())
+def say(x: any) -> str:
+  "Recursive pretty print of anything."
+  if isinstance(x, float)   : return f"{x:.3f}"
+  if isinstance(x, list )   : return "["+', '.join([say(y) for y in x])+"]"
+  if not isinstance(x, dict): return str(x)
+  return "(" + ' '.join(f":{k} {say(v)}"
+                        for k, v in x.items() if not str(k)[0] == "_") + ")"
 
 def shuffle(lst: list) -> list:
   "Randomize order of a list. Return that list."
   random.shuffle(lst)
   return lst
-
-def cli(d: dict) -> None:
-  "Update a dictionary from command-line flags."
-  for k, v in d.items():
-    for c, arg in enumerate(sys.argv):
-      if arg == "-h":
-        sys.exit(print(__doc__ or ""))
-      if arg in ["-"+k[0], "--"+k]:
-        after = sys.argv[c+1] if c < len(sys.argv) - 1 else "" 
-        v = "False" if v=="True" else ("True" if v=="False" else after)
-        d[k] = coerce(v)
-        if k == "seed": random.seed(d[k])
-  if d.get("help",False): sys.exit(print(__doc__))
 
 # -----------------------------------------------------------------------------
 #  ._ _    _.  o  ._
@@ -304,6 +314,7 @@ def cli(d: dict) -> None:
 
 class main:
   "Each method here can be called from command line via --method."
+  def the(_): print(the)
   def num(_):
     r = 256
     num1 = NUM()
@@ -346,7 +357,7 @@ class main:
 #  _>   |_  (_|  |    |_
 
 the = o(**{m[1]: coerce(m[2]) for m in re.finditer(r"--(\w+).*=\s*(\S+)", __doc__)})
-random.seed(the.seed)
+random.seed(the.rseed)
 
 if __name__ == "__main__":
   cli(the.__dict__)
