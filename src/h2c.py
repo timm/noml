@@ -13,12 +13,12 @@
 #            .------.    
 
 """
-h2c.py: how to change your mind (via diverse sequential model optimization)
-c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
+h2c.py: how to change your mind (via diversity sampling, then TPE with Naive Bayes)
+(c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
 
-SAGE:
- chmod +x h2c.py
- ./h2c.py [OPTIONS]
+USAGE:
+  chmod +x h2c.py
+  ./h2c.py [OPTIONS]
 
 OPTIONS:
   -e --end     leaf cluster size              = .5
@@ -38,7 +38,7 @@ OPTIONS:
 
 __author__ = "Tim Menzies"
 __copyright__ = "Copyright 2024, Tim Menzies"
-__credits__ = ["Dieter Rams (less, but better)"]
+__influences = ["Dieter Rams (less, but better)"]
 __license__ = "BSD two-clause"
 __version__ = "0.6.0"
 __maintainer__ = "Tim Menzies"
