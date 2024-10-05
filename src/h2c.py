@@ -11,17 +11,18 @@ USAGE:
   ./h2c.py [OPTIONS]
 
 OPTIONS:
-  -b --burst   initial number of samples         = 4
-  -B --Brake   maximum number of samples         = 30
-  -e --end     leaf cluster size                 = .5
-  -f --far     samples for finding far points    = 30
-  -g --guesses max guesses per loop              = 100
-  -k --k       low frequency Bayes hack          = 1
-  -m --m       low frequency Bayes hack          = 2
-  -p --p       distance formula exponent         = 2
-  -s --seed    random number seed                = 1234567891
-  -S --Samples initial samples                   = 4
-  -t --train   training csv file. row1 has names = ../../moot/optimize/misc/auto93.csv
+  -b --burst   initial number of samples      = 4
+  -B --Brake   maximum number of samples      = 30
+  -e --end     leaf cluster size              = .5
+  -f --far     samples for finding far points = 30
+  -g --guesses max guesses per loop           = 100
+  -h --help    show help                      = False
+  -k --k       low frequency Bayes hack       = 1
+  -m --m       low frequency Bayes hack       = 2
+  -p --p       distance formula exponent      = 2
+  -s --seed    random number seed             = 1234567891
+  -S --Samples initial samples                = 4
+  -t --train   training csv file.             = ../../moot/optimize/misc/auto93.csv
   --help print help
 """
 
@@ -54,14 +55,17 @@ DATA, COLS, TREE = o, o, o
 #  (_|  (_|   |_  (_|
 
 def SYM(at=0, name=" ") -> SYM:
+  "SYMs track symbol counts and mode of a stream of symbols."
   return o(isNum=False, at=at, name=name, n=0,
-           most=0, mode=None, has={})
+           most=0, mode=None, counts={})
 
 def NUM(at=0, name=" ") -> NUM:
+  "NUMs track mean, sd, lo and hi of a stream of numbers."
   return o(isNum=True, at=at, name=name, n=0,
            mu=0, m2=0, sd=0, lo=big, hi=-big, goal=0 if name[-1] == "-" else 1)
 
 def COLS(names: list[str]) -> COLS:
+  "Turn a list of names into NUMs and SYMs."
   all, x, y = [], [], []
   for at, name in enumerate(names):
     a, z = name[0], name[-1]
@@ -72,15 +76,18 @@ def COLS(names: list[str]) -> COLS:
   return o(names=names, all=all, x=x, y=y)
 
 def DATA(names: list[str], src: list | Generator = None) -> DATA:
+  "DATAs hold rows of data, summarized in columns."
   data1 = o(rows=[], cols=COLS(names))
   [data(data1, row) for row in src or []]
   return data1
 
 def data(self: DATA, row) -> None:
+  "Update a DATA with one row."
   self.rows += [row]
   [col(c, row[c.at]) for c in self.cols.all]
 
 def col(self: COL, x) -> None:
+  "Update a NUM or SYM with one more item."
   if x == "?" : return
   self.n += 1
   if self.isNum:
@@ -91,24 +98,28 @@ def col(self: COL, x) -> None:
     self.m2 += d * (x - self.mu)
     self.sd = 0 if self.n < 2 else (self.m2/(self.n - 1))**.5
   else:
-    tmp = self.has[x] = 1 + self.has.get(x, 0)
+    tmp = self.counts[x] = 1 + self.counts.get(x, 0)
     if tmp > self.most:
       self.most, self.mode = tmp, x
 
 def mid(self: DATA) -> row:
+  "Return the row closest to the moiddle of a DATA."
   tmp = [(c.mu if c.isNum else c.mode) for c in self.cols.all]
   return min(self.rows, key=lambda row: xdist(self, row, tmp))
 
 def div(self: DATA) -> list[float]:
-  return [(c.sd if c.isNum else ent(c.has)) for c in self.cols.all]
+  "Return standard deviation or entropy of each column."
+  return [(c.sd if c.isNum else ent(c.counts)) for c in self.cols.all]
 
 def read(file: str) -> DATA:
+  "Load in a csv file into a new DATA."
   src = csv(file)
   self = DATA(next(src))
   [data(self, row) for row in src]
   return self
 
 def norm(self: NUM, x) -> float:
+  "Normalize a number into the ranoge 0..1 for min..max."
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
 
 # -----------------------------------------------------------------------------
@@ -116,6 +127,7 @@ def norm(self: NUM, x) -> float:
 #  (_|  |  _>   |_  (_|  | |  (_  (/_
 
 def xdist(self: DATA, row1: row, row2: row) -> float:
+  "Minkowski distance between independent columns of two rows."
   def sym(_, x, y): return x != y
 
   def num(num1, x, y):
@@ -131,9 +143,11 @@ def xdist(self: DATA, row1: row, row2: row) -> float:
   return (d/n) ** (1/the.p)
 
 def ydist(self: DATA, row) -> float:
+  "Chebyshev distance dependent columns to best possible dependent values."
   return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
 
 def ydists(self: DATA) -> DATA:
+  "Short all rows by Chebyshev, best rows appear at lower values."
   self.rows.sort(key=lambda r: ydist(self, r))
   return self
 
@@ -141,6 +155,7 @@ class TREE(o):
   pass
 
 def cluster(self: DATA, rows=None, sortp=False, all=False, maxDepth=100) -> tuple[TREE, DATA]:
+  "Recursively divide data via 2 distance points. Return all the tree or just best branch."
   stop = len(rows or self.rows)**the.end
   labels = {}
   def Y(a)  : labels[id(a)] = a; return ydist(self, a)
@@ -159,17 +174,18 @@ def cluster(self: DATA, rows=None, sortp=False, all=False, maxDepth=100) -> tupl
       ls, l, rs, r = cut(rows, above)
       data2 = DATA(self.cols.names, rows)
       return TREE(
-         data=data2,
-         y=ydist(self, l),
-         lvl=lvl,
-         guard=guard,
-         left=nodes(ls, l, lvl+1, lambda row: X(row, ls[-1]) < X(row, rs[0])),
-         right=nodes(rs, r, lvl+1, lambda row: X(row, ls[-1]) >= X(row, rs[0])) if all else None)
+        data=data2,
+        y=ydist(self, l),
+        lvl=lvl,
+        guard=guard,
+        left=nodes(ls, l, lvl+1, lambda row: X(row, ls[-1]) < X(row, rs[0])),
+        right=nodes(rs, r, lvl+1, lambda row: X(row, ls[-1]) >= X(row, rs[0])) if all else None)
 
   return (nodes(rows or self.rows),  # tree
           ydists(DATA(self.cols.names, labels.values())))  # items labelled while making tree
 
 def showTree(self: TREE) -> None:
+  "Display tree."
   if self:
     mid1 = mid(self.data)
     s1 = ', '.join([f"{mid1[c.at]:6.2f}" for c in self.data.cols.y])
@@ -183,8 +199,9 @@ def showTree(self: TREE) -> None:
 #            /
 
 def like(self: DATA, row: row, nall: int, nh: int) -> float:
+  "Compute likelihood that row belongs to a DATA."
   def sym(sym1, x, prior):
-    return (sym1.has.get(x, 0) + the.m*prior) / (sym1.n + the.m)
+    return (sym1.counts.get(x, 0) + the.m*prior) / (sym1.n + the.m)
 
   def num(num1, x, _):
     v = num1.sd**2 + 1E-30
@@ -197,6 +214,7 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
   return sum(log(x) for x in likes + [prior] if x > 0)
 
 def acquire(self: DATA, rows: rows, labels=None, score=Callable) -> rows:
+  "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
 
@@ -224,10 +242,12 @@ def acquire(self: DATA, rows: rows, labels=None, score=Callable) -> rows:
 #  |_|   |_  |  |  _>
 
 def ent(d: dict) -> float:
+  "Return entropy of some symbol counts."
   N = sum(d.values())
   return [n/N*log(n/N, 2) for n in d.values()]
 
 def say(x: any) -> str:
+  "Recursive pretty print of anything."
   if isinstance(x, float)   : return f"{x:.3f}"
   if isinstance(x, list )   : return "["+', '.join([say(y) for y in x])+"]"
   if not isinstance(x, dict): return str(x)
@@ -235,12 +255,12 @@ def say(x: any) -> str:
                         for k, v in x.items() if not str(k)[0] == "_") + ")"
 
 def coerce(s: str) -> atom:
-  try:
-    return ast.literal_eval(s)
-  except Exception:
-    return s
+  "Turn a string into an int,float,bool or string."
+  try: return ast.literal_eval(s)
+  except Exception: return s
 
 def csv(file: str) -> Generator:
+  "Interator. Return comma seperated values as rows."
   with file_or_stdin(None if file == "−" else file) as src:
     for line in src:
       line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
@@ -248,29 +268,33 @@ def csv(file: str) -> Generator:
         yield [coerce(s.strip()) for s in line.split(",")]
 
 def normal(mu: float, sd: float) -> float:
+  "Sample from a gaussian."
   return mu + sd * sqrt(-2*log(R())) * cos(2*pi*R())
 
 def shuffle(lst: list) -> list:
+  "Randomize order of a list. Return that list."
   random.shuffle(lst)
   return lst
 
 def cli(d: dict) -> None:
+  "Update a dictionary from command-line flags."
   for k, v in d.items():
     for c, arg in enumerate(sys.argv):
       if arg == "-h":
         sys.exit(print(__doc__ or ""))
       if arg in ["-"+k[0], "--"+k]:
-        d[k] = coerce(sys.argv[c+1])
-        if k == "seed":
-          random.seed(d[k])
+        after = sys.argv[c+1] if c < len(sys.argv) - 1 else "" 
+        v = "False" if v=="True" else ("True" if v=="False" else after)
+        d[k] = coerce(v)
+        if k == "seed": random.seed(d[k])
+  if d.get("help",False): sys.exit(print(__help__))
 
 # -----------------------------------------------------------------------------
 #  ._ _    _.  o  ._
 #  | | |  (_|  |  | |
 
 class main:
-  def help(_): print(__doc__)
-
+  "Each method here can be called from command line via --method."
   def num(_):
     r = 256
     num1 = NUM()
@@ -317,7 +341,6 @@ random.seed(the.seed)
 
 if __name__ == "__main__":
   cli(the.__dict__)
-  random.seed(the.seed)
   for i, s in enumerate(sys.argv):
     if s[:2] == "--":
       getattr(main, s[2:], lambda _: print(f"'{s}' not known"))(i)
