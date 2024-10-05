@@ -4,13 +4,13 @@
 # 1-(1-.35/6)^80  = 0.991
 # 1-(1-.35/6)^100 = 0.9975
 
-#      .------.
-#      | H    | Bad <----.  planning= (better - bad)
-#      |    1 |          |  monitor = (bad - better)
-#      .------.------.   |
-#              | C   |   v
-#              |   6 | Better
-#              .-----.
+#                   .------.
+#      .---->  Best | B    | 
+#      |            |    5 |
+#      |     .------.------.
+#      v     | R    |      
+#      Rest  |   75 |     
+#            .------.    
 
 """
 h2c.py: how to change your mind (via diverse sequential model optimization)
@@ -56,18 +56,19 @@ one = random.choice
 big = 1E32
 
 class o:
-  "Simple struct with easy init and pretty print." 
+  "Simple struct. Supports easy init and pretty print." 
   def __init__(i, **d): i.__dict__.update(**d)
   def __repr__(i): return i.__class__.__name__ + say(i.__dict__)
+
+DATA, COLS, TREE = o, o, o
+NUM, SYM = o, o
+COL = NUM | SYM
 
 number = float | int   #
 atom = number | bool | str  # and sometimes "?"
 row = list[atom]
 rows = list[row]
 classes = dict[str, rows]  # `str` is the class name
-NUM, SYM = o, o
-COL = NUM | SYM
-DATA, COLS, TREE = o, o, o
 
 # -----------------------------------------------------------------------------
 #   _|   _.  _|_   _.
