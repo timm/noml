@@ -2,13 +2,22 @@
 # 1-(1-.35/6)^80  = 0.991
 # 1-(1-.35/6)^100 = 0.9975
 # code formatted via autopep8 -i --max-line-length 150 -a --indent-size 2 h2c.py
+
+#      .------.
+#      | H    | Bad <----.  planning= (better - bad)
+#      |    1 |          |  monitor = (bad - better)
+#      .------.------.   |
+#              | C   |   v
+#              |   6 | Better
+#              .-----.
+
 """
 h2c.py: how to change your mind (via diverse sequential model optimization)
-(c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
+c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
 
-USAGE:
-  chmod +x h2c.py
-  ./h2c.py [OPTIONS]
+SAGE:
+ chmod +x h2c.py
+ ./h2c.py [OPTIONS]
 
 OPTIONS:
   -b --burst   initial number of samples      = 4
@@ -29,7 +38,7 @@ OPTIONS:
 from typing import Any as any
 from typing import Union, List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
-from math import sqrt, log, cos, pi
+from math import sqrt, exp, log, cos, pi
 import random, sys, ast, re
 
 R = random.random
@@ -103,7 +112,7 @@ def col(self: COL, x) -> None:
       self.most, self.mode = tmp, x
 
 def mid(self: DATA) -> row:
-  "Return the row closest to the moiddle of a DATA."
+  "Return the row closest to the middle of a DATA."
   tmp = [(c.mu if c.isNum else c.mode) for c in self.cols.all]
   return min(self.rows, key=lambda row: xdist(self, row, tmp))
 
@@ -119,7 +128,7 @@ def read(file: str) -> DATA:
   return self
 
 def norm(self: NUM, x) -> float:
-  "Normalize a number into the ranoge 0..1 for min..max."
+  "Normalize a number to the range 0..1 for min..max."
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
 
 # -----------------------------------------------------------------------------
@@ -225,7 +234,7 @@ def acquire(self: DATA, rows: rows, labels=None, score=Callable) -> rows:
     rest = DATA(self.cols.names, done[nBest:])
     def key(row): return 0 if R() > nUse else score(like(best, row, len(done), 2),
                                                     like(rest, row, len(done), 2))
-    return sort(todo, key=key, reversed=True)
+    return sorted(todo, key=key, reversed=True)
 
   def loop(todo, done):
     while len(done) < the.Brake:
@@ -260,7 +269,7 @@ def coerce(s: str) -> atom:
   except Exception: return s
 
 def csv(file: str) -> Generator:
-  "Interator. Return comma seperated values as rows."
+  "Iterator. Return comma separated  values as rows."
   with file_or_stdin(None if file == "−" else file) as src:
     for line in src:
       line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
@@ -287,7 +296,7 @@ def cli(d: dict) -> None:
         v = "False" if v=="True" else ("True" if v=="False" else after)
         d[k] = coerce(v)
         if k == "seed": random.seed(d[k])
-  if d.get("help",False): sys.exit(print(__help__))
+  if d.get("help",False): sys.exit(print(__doc__))
 
 # -----------------------------------------------------------------------------
 #  ._ _    _.  o  ._
