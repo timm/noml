@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.13 -B
+# vim: set et ts=2 sw=2 :
 # -*-coding: utf-8 -*-
 # autopep8 -i --max-line-length 100 -a --indent-size 2 h2c.py
 # 1-(1-.35/6)^80  = 0.991
@@ -86,7 +87,7 @@ def SYM(**d) -> SYM:
 def NUM(**d) -> NUM:
   "NUMs track mean `mu`, `sd`, `lo` and `hi` of a stream of numbers."
   return COL(**d) | dict(isNum=True, mu=0, m2=0, sd=0, lo=big, hi=-big, 
-                          goal=0 if d["name"][-1] == "-" else 1)
+                          goal=0 if d.get("name"," ")[-1] == "-" else 1)
 
 def COLS(names: list[str]) -> COLS:
   "Turn a list of `names` into NUMs and SYMs."
@@ -244,7 +245,7 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
   likes = [(num if c.isNum else sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows: rows, labels=None, score=Callable) -> rows:
+def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> rows:
   "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
@@ -256,17 +257,24 @@ def acquire(self: DATA, rows: rows, labels=None, score=Callable) -> rows:
     rest = DATA(self.cols.names, done[nBest:])
     def key(row): return 0 if R() > nUse else score(like(best, row, len(done), 2),
                                                     like(rest, row, len(done), 2))
-    return sorted(todo, key=key, reversed=True)
+    return sorted(todo, key=key, reverse=True)
 
   def loop(todo, done):
-    while len(done) < the.Stop:
+    lives, most = 4,-1
+    while len(done) < the.Stop and lives>0:
       top, *todo = guess(todo, done)
       done += [top]
+      if ydist(self,top) > most: 
+         most=ydist(self,top)
+         lives += 4
+      else:
+         lives -= 1
       done.sort(key=Y)
     return done
 
-  m = max(0, the.start - len(labels.values()))
-  return labels, loop(rows[m:], sorted(rows[:m] + labels.values(), key=Y))
+  b4 = list(labels.values())
+  m = max(0, the.start - len(b4))
+  return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
 
 ## -----------------------------------------------------------------------------
 #       _|_  o  |   _
@@ -373,6 +381,16 @@ class main:
     data1 = read(the.train)
     tree1, _ = cluster(data1, sortp=True, all=True, maxDepth=4)
     showTree(tree1)
+
+  def acquire(_):
+    data1 = ydists(read(the.train))
+    num1,num2 = NUM(),NUM()
+    [col(num1,ydist(data1,row)) for row in data1.rows]
+    for _ in range(20):
+      labels, rows = acquire(data1, shuffle(data1.rows))
+      print(len(rows), end=" ")
+      col(num2, ydist(data1,rows[0]))
+    print(f"{num1.mu:.3f}, {num1.lo+.35*num1.sd:.3f} {num2.mu:.3f}")
 
 # -----------------------------------------------------------------------------
 #   _  _|_   _.  ._  _|_
