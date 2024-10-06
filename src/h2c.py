@@ -134,7 +134,7 @@ def mid(self: DATA) -> row:
 
 def div(self: DATA) -> list[float]:
   "Return standard deviation or entropy of each column."
-  return [(c.sd if c.isNum else ent(c.counts)[0]) for c in self.cols.all]
+  return [(c.sd if c.isNum else ent(c.counts)) for c in self.cols.all]
 
 def read(file: str) -> DATA:
   "Load in a csv file into a new DATA."
@@ -278,22 +278,22 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> row
 
 # must return expect tne and subtrees wth garuds
 def cuts(self:DATA, datas:classes):
-  def add(d,x,n=1): d[x] = d.get(x,0) + n; return x
-  def sub(d,x) : return add(d,x,-1)
+  def inc(d,n, x): d[x] = d.get(x,0) + n; return x
+
   def nums(num1:NUM, xys):
-    least, left, right, now = len(xys)/(6/.35), {},{},[]
+    cut, least, left, right, now = None, len(xys)/(6/.35), {},{},[]
     [add(right,y) for _,y in xys]
-    lo,_ = ent(right)
+    lo,N = ent(right, True)
     for i,(x,y) in enumerate(xys):
-      now += [add(left, sub(right,y))]
+      now += [inc(left, 1, inc(right, -1, y))]
       if least <= i < len(xys) - least and len(now) >= least:
         if x != xys[i+1][0] and now[-1] - now[0] > .35*num1.sd:
-          e1,n1 = ent(left)
-          e2,n2 = ent(right)
-          e = (n1 * e1 + n2 * e2)/(n1 + n2)
+          e1,n1 = ent(left, True)
+          e2,n2 = ent(right, True)
+          e = (n1 * e1 + n2 * e2)/N
           if e < lo:
             lo,cut,now = e,x,[]
-    if cut:
+    return lo,[cut] if cut else  big,[]
 
   def syms(_,xys):
     N,d,n = 0,{},{}
@@ -302,7 +302,7 @@ def cuts(self:DATA, datas:classes):
       add(d[x], y)
       add(n,x)
       N += 1
-    return sum(n[x]/N * ent(y)[0] for x,y in d.items()), d.keys
+    return sum(n[x]/N * ent(y) for x,y in d.items()), d.keys()
 
   all = [(c, sorted([(r[c.at],k)) for  k,d in datas.items() for r in d.rows if r[c.at] != "?"])
          for c in self.cols.x]]
@@ -314,10 +314,11 @@ def cuts(self:DATA, datas:classes):
 
 def numeric(x): return int(x) if int(x)==x else x
 
-def ent(d: dict) -> float:
+def ent(d: dict, details=False) -> tuple[float,int] | float:
   "Return entropy of some symbol counts."
   N = sum(d.values())
-  return [n/N*log(n/N, 2) for n in d.values()],N
+  e = [n/N*log(n/N, 2) for n in d.values()]
+  return e,N if details else eN
 
 def normal(mu: float, sd: float) -> float:
   "Sample from a gaussian."
