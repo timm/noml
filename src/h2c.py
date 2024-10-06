@@ -276,6 +276,22 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> row
   m = max(0, the.start - len(b4))
   return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
 
+def xx(col,rowsn) : x=row[col.at];  return -big if  x== "?" else x
+def x(col): return lambda r1,r2: xx(col,r1) < xx(col, r2)
+
+def xrows(rows, col):
+  rows.sort(key=x(col))
+  ln = len(rows)
+  m=n=0
+  for n0,row in sorted(rows):
+    x0= xx(len)row))
+    if x != "?":
+      n += 1
+      m += 1
+      if m > sqrt(rows):
+        if sqrt(rows) <= n <= ln - sqrt(ln):
+          if x != xx(col,rows[n0+1])
+
 ## -----------------------------------------------------------------------------
 #       _|_  o  |   _
 #  |_|   |_  |  |  _>
