@@ -134,7 +134,7 @@ def mid(self: DATA) -> row:
 
 def div(self: DATA) -> list[float]:
   "Return standard deviation or entropy of each column."
-  return [(c.sd if c.isNum else ent(c.counts)) for c in self.cols.all]
+  return [(c.sd if c.isNum else ent(c.counts)[0]) for c in self.cols.all]
 
 def read(file: str) -> DATA:
   "Load in a csv file into a new DATA."
@@ -279,20 +279,39 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> row
 def xx(col,rowsn) : x=row[col.at];  return -big if  x== "?" else x
 def x(col): return lambda r1,r2: xx(col,r1) < xx(col, r2)
 
-def xrows(rows, col):
-  rows.sort(key=x(col))
-  ln = len(rows)
-  m=n=0
-  for n0,row in sorted(rows):
-    x0= xx(len)row))
-    if x != "?":
-      n += 1
-      m += 1
-      if m > sqrt(rows):
-        if sqrt(rows) <= n <= ln - sqrt(ln):
-          if x != xx(col,rows[n0+1])
+# must return expect tne and subtrees wth garuds
+def cuts(self:DATA, datas:classes):
+  def add(d,x,n=1): d[x] = d.get(x,0) + n; return x
+  def sub(d,x) : return add(d,x,-1)
+  def nums(num1:NUM, xys):
+    min, least, left, right, now = big, len(xys)/(6/.35), {},{},[]
+    [add(right,y) for _,y in xys]
+    for i,(x,y) in enumerate(xys):
+      add(left, sub(right,y))
+      now += [x]
+      if least <= i < len(xys) - least and len(now) >= least:
+        if x != xys[i+1][0] and now[-1] - now[0] > .35*num1.sd:
+          n1,e1 = ent(left)
+          n2,e2 = ent(right)
+          e = (n1 * e1 + n2 * e2)/(n1 + n2)
+          if e < min:
+            min,cut,now = e,x,[]
+    if cut:
 
-## -----------------------------------------------------------------------------
+  def syms(_,xys):
+    N,d,n = 0,{},{}
+    for x,y in xys:
+      d.get[x] = d.get(x,{})
+      add(d[x], y)
+      add(n,x)
+      N += 1
+    return sum(n[x]/N * ent(y) for x,y in d.items()),d.keys
+
+  all = [(c, sorted([(r[c.at],k)) for  k,d in datas.items() for r in d.rows if r[c.at] != "?"])
+         for c in self.cols.x]]
+  cuts = {c.at: (nums if c.isNum else syms)(c,xys) for c,xys in all}
+
+# -----------------------------------------------------------------------------
 #       _|_  o  |   _
 #  |_|   |_  |  |  _>
 
@@ -301,7 +320,7 @@ def numeric(x): return int(x) if int(x)==x else x
 def ent(d: dict) -> float:
   "Return entropy of some symbol counts."
   N = sum(d.values())
-  return [n/N*log(n/N, 2) for n in d.values()]
+  return [n/N*log(n/N, 2) for n in d.values()],N
 
 def normal(mu: float, sd: float) -> float:
   "Sample from a gaussian."
