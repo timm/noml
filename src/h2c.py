@@ -43,7 +43,7 @@ __license__ = "BSD two-clause"
 __version__ = "0.6.0"
 __maintainer__ = "Tim Menzies"
 __email__ = "timm@ieee.org"
-__status__ = "work in progress"
+__status__ = "Development Status :: 3 - Alpha"
 
 from typing import Any as any
 from typing import Union, List, Dict, Type, Callable, Generator
@@ -57,11 +57,12 @@ big = 1E32
 
 class o:
   "Simple struct. Supports easy init and pretty print." 
-  def __init__(i, **d): i.__dict__.update(**d)
-  def __repr__(i): return i.__class__.__name__ + say(i.__dict__)
+  def __init__(self, **d): self.__dict__.update(**d)
+  def __or__(self,d): self.__dict__.update(**d); return self
+  def __repr__(self): return self.__class__.__name__ + say(self.__dict__)
 
 DATA, COLS, TREE = o, o, o
-NUM, SYM = o, o
+NUM, SYM  = o, o
 COL = NUM | SYM
 
 number = float | int   #
@@ -74,35 +75,38 @@ classes = dict[str, rows]  # `str` is the class name
 #   _|   _.  _|_   _.
 #  (_|  (_|   |_  (_|
 
-def SYM(at=0, name=" ") -> SYM:
-  "SYMs track symbol counts and mode of a stream of symbols."
-  return o(isNum=False, at=at, name=name, n=0,
-           most=0, mode=None, counts={})
+def COL(at=0, name=" ") -> COL:
+  "Columns know their position `at`, their `name`, and item numbers `n`."
+  return o(n=0, at=at, name=name)
 
-def NUM(at=0, name=" ") -> NUM:
-  "NUMs track mean, sd, lo and hi of a stream of numbers."
-  return o(isNum=True, at=at, name=name, n=0,
-           mu=0, m2=0, sd=0, lo=big, hi=-big, goal=0 if name[-1] == "-" else 1)
+def SYM(**d) -> SYM:
+  "SYMs track symbol `counts` and `mode` of a stream of symbols."
+  return COL(**d) | dict(isNum=False, most=0, mode=None, counts={})
+
+def NUM(**d) -> NUM:
+  "NUMs track mean `mu`, `sd`, `lo` and `hi` of a stream of numbers."
+  return COL(**d) | dict(isNum=True, mu=0, m2=0, sd=0, lo=big, hi=-big, 
+                          goal=0 if d["name"][-1] == "-" else 1)
 
 def COLS(names: list[str]) -> COLS:
-  "Turn a list of names into NUMs and SYMs."
+  "Turn a list of `names` into NUMs and SYMs."
   all, x, y = [], [], []
   for at, name in enumerate(names):
     a, z = name[0], name[-1]
-    col = (NUM if a.isupper() else SYM)(at, name)
+    col = (NUM if a.isupper() else SYM)(at=at, name=name)
     all += [col]
     if not z == "X":
       (y if z in "+-!" else x).append(col)
   return o(names=names, all=all, x=x, y=y)
 
 def DATA(names: list[str], src: list | Generator = None) -> DATA:
-  "DATAs hold rows of data, summarized in columns."
+  "DATAs hold `rows` of data, summarized in `cols` (columns)."
   data1 = o(rows=[], cols=COLS(names))
   [data(data1, row) for row in src or []]
   return data1
 
 def data(self: DATA, row) -> None:
-  "Update a DATA with one row."
+  "Update a DATA with one `row`."
   self.rows += [row]
   [col(c, row[c.at]) for c in self.cols.all]
 
@@ -171,8 +175,7 @@ def ydists(self: DATA) -> DATA:
   self.rows.sort(key=lambda r: ydist(self, r))
   return self
 
-class TREE(o):
-  pass
+class TREE(o): pass
 
 def cluster(self: DATA, 
             rows=None, sortp=False, all=False, maxDepth=100) -> tuple[TREE, DATA]:
@@ -205,14 +208,21 @@ def cluster(self: DATA,
   return (nodes(rows or self.rows),  # tree
           ydists(DATA(self.cols.names, labels.values())))  # items labelled while making tree
 
+def leaf(self: TREE, row) -> DATA:
+  "Return the data most relevant (nearest) to `row`." 
+  if self:
+    for kid in [self.left, self.right]:
+      if kid and kid.guard(row): return leaf(kid, row)
+    return self.data
+  
 def showTree(self: TREE) -> None:
   "Display tree."
   if self:
     mid1 = mid(self.data)
-    s1 = ', '.join([f"{mid1[c.at]:6.2f}" for c in self.data.cols.y])
+    s1 = ', '.join([f"{mid1[c.at]:6g}" for c in self.data.cols.y])
     s2 = f"{'|.. ' * self.lvl}{len(self.data.rows):>4}"
     print(f"{self.y:.2f} | {s1:20} {s2}")
-    [showTree(self.__dict__.get(kid, None)) for kid in ["left", "right"]]
+    [showTree(kid) for kid in [self.left, self.right] if kid]
 
 # -----------------------------------------------------------------------------
 #  |_    _.       _    _
@@ -231,7 +241,7 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
     return min(1, nom/(denom + 1E-32))
 
   prior = (len(self.rows) + the.k) / (nall + the.k*nh)
-  likes = [(num if c.isNum else sym)(row[c.at], prior) for c in self.cols.x]
+  likes = [(num if c.isNum else sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
 def acquire(self: DATA, rows: rows, labels=None, score=Callable) -> rows:
@@ -261,6 +271,8 @@ def acquire(self: DATA, rows: rows, labels=None, score=Callable) -> rows:
 ## -----------------------------------------------------------------------------
 #       _|_  o  |   _
 #  |_|   |_  |  |  _>
+
+def numeric(x): return int(x) if int(x)==x else x
 
 def ent(d: dict) -> float:
   "Return entropy of some symbol counts."
@@ -298,8 +310,9 @@ def csv(file: str) -> Generator:
 
 def say(x: any) -> str:
   "Recursive pretty print of anything."
-  if isinstance(x, float)   : return f"{x:.3f}"
-  if isinstance(x, list )   : return "["+', '.join([say(y) for y in x])+"]"
+  if isinstance(x, float): 
+    return str(x) if int(x) == x else f"{x:.3f}"
+  if isinstance(x, list ) : return "["+', '.join([say(y) for y in x])+"]"
   if not isinstance(x, dict): return str(x)
   return "(" + ' '.join(f":{k} {say(v)}"
                         for k, v in x.items() if not str(k)[0] == "_") + ")"
@@ -340,6 +353,14 @@ class main:
     for i, row in enumerate(ydists(data1).rows):
       if i % 30 == 0:
         print(f"{ydist(data1,row):.3f}", row)
+
+  def bayes(_):
+    data1 = read(the.train)
+    for i, row in enumerate(sorted(data1.rows, key=lambda r:like(data1,r,1000,2))):
+      if i % 30 == 0:
+        print(f"{like(data1,row,1000,2):.3f}", row)
+    m = mid(data1)
+    print(f"{like(data1,m,1000,2):.3f}", m)
 
   def branch(_):
     data1 = ydists(read(the.train))
