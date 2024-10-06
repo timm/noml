@@ -250,12 +250,11 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> row
   def Y(a): labels[id(a)] = a; return ydist(self, a)
 
   def guess(todo, done):
-    def key(r):
-      return 0 if R() > nUse else score(like(best, r, len(done), 2), like(rest, r, len(done), 2))
-    nBest = int(len(done)**the.end)
-    nUse = min(the.guesses, len(todo))/len(todo)
-    best = DATA(self.cols.names, done[:nBest])
-    rest = DATA(self.cols.names, done[nBest:])
+    def key(r): return 0 if R() > n4 else score(like(best, r, n1, 2), like(rest, r, n1, 2))
+    n1,n2,n3 = len(done), len(todo), int(len(done)**the.end)
+    n4       = min(the.guesses, n2) / n2
+    best     = DATA(self.cols.names, done[:n3])
+    rest     = DATA(self.cols.names, done[n3:])
     return sorted(todo, key=key, reverse=True)
 
   def loop(todo, done):
