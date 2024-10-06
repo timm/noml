@@ -1,10 +1,9 @@
 #!/usr/bin/env python3.13 -B
-# vim: set et ts=2 sw=2 :
-# -*-coding: utf-8 -*-
-# autopep8 -i --max-line-length 100 -a --indent-size 2 h2c.py
-# 1-(1-.35/6)^80  = 0.991
-# 1-(1-.35/6)^100 = 0.9975
-
+# <!-- vim: set et ts=2 sw=2 :  -->
+# -*-coding: utf-8 -*-  
+# autopep8 -i --max-line-length 100 -a --indent-size 2 h2c.py  
+# 1-(1-.35/6)^100 = 0.9975  
+#
 #                   .------.
 #      .---->  Best | B    | 
 #      |            |    5 |
@@ -12,29 +11,29 @@
 #      v     | R    |      
 #      Rest  |   75 |     
 #            .------.    
-
+#
 """
-h2c.py: how to change your mind (via diversity sampling, then TPE with Naive Bayes)
-(c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
-
-USAGE:
-  chmod +x h2c.py
-  ./h2c.py [OPTIONS]
-
-OPTIONS:
-  -e --end     leaf cluster size              = .5
-  -f --far     samples for finding far points = 30
-  -g --guesses max guesses per loop           = 100
-  -h --help    show help                      = False
-  -k --k       low frequency Bayes hack       = 1
-  -l --lives   number of tolerated failures   = 7
-  -m --m       low frequency Bayes hack       = 2
-  -p --p       distance formula exponent      = 2
-  -r --rseed   random number seed             = 1234567891
-  -s --start   init number of labels          = 4
-  -S --Stop    max number of labels           = 30
-  -t --train   training csv file.             = ../../moot/optimize/misc/auto93.csv
-  --help print help
+h2c.py: how to change your mind (via diversity sampling, then TPE with Naive Bayes)    
+(c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license  
+  
+USAGE:  
+  chmod +x h2c.py  
+  ./h2c.py [OPTIONS]  
+  
+OPTIONS:  
+  -e --end     leaf cluster size              = .5  
+  -f --far     samples for finding far points = 30  
+  -g --guesses max guesses per loop           = 100  
+  -h --help    show help                      = False  
+  -k --k       low frequency Bayes hack       = 1  
+  -l --lives   number of tolerated failures   = 7  
+  -m --m       low frequency Bayes hack       = 2  
+  -p --p       distance formula exponent      = 2  
+  -r --rseed   random number seed             = 1234567891  
+  -s --start   init number of labels          = 4  
+  -S --Stop    max number of labels           = 30  
+  -t --train   training csv file.             = ../../moot/optimize/misc/auto93.csv  
+  --help print help  
 """
 
 __author__ = "Tim Menzies"
@@ -72,10 +71,10 @@ row = list[atom]
 rows = list[row]
 classes = dict[str, rows]  # `str` is the class name
 
-# -----------------------------------------------------------------------------
+# ## Data -----------------------------------------------------------------------------
 #   _|   _.  _|_   _.
 #  (_|  (_|   |_  (_|
-
+#
 def COL(at=0, name=" ") -> COL:
   "Columns know their position `at`, their `name`, and item numbers `n`."
   return o(n=0, at=at, name=name)
@@ -251,25 +250,25 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> row
   def Y(a): labels[id(a)] = a; return ydist(self, a)
 
   def guess(todo, done):
+    def key(r):
+      return 0 if R() > nUse else score(like(best, r, len(done), 2), like(rest, r, len(done), 2))
     nBest = int(len(done)**the.end)
     nUse = min(the.guesses, len(todo))/len(todo)
     best = DATA(self.cols.names, done[:nBest])
     rest = DATA(self.cols.names, done[nBest:])
-    def key(row): return 0 if R() > nUse else score(like(best, row, len(done), 2),
-                                                    like(rest, row, len(done), 2))
     return sorted(todo, key=key, reverse=True)
 
   def loop(todo, done):
-    lives, most = 4,-1
+    lives, least = 4, big
     while len(done) < the.Stop and lives>0:
       top, *todo = guess(todo, done)
       done += [top]
-      if ydist(self,top) > most: 
-         most=ydist(self,top)
+      if ydist(self,top) < least: 
+         least = ydist(self,top)
          lives += 4
       else:
          lives -= 1
-      done.sort(key=Y)
+      done = sorted(done, key=Y)
     return done
 
   b4 = list(labels.values())
@@ -282,14 +281,14 @@ def cuts(self:DATA, datas:classes):
 
   def nums(num1:NUM, xys):
     cut, least, left, right, now = None, len(xys)/(6/.35), {},{},[]
-    [add(right,y) for _,y in xys]
-    lo,N = ent(right, True)
+    [inc(right, 1, y) for _,y in xys]
+    lo,N = ent(right, 1)
     for i,(x,y) in enumerate(xys):
       now += [inc(left, 1, inc(right, -1, y))]
       if least <= i < len(xys) - least and len(now) >= least:
         if x != xys[i+1][0] and now[-1] - now[0] > .35*num1.sd:
-          e1,n1 = ent(left, True)
-          e2,n2 = ent(right, True)
+          e1,n1 = ent(left, 1)
+          e2,n2 = ent(right, 1)
           e = (n1 * e1 + n2 * e2)/N
           if e < lo:
             lo,cut,now = e,x,[]
