@@ -140,6 +140,112 @@ def norm(self: NUM, x) -> float:
   "Normalize a number to the range 0..1 for min..max."
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
 
+# ## Bayes -----------------------------------------------------------------------------
+#  |_    _.       _    _
+#  |_)  (_|  \/  (/_  _>
+#            /
+
+def like(self: DATA, row: row, nall: int, nh: int) -> float:
+  "Compute likelihood that row belongs to a DATA."
+  def sym(sym1, x, prior):
+    return (sym1.counts.get(x, 0) + the.m*prior) / (sym1.n + the.m)
+
+  def num(num1, x, _):
+    v = num1.sd**2 + 1E-30
+    nom = exp(-1*(x - num1.mu)**2/(2*v)) + 1E-32
+    denom = (2*pi*v) ** 0.5
+    return min(1, nom/(denom + 1E-32))
+
+  prior = (len(self.rows) + the.k) / (nall + the.k*nh)
+  likes = [(num if c.isNum else sym)(c, row[c.at], prior) for c in self.cols.x]
+  return sum(log(x) for x in likes + [prior] if x > 0)
+
+def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tuple[dict,row]:
+  "From a model built so far, label next most interesting example. And repeat."
+  labels = labels or {}
+  def Y(a): labels[id(a)] = a; return ydist(self, a)
+
+  def guess(todo, done):
+    def key(r):
+      return 0 if R() > guesses else score(like(best, r, len(done), 2), like(rest, r, len(done), 2))
+    nBest   = int(len(done)**the.end)
+    guesses = min(the.guesses, len(todo)) / len(todo)
+    best    = DATA(self.cols.names, done[:nBest])
+    rest    = DATA(self.cols.names, done[nBest:])
+    return sorted(todo, key=key, reverse=True)
+
+  def loop(todo, done):
+    lives, least, out = the.lives, big, None
+    while len(done) < the.Stop and lives>0:
+      top, *todo = guess(todo, done)
+      done = sorted(done + [top], key=Y)
+      if ydist(self,done[0]) < least: 
+        least = ydist(self,done[0])
+        lives += the.lives
+      else:
+        lives -= 1
+    return done
+
+  b4 = list(labels.values())
+  m = max(0, the.start - len(b4))
+  return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
+
+# ## Utils -----------------------------------------------------------------------------
+# |          _|_  o  |   _
+# |     |_|   |_  |  |  _>
+
+def numeric(x): return int(x) if int(x)==x else x
+
+def ent(d: dict, details=False) -> tuple[float,int] | float:
+  "Return entropy of some symbol counts."
+  print(d)
+  N = sum(d.values())
+  e = -sum([n/N*log(n/N, 2) for n in d.values() if n > 0])
+  return e,N if details else e
+
+def normal(mu: float, sd: float) -> float:
+  "Sample from a gaussian."
+  return mu + sd * sqrt(-2*log(R())) * cos(2*pi*R())
+
+def cli(d: dict) -> None:
+  "Update a dictionary from command-line flags. Maybe reset seed or exit showing help."
+  for k, v in d.items():
+    for c, arg in enumerate(sys.argv):
+      if arg == "-h":
+        sys.exit(print(__doc__ or ""))
+      if arg in ["-"+k[0], "--"+k]:
+        after = sys.argv[c+1] if c < len(sys.argv) - 1 else "" 
+        d[k] = coerce("False" if v=="True" else ("True" if v=="False" else after))
+  if seed := d.get("rseed",None): random.seed(seed)
+  if d.get("help",None): sys.exit(print(__doc__))
+
+def coerce(s: str) -> atom:
+  "Turn a string into an int,float,bool or string."
+  try: return ast.literal_eval(s)
+  except Exception: return s
+
+def csv(file: str) -> Generator:
+  "Iterator. Return comma separated  values as rows."
+  with file_or_stdin(None if file == "−" else file) as src:
+    for line in src:
+      line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
+      if line:
+        yield [coerce(s.strip()) for s in line.split(",")]
+
+def say(x: any) -> str:
+  "Recursive pretty print of anything."
+  if isinstance(x, float): 
+    return str(x) if int(x) == x else f"{x:.3f}"
+  if isinstance(x, list ) : return "["+', '.join([say(y) for y in x])+"]"
+  if not isinstance(x, dict): return str(x)
+  return "(" + ' '.join(f":{k} {say(v)}"
+                        for k, v in x.items() if not str(k)[0] == "_") + ")"
+
+def shuffle(lst: list) -> list:
+  "Randomize order of a list. Return that list."
+  random.shuffle(lst)
+  return lst
+
 # ## Distance -----------------------------------------------------------------------------
 #   _|  o   _  _|_   _.  ._    _   _
 #  (_|  |  _>   |_  (_|  | |  (_  (/_
@@ -227,56 +333,6 @@ def showTree(self: TREE) -> None:
     print(f"{self.y:.2f} ({s1:20}) {s2}")
     [showTree(kid) for kid in [self.left, self.right] if kid]
 
-# ## Bayes -----------------------------------------------------------------------------
-#  |_    _.       _    _
-#  |_)  (_|  \/  (/_  _>
-#            /
-
-def like(self: DATA, row: row, nall: int, nh: int) -> float:
-  "Compute likelihood that row belongs to a DATA."
-  def sym(sym1, x, prior):
-    return (sym1.counts.get(x, 0) + the.m*prior) / (sym1.n + the.m)
-
-  def num(num1, x, _):
-    v = num1.sd**2 + 1E-30
-    nom = exp(-1*(x - num1.mu)**2/(2*v)) + 1E-32
-    denom = (2*pi*v) ** 0.5
-    return min(1, nom/(denom + 1E-32))
-
-  prior = (len(self.rows) + the.k) / (nall + the.k*nh)
-  likes = [(num if c.isNum else sym)(c, row[c.at], prior) for c in self.cols.x]
-  return sum(log(x) for x in likes + [prior] if x > 0)
-
-def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tuple[dict,row]:
-  "From a model built so far, label next most interesting example. And repeat."
-  labels = labels or {}
-  def Y(a): labels[id(a)] = a; return ydist(self, a)
-
-  def guess(todo, done):
-    def key(r):
-      return 0 if R() > guesses else score(like(best, r, len(done), 2), like(rest, r, len(done), 2))
-    nBest   = int(len(done)**the.end)
-    guesses = min(the.guesses, len(todo)) / len(todo)
-    best    = DATA(self.cols.names, done[:nBest])
-    rest    = DATA(self.cols.names, done[nBest:])
-    return sorted(todo, key=key, reverse=True)
-
-  def loop(todo, done):
-    lives, least, out = the.lives, big, None
-    while len(done) < the.Stop and lives>0:
-      top, *todo = guess(todo, done)
-      done = sorted(done + [top], key=Y)
-      if ydist(self,done[0]) < least: 
-        least = ydist(self,done[0])
-        lives += the.lives
-      else:
-        lives -= 1
-    return done
-
-  b4 = list(labels.values())
-  m = max(0, the.start - len(b4))
-  return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
-
 # ## Tree -----------------------------------------------------------------------------
 #  _|_  ._   _    _
 #   |_  |   (/_  (/_ 
@@ -315,62 +371,6 @@ def cuts(self:DATA, datas:classes):
   all = [(c, sorted([(r[c.at],k) for k,d in datas for r in d.rows if r[c.at] != "?"]))
          for c in self.cols.x]
   cuts = {c.at: (nums if c.isNum else syms)(c,xys) for c,xys in all}
-
-# ## Utils -----------------------------------------------------------------------------
-# |          _|_  o  |   _
-# |     |_|   |_  |  |  _>
-
-def numeric(x): return int(x) if int(x)==x else x
-
-def ent(d: dict, details=False) -> tuple[float,int] | float:
-  "Return entropy of some symbol counts."
-  print(d)
-  N = sum(d.values())
-  e = -sum([n/N*log(n/N, 2) for n in d.values() if n > 0])
-  return e,N if details else e
-
-def normal(mu: float, sd: float) -> float:
-  "Sample from a gaussian."
-  return mu + sd * sqrt(-2*log(R())) * cos(2*pi*R())
-
-def cli(d: dict) -> None:
-  "Update a dictionary from command-line flags. Maybe reset seed or exit showing help."
-  for k, v in d.items():
-    for c, arg in enumerate(sys.argv):
-      if arg == "-h":
-        sys.exit(print(__doc__ or ""))
-      if arg in ["-"+k[0], "--"+k]:
-        after = sys.argv[c+1] if c < len(sys.argv) - 1 else "" 
-        d[k] = coerce("False" if v=="True" else ("True" if v=="False" else after))
-  if seed := d.get("rseed",None): random.seed(seed)
-  if d.get("help",None): sys.exit(print(__doc__))
-
-def coerce(s: str) -> atom:
-  "Turn a string into an int,float,bool or string."
-  try: return ast.literal_eval(s)
-  except Exception: return s
-
-def csv(file: str) -> Generator:
-  "Iterator. Return comma separated  values as rows."
-  with file_or_stdin(None if file == "−" else file) as src:
-    for line in src:
-      line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
-      if line:
-        yield [coerce(s.strip()) for s in line.split(",")]
-
-def say(x: any) -> str:
-  "Recursive pretty print of anything."
-  if isinstance(x, float): 
-    return str(x) if int(x) == x else f"{x:.3f}"
-  if isinstance(x, list ) : return "["+', '.join([say(y) for y in x])+"]"
-  if not isinstance(x, dict): return str(x)
-  return "(" + ' '.join(f":{k} {say(v)}"
-                        for k, v in x.items() if not str(k)[0] == "_") + ")"
-
-def shuffle(lst: list) -> list:
-  "Randomize order of a list. Return that list."
-  random.shuffle(lst)
-  return lst
 
 # ## Main -----------------------------------------------------------------------------
 #  ._ _    _.  o  ._
