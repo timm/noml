@@ -263,13 +263,13 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tup
     while len(done) < the.Stop and lives>0:
       top, *todo = guess(todo, done)
       done += [top]
-      if ydist(self,top) < least: 
-         least, out = ydist(self,top), top
+      done = sorted(done, key=Y)
+      if ydist(self,done[0]) < least: 
+         least=  ydist(self,done[0])
          lives += the.lives
       else:
          lives -= 1
-      done = sorted(done, key=Y)
-    return out
+    return done
 
   b4 = list(labels.values())
   m = max(0, the.start - len(b4))
@@ -423,10 +423,10 @@ class main:
     for the.lives in [2,4,6,8,10,the.Stop]:
       toBe,samples = NUM(),NUM()
       for _ in range(20):
-        labels, best = acquire(data1, shuffle(data1.rows))
+        labels, rows = acquire(data1, shuffle(data1.rows))
         col(samples, len(labels.values()))
-        col(toBe, ydist(data1,best))
-      better = (asIs.mu - toBe.mu)/toBe.sd
+        col(toBe, ydist(data1,rows[0]))
+      better = (asIs.mu - toBe.mu)/asIs.sd
       print(f"{the.lives:3} :labels {samples.mu:3.1f} :asIs {asIs.mu:.3f} :delta {better:.3f}")
 
 # -----------------------------------------------------------------------------
