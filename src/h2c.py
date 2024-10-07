@@ -299,15 +299,17 @@ def cuts(self:DATA, datas:classes):
         if x != xys[i+1][0] and now[-1] - now[0] > the.cohen*num1.sd:
           e1,n1 = ent(left, 1)
           e2,n2 = ent(right, 1)
+          print("e1",e1,e2,n1,n2,least)
           e = (n1 * e1 + n2 * e2)/N
           if e < lo:
+            print(x, num1.name)
             lo,cut,now = e,x,[]
     return lo,[cut] if cut else  big,[]
 
   def syms(_,xys):
     N,d,n = 0,{},{}
     for x,y in xys:
-      d.get[x] = d.get(x,{})
+      d[x] = d.get(x,{})
       add(d[x], y)
       add(n,x)
       N += 1
@@ -325,8 +327,9 @@ def numeric(x): return int(x) if int(x)==x else x
 
 def ent(d: dict, details=False) -> tuple[float,int] | float:
   "Return entropy of some symbol counts."
+  print(d)
   N = sum(d.values())
-  e = [n/N*log(n/N, 2) for n in d.values()]
+  e = -sum([n/N*log(n/N, 2) for n in d.values() if n > 0])
   return e,N if details else e
 
 def normal(mu: float, sd: float) -> float:
