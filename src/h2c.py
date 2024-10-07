@@ -21,12 +21,13 @@ USAGE:
   ./h2c.py [OPTIONS]  
   
 OPTIONS:  
+  -c --cohen   size of 'near enough'          = .35
   -e --end     leaf cluster size              = .5  
   -f --far     samples for finding far points = 30  
   -g --guesses max guesses per loop           = 100  
   -h --help    show help                      = False  
   -k --k       low frequency Bayes hack       = 1  
-  -l --lives   number of tolerated failures   = 7  
+  -l --lives   number of tolerated failures   = 4  
   -m --m       low frequency Bayes hack       = 2  
   -p --p       distance formula exponent      = 2  
   -r --rseed   random number seed             = 1234567891  
@@ -219,9 +220,9 @@ def showTree(self: TREE) -> None:
   "Display tree."
   if self:
     mid1 = mid(self.data)
-    s1 = ', '.join([f"{mid1[c.at]:6g}" for c in self.data.cols.y])
+    s1 = ' '.join([f"{mid1[c.at]:6g}" for c in self.data.cols.y])
     s2 = f"{'|.. ' * self.lvl}{len(self.data.rows):>4}"
-    print(f"{self.y:.2f} | {s1:20} {s2}")
+    print(f"{self.y:.2f} ({s1:20}) {s2}")
     [showTree(kid) for kid in [self.left, self.right] if kid]
 
 # -----------------------------------------------------------------------------
@@ -244,7 +245,7 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
   likes = [(num if c.isNum else sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> rows:
+def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tuple[dict,row]:
   "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
@@ -258,54 +259,56 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> row
     return sorted(todo, key=key, reverse=True)
 
   def loop(todo, done):
-    lives, least = 4, big
+    lives, least, out = the.lives, big, None
     while len(done) < the.Stop and lives>0:
       top, *todo = guess(todo, done)
       done += [top]
       if ydist(self,top) < least: 
-         least = ydist(self,top)
-         lives += 4
+         least, out = ydist(self,top), top
+         lives += the.lives
       else:
          lives -= 1
       done = sorted(done, key=Y)
-    return done
+    return out
 
   b4 = list(labels.values())
   m = max(0, the.start - len(b4))
   return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
 
-# must return expect tne and subtrees wth garuds
-def cuts(self:DATA, datas:classes):
-  def inc(d,n, x): d[x] = d.get(x,0) + n; return x
-
-  def nums(num1:NUM, xys):
-    cut, least, left, right, now = None, len(xys)/(6/.35), {},{},[]
-    [inc(right, 1, y) for _,y in xys]
-    lo,N = ent(right, 1)
-    for i,(x,y) in enumerate(xys):
-      now += [inc(left, 1, inc(right, -1, y))]
-      if least <= i < len(xys) - least and len(now) >= least:
-        if x != xys[i+1][0] and now[-1] - now[0] > .35*num1.sd:
-          e1,n1 = ent(left, 1)
-          e2,n2 = ent(right, 1)
-          e = (n1 * e1 + n2 * e2)/N
-          if e < lo:
-            lo,cut,now = e,x,[]
-    return lo,[cut] if cut else  big,[]
-
-  def syms(_,xys):
-    N,d,n = 0,{},{}
-    for x,y in xys:
-      d.get[x] = d.get(x,{})
-      add(d[x], y)
-      add(n,x)
-      N += 1
-    return sum(n[x]/N * ent(y) for x,y in d.items()), d.keys()
-
-  all = [(c, sorted([(r[c.at],k)) for  k,d in datas.items() for r in d.rows if r[c.at] != "?"])
-         for c in self.cols.x]]
-  cuts = {c.at: (nums if c.isNum else syms)(c,xys) for c,xys in all}
-
+# # must return expect tne and subtrees wth guards
+# def cuts(self:DATA, datas:classes):
+#   def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
+#   def sub(d, x)     : return add(d,x,-1) 
+#
+#   def nums(num1:NUM, xys):
+#     least = len(xys)/(6/the.cohen)
+#     cut, left, right, now = None, {},{},[]
+#     [add(right, y) for _,y in xys]
+#     lo,N = ent(right, 1)
+#     for i,(x,y) in enumerate(xys):
+#       now += [add(left, sub(right, y))]
+#       if least <= i < len(xys) - least and len(now) >= least:
+#         if x != xys[i+1][0] and now[-1] - now[0] > the.cohen*num1.sd:
+#           e1,n1 = ent(left, 1)
+#           e2,n2 = ent(right, 1)
+#           e = (n1 * e1 + n2 * e2)/N
+#           if e < lo:
+#             lo,cut,now = e,x,[]:1
+#     return lo,[cut] if cut else  big,[]
+#
+#   def syms(_,xys):
+#     N,d,n = 0,{},{}
+#     for x,y in xys:
+#       d.get[x] = d.get(x,{})
+#       add(d[x], y)
+#       add(n,x)
+#       N += 1
+#     return sum(n[x]/N * ent(y) for x,y in d.items()), d.keys()
+#
+#   all = [(c, sorted([(r[c.at],k)) for  k,d in datas.items() for r in d.rows if r[c.at] != "?"])
+#          for c in self.cols.x]]
+#   cuts = {c.at: (nums if c.isNum else syms)(c,xys) for c,xys in all}
+#
 # -----------------------------------------------------------------------------
 #       _|_  o  |   _
 #  |_|   |_  |  |  _>
@@ -316,7 +319,7 @@ def ent(d: dict, details=False) -> tuple[float,int] | float:
   "Return entropy of some symbol counts."
   N = sum(d.values())
   e = [n/N*log(n/N, 2) for n in d.values()]
-  return e,N if details else eN
+  return e,N if details else e
 
 def normal(mu: float, sd: float) -> float:
   "Sample from a gaussian."
@@ -415,13 +418,16 @@ class main:
 
   def acquire(_):
     data1 = ydists(read(the.train))
-    num1,num2 = NUM(),NUM()
-    [col(num1,ydist(data1,row)) for row in data1.rows]
-    for _ in range(20):
-      labels, rows = acquire(data1, shuffle(data1.rows))
-      print(len(rows), end=" ")
-      col(num2, ydist(data1,rows[0]))
-    print(f"{num1.mu:.3f}, {num1.lo+.35*num1.sd:.3f} {num2.mu:.3f}")
+    asIs = NUM()
+    [col(asIs,ydist(data1,row)) for row in data1.rows]
+    for the.lives in [2,4,6,8,10,the.Stop]:
+      toBe,samples = NUM(),NUM()
+      for _ in range(20):
+        labels, best = acquire(data1, shuffle(data1.rows))
+        col(samples, len(labels.values()))
+        col(toBe, ydist(data1,best))
+      better = (asIs.mu - toBe.mu)/toBe.sd
+      print(f"{the.lives:3} :labels {samples.mu:3.1f} :asIs {asIs.mu:.3f} :delta {better:.3f}")
 
 # -----------------------------------------------------------------------------
 #   _  _|_   _.  ._  _|_
