@@ -3,15 +3,7 @@
 # -*-coding: utf-8 -*-  
 # autopep8 -i --max-line-length 100 -a --indent-size 2 h2c.py  
 # 1-(1-.35/6)^100 = 0.9975  
-#
-#                   .------.
-#      .---->  Best | B    | 
-#      |            |    5 |
-#      |     .------.------.
-#      v     | R    |      
-#      Rest  |   75 |     
-#            .------.    
-#
+
 """
 h2c.py: how to change your mind (via diversity sampling, then TPE with Naive Bayes)    
 (c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license  
@@ -72,7 +64,7 @@ row = list[atom]
 rows = list[row]
 classes = dict[str, rows]  # `str` is the class name
 
-# ## Data -----------------------------------------------------------------------------
+#  -----------------------------------------------------------------------------
 #   _|   _.  _|_   _.
 #  (_|  (_|   |_  (_|
 #
@@ -283,7 +275,10 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tup
   m = max(0, the.start - len(b4))
   return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
 
-# # must return expect tne and subtrees wth guards
+# -----------------------------------------------------------------------------
+#  _|_  ._   _    _  
+#   |_  |   (/_  (/_ 
+#                    
 def cuts(self:DATA, datas:classes):
   def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
   def sub(d, x)     : return add(d,x,-1) 
