@@ -5,7 +5,8 @@
 # 1-(1-.35/6)^100 = 0.9975  
 
 """
-h2c.py: how to change your mind (via diversity sampling, then TPE with Naive Bayes)    
+h2c.py: How 2 Change your mind  
+(via diversity sampling, then TPE with Naive Bayes)    
 (c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license  
   
 USAGE:  
@@ -64,10 +65,10 @@ row = list[atom]
 rows = list[row]
 classes = dict[str, rows]  # `str` is the class name
 
-#  -----------------------------------------------------------------------------
-#   _|   _.  _|_   _.
-#  (_|  (_|   |_  (_|
-#
+# ## Data -----------------------------------------------------------------------------
+#  _|   _.  _|_   _.
+# (_|  (_|   |_  (_|
+
 def COL(at=0, name=" ") -> COL:
   "Columns know their position `at`, their `name`, and item numbers `n`."
   return o(n=0, at=at, name=name)
@@ -139,7 +140,7 @@ def norm(self: NUM, x) -> float:
   "Normalize a number to the range 0..1 for min..max."
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
 
-# -----------------------------------------------------------------------------
+# ## Distance -----------------------------------------------------------------------------
 #   _|  o   _  _|_   _.  ._    _   _
 #  (_|  |  _>   |_  (_|  | |  (_  (/_
 
@@ -209,7 +210,7 @@ def leaf(self: TREE, row) -> DATA:
     return self.data
   
 def leaves(self: TREE) -> Generator:
-  "Return the data most relevant (nearest) to `row`." 
+  "Iterate through the leaves."
   if self:
     if not self.left and not self.right:
       yield self
@@ -226,7 +227,7 @@ def showTree(self: TREE) -> None:
     print(f"{self.y:.2f} ({s1:20}) {s2}")
     [showTree(kid) for kid in [self.left, self.right] if kid]
 
-# -----------------------------------------------------------------------------
+# ## Bayes -----------------------------------------------------------------------------
 #  |_    _.       _    _
 #  |_)  (_|  \/  (/_  _>
 #            /
@@ -252,11 +253,12 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tup
   def Y(a): labels[id(a)] = a; return ydist(self, a)
 
   def guess(todo, done):
-    def key(r): return 0 if R() > n4 else score(like(best, r, n1, 2), like(rest, r, n1, 2))
-    n1,n2,n3 = len(done), len(todo), int(len(done)**the.end)
-    n4       = min(the.guesses, n2) / n2
-    best     = DATA(self.cols.names, done[:n3])
-    rest     = DATA(self.cols.names, done[n3:])
+    def key(r):
+      return 0 if R() > guesses else score(like(best, r, len(done), 2), like(rest, r, len(done), 2))
+    nBest   = int(len(done)**the.end)
+    guesses = min(the.guesses, len(todo)) / len(todo)
+    best    = DATA(self.cols.names, done[:nBest])
+    rest    = DATA(self.cols.names, done[nBest:])
     return sorted(todo, key=key, reverse=True)
 
   def loop(todo, done):
@@ -275,10 +277,10 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tup
   m = max(0, the.start - len(b4))
   return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
 
-# -----------------------------------------------------------------------------
-#  _|_  ._   _    _  
+# ## Tree -----------------------------------------------------------------------------
+#  _|_  ._   _    _
 #   |_  |   (/_  (/_ 
-#                    
+
 def cuts(self:DATA, datas:classes):
   def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
   def sub(d, x)     : return add(d,x,-1) 
@@ -314,9 +316,9 @@ def cuts(self:DATA, datas:classes):
          for c in self.cols.x]
   cuts = {c.at: (nums if c.isNum else syms)(c,xys) for c,xys in all}
 
-# -----------------------------------------------------------------------------
-#       _|_  o  |   _
-#  |_|   |_  |  |  _>
+# ## Utils -----------------------------------------------------------------------------
+# |          _|_  o  |   _
+# |     |_|   |_  |  |  _>
 
 def numeric(x): return int(x) if int(x)==x else x
 
@@ -370,7 +372,7 @@ def shuffle(lst: list) -> list:
   random.shuffle(lst)
   return lst
 
-# -----------------------------------------------------------------------------
+# ## Main -----------------------------------------------------------------------------
 #  ._ _    _.  o  ._
 #  | | |  (_|  |  | |
 
@@ -426,6 +428,7 @@ class main:
     data1 = ydists(read(the.train))
     asIs = NUM()
     [col(asIs,ydist(data1,row)) for row in data1.rows]
+    print(the)
     for the.lives in [2,4,6,8,10,the.Stop]:
       toBe,samples = NUM(),NUM()
       for _ in range(20):
@@ -439,7 +442,8 @@ class main:
     data1 = ydists(read(the.train))
     nodes, labels = cluster(data1, sortp=False, maxDepth=3, all=True)
     cuts(data1,  [(i,node.data) for i,node in enumerate(leaves(nodes))])
-# -----------------------------------------------------------------------------
+
+# ## Start -----------------------------------------------------------------------------
 #   _  _|_   _.  ._  _|_
 #  _>   |_  (_|  |    |_
 

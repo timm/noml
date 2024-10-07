@@ -50,6 +50,11 @@ push: ## commit to main
 	- echo -en "$(LOUD)Why this push? $(SOFT)" ;  read x ; git commit -am "$$x" ;  git push
 	- git status
 
+~/tmp/%.html : %.py
+	echo "$@..."
+	sed 's/--------.*//' $^ > ~/tmp/$<
+	(cd ~/tmp; pycco -d . $<; echo "h2 { padding-top:5px; border-top: 1px solid #CCC; }" >> pycco.css)
+
 all: ../src/*.lua ../docs/*.html setup
 
 %.awk : %.mkd         
