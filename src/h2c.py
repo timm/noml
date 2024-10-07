@@ -195,7 +195,7 @@ def cluster(self: DATA,
     return rows[:n], l, rows[n:], r
 
   def nodes(rows, above=None, lvl=0, guard=None):
-    if len(rows) >= stop and lvl < maxDepth:
+    if len(rows) >= stop and lvl <= maxDepth:
       ls, l, rs, r = cut(rows, above)
       data2 = DATA(self.cols.names, rows)
       return TREE(
@@ -216,6 +216,15 @@ def leaf(self: TREE, row) -> DATA:
       if kid and kid.guard(row): return leaf(kid, row)
     return self.data
   
+def leaves(self: TREE) -> Generator:
+  "Return the data most relevant (nearest) to `row`." 
+  if self:
+    if not self.left and not self.right:
+      yield self
+    for kid in [self.left, self.right]:
+      for leaf in leaves(kid): 
+        yield leaf
+
 def showTree(self: TREE) -> None:
   "Display tree."
   if self:
@@ -262,13 +271,12 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tup
     lives, least, out = the.lives, big, None
     while len(done) < the.Stop and lives>0:
       top, *todo = guess(todo, done)
-      done += [top]
-      done = sorted(done, key=Y)
+      done = sorted(done + [top], key=Y)
       if ydist(self,done[0]) < least: 
-         least=  ydist(self,done[0])
-         lives += the.lives
+        least = ydist(self,done[0])
+        lives += the.lives
       else:
-         lives -= 1
+        lives -= 1
     return done
 
   b4 = list(labels.values())
@@ -276,39 +284,39 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tup
   return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
 
 # # must return expect tne and subtrees wth guards
-# def cuts(self:DATA, datas:classes):
-#   def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
-#   def sub(d, x)     : return add(d,x,-1) 
-#
-#   def nums(num1:NUM, xys):
-#     least = len(xys)/(6/the.cohen)
-#     cut, left, right, now = None, {},{},[]
-#     [add(right, y) for _,y in xys]
-#     lo,N = ent(right, 1)
-#     for i,(x,y) in enumerate(xys):
-#       now += [add(left, sub(right, y))]
-#       if least <= i < len(xys) - least and len(now) >= least:
-#         if x != xys[i+1][0] and now[-1] - now[0] > the.cohen*num1.sd:
-#           e1,n1 = ent(left, 1)
-#           e2,n2 = ent(right, 1)
-#           e = (n1 * e1 + n2 * e2)/N
-#           if e < lo:
-#             lo,cut,now = e,x,[]:1
-#     return lo,[cut] if cut else  big,[]
-#
-#   def syms(_,xys):
-#     N,d,n = 0,{},{}
-#     for x,y in xys:
-#       d.get[x] = d.get(x,{})
-#       add(d[x], y)
-#       add(n,x)
-#       N += 1
-#     return sum(n[x]/N * ent(y) for x,y in d.items()), d.keys()
-#
-#   all = [(c, sorted([(r[c.at],k)) for  k,d in datas.items() for r in d.rows if r[c.at] != "?"])
-#          for c in self.cols.x]]
-#   cuts = {c.at: (nums if c.isNum else syms)(c,xys) for c,xys in all}
-#
+def cuts(self:DATA, datas:classes):
+  def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
+  def sub(d, x)     : return add(d,x,-1) 
+
+  def nums(num1:NUM, xys):
+    least = len(xys)/(6/the.cohen)
+    cut, left, right, now = None, {},{},[]
+    [add(right, y) for _,y in xys]
+    lo,N = ent(right, 1)
+    for i,(x,y) in enumerate(xys):
+      now += [add(left, sub(right, y))]
+      if least <= i < len(xys) - least and len(now) >= least:
+        if x != xys[i+1][0] and now[-1] - now[0] > the.cohen*num1.sd:
+          e1,n1 = ent(left, 1)
+          e2,n2 = ent(right, 1)
+          e = (n1 * e1 + n2 * e2)/N
+          if e < lo:
+            lo,cut,now = e,x,[]
+    return lo,[cut] if cut else  big,[]
+
+  def syms(_,xys):
+    N,d,n = 0,{},{}
+    for x,y in xys:
+      d.get[x] = d.get(x,{})
+      add(d[x], y)
+      add(n,x)
+      N += 1
+    return sum(n[x]/N * ent(y) for x,y in d.items()), d.keys()
+
+  all = [(c, sorted([(r[c.at],k) for k,d in datas for r in d.rows if r[c.at] != "?"]))
+         for c in self.cols.x]
+  cuts = {c.at: (nums if c.isNum else syms)(c,xys) for c,xys in all}
+
 # -----------------------------------------------------------------------------
 #       _|_  o  |   _
 #  |_|   |_  |  |  _>
@@ -413,7 +421,7 @@ class main:
 
   def tree(_):
     data1 = read(the.train)
-    tree1, _ = cluster(data1, sortp=True, all=True, maxDepth=4)
+    tree1, _ = cluster(data1, sortp=True, all=True, maxDepth=3)
     showTree(tree1)
 
   def acquire(_):
@@ -427,8 +435,12 @@ class main:
         col(samples, len(labels.values()))
         col(toBe, ydist(data1,rows[0]))
       better = (asIs.mu - toBe.mu)/asIs.sd
-      print(f"{the.lives:3} :labels {samples.mu:3.1f} :asIs {asIs.mu:.3f} :delta {better:.3f}")
+      print(f"{the.lives:3} :labels {samples.mu:3.1f} :asIs {asIs.mu:.3f} :todo {toBe.mu:.3f} :delta {better:.3f}")
 
+  def cuts(_):
+    data1 = ydists(read(the.train))
+    nodes, labels = cluster(data1, sortp=False, maxDepth=3, all=True)
+    cuts(data1,  [(i,node.data) for i,node in enumerate(leaves(nodes))])
 # -----------------------------------------------------------------------------
 #   _  _|_   _.  ._  _|_
 #  _>   |_  (_|  |    |_
