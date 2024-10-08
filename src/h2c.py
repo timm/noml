@@ -52,7 +52,7 @@ big = 1E32
 class o:
   "Simple struct. Supports easy init and pretty print." 
   def __init__(self, **d): self.__dict__.update(**d)
-  def __or__(self,d): self.__dict__.update(**d); return self
+  def __add__(self,d): self.__dict__.update(**d); return self
   def __repr__(self): return self.__class__.__name__ + say(self.__dict__)
 
 DATA, COLS, TREE = o, o, o
@@ -75,12 +75,12 @@ def COL(at=0, name=" ") -> COL:
 
 def SYM(**d) -> SYM:
   "SYMs track symbol `counts` and `mode` of a stream of symbols."
-  return COL(**d) | dict(isNum=False, most=0, mode=None, counts={})
+  return COL(**d) + dict(isNum=False, most=0, mode=None, counts={})
 
 def NUM(**d) -> NUM:
   "NUMs track mean `mu`, `sd`, `lo` and `hi` of a stream of numbers."
-  return COL(**d) | dict(isNum=True, mu=0, m2=0, sd=0, lo=big, hi=-big, 
-                          goal=0 if d.get("name"," ")[-1] == "-" else 1)
+  return COL(**d) + dict(isNum=True, mu=0, m2=0, sd=0, lo=big, hi=-big,
+                         goal=0 if d.get("name"," ")[-1] == "-" else 1)
 
 def COLS(names: list[str]) -> COLS:
   "Turn a list of `names` into NUMs and SYMs."
@@ -151,10 +151,9 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
     return (sym1.counts.get(x, 0) + the.m*prior) / (sym1.n + the.m)
 
   def num(num1, x, _):
-    v = num1.sd**2 + 1E-30
-    nom = exp(-1*(x - num1.mu)**2/(2*v)) + 1E-32
-    denom = (2*pi*v) ** 0.5
-    return min(1, nom/(denom + 1E-32))
+    v = num1.sd**2 + 1E-32
+    tmp = exp(-1*(x - num1.mu)**2/(2*v)) / (2*pi*v) ** 0.5
+    return min(1, tmp + 1E-32)
 
   prior = (len(self.rows) + the.k) / (nall + the.k*nh)
   likes = [(num if c.isNum else sym)(c, row[c.at], prior) for c in self.cols.x]
