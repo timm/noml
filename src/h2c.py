@@ -346,8 +346,6 @@ def select(cut,row):
   return  x=="?" or x==cut.cut or cut.span and cut.lo < x <= cut.hi
 
 
-    
-
 def cuts(self:DATA, datas:classes):
   def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
   def sub(d, x)     : return add(d,x,-1) 
