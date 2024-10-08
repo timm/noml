@@ -198,10 +198,9 @@ def numeric(x): return int(x) if int(x)==x else x
 
 def ent(d: dict, details=False) -> tuple[float,int] | float:
   "Return entropy of some symbol counts."
-  print(d)
   N = sum(d.values())
   e = -sum([n/N*log(n/N, 2) for n in d.values() if n > 0])
-  return e,N if details else e
+  return (e,N) if details else e
 
 def normal(mu: float, sd: float) -> float:
   "Sample from a gaussian."
@@ -211,13 +210,11 @@ def cli(d: dict) -> None:
   "Update a dictionary from command-line flags. Maybe reset seed or exit showing help."
   for k, v in d.items():
     for c, arg in enumerate(sys.argv):
-      if arg == "-h":
-        sys.exit(print(__doc__ or ""))
       if arg in ["-"+k[0], "--"+k]:
         after = sys.argv[c+1] if c < len(sys.argv) - 1 else "" 
         d[k] = coerce("False" if v=="True" else ("True" if v=="False" else after))
   if seed := d.get("rseed",None): random.seed(seed)
-  if d.get("help",None): sys.exit(print(__doc__))
+  if d.get("help",None): sys.exit(print(__doc__ or ""))
 
 def coerce(s: str) -> atom:
   "Turn a string into an int,float,bool or string."
@@ -352,25 +349,27 @@ def cuts(self:DATA, datas:classes):
         if x != xys[i+1][0] and now[-1] - now[0] > the.cohen*num1.sd:
           e1,n1 = ent(left, 1)
           e2,n2 = ent(right, 1)
-          print("e1",e1,e2,n1,n2,least)
           e = (n1 * e1 + n2 * e2)/N
           if e < lo:
-            print(x, num1.name)
             lo,cut,now = e,x,[]
-    return lo,[cut] if cut else  big,[]
+    return o(eq=True, at=num1.at, cut=cut, e=lo)
 
-  def syms(_,xys):
+  def syms(sym1,xys): 
     N,d,n = 0,{},{}
     for x,y in xys:
       d[x] = d.get(x,{})
-      add(d[x], y)
-      add(n,x)
+      add(d[x],y)
+      add(n,x) 
       N += 1
-    return sum(n[x]/N * ent(y) for x,y in d.items()), d.keys()
+    return o(eq=False, at=sym1.at, cut=list(d.keys()), 
+             e=sum(n[x]/N*ent(y) for x,y in d.items()))
 
-  all = [(c, sorted([(r[c.at],k) for k,d in datas for r in d.rows if r[c.at] != "?"]))
+  all = [(c, sorted([(r[c.at],y) for y,d in datas for r in d.rows if r[c.at] != "?"]))
          for c in self.cols.x]
-  cuts = {c.at: (nums if c.isNum else syms)(c,xys) for c,xys in all}
+  all = [(nums if c.isNum else syms)(c,xys) for c,xys in all]
+  for x in sorted(all, key=lambda x:x.e):
+    if x.cut:
+      yield x
 
 # ## Main -----------------------------------------------------------------------------
 #  ._ _    _.  o  ._
@@ -441,7 +440,8 @@ class main:
   def cuts(_):
     data1 = ydists(read(the.train))
     nodes, labels = cluster(data1, sortp=False, maxDepth=3, all=True)
-    cuts(data1,  [(i,node.data) for i,node in enumerate(leaves(nodes))])
+    for x in cuts(data1,  [(i,node.data) for i,node in enumerate(leaves(nodes))]):
+      print(x)
 
 # ## Start -----------------------------------------------------------------------------
 #   _  _|_   _.  ._  _|_
