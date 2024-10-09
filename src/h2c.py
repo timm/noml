@@ -55,7 +55,7 @@ class o:
   def __add__(self,d): self.__dict__.update(**d); return self
   def __repr__(self): return self.__class__.__name__ + say(self.__dict__)
 
-DATA, COLS, TREE = o, o, o
+DATA, COLS, CLUSTER, TREE = o, o, o
 NUM, SYM  = o, o
 COL = NUM | SYM
 
@@ -271,10 +271,10 @@ def ydists(self: DATA) -> DATA:
   self.rows.sort(key=lambda r: ydist(self, r))
   return self
 
-class TREE(o): pass
+class CLUSTER(o): pass
 
-def cluster(self: DATA, 
-            rows=None, sortp=False, all=False, maxDepth=100) -> tuple[TREE, DATA]:
+def dendogram(self: DATA, 
+              rows=None, sortp=False, all=False, maxDepth=100) -> tuple[CLUSTER, DATA]:
   "Recursively divide data via 2 distance points. Return all the tree or just best branch."
   stop = len(rows or self.rows)**the.end
   labels = {}
@@ -293,25 +293,25 @@ def cluster(self: DATA,
     if len(rows) >= stop and lvl <= maxDepth:
       ls, l, rs, r = _cut(rows, above)
       data2 = DATA(self.cols.names, rows)
-      return TREE(
+      return CLUSTER(
         data=data2,
         y=_Y(self, l),
         lvl=lvl,
         guard=guard,
-        left=nodes(ls, l, lvl+1, lambda row: _X(row, ls[-1]) < _X(row, rs[0])),
-        right=nodes(rs, r, lvl+1, lambda row: _X(row, ls[-1]) >= _X(row, rs[0])) if all else None)
+        left=_nodes(ls, l, lvl+1, lambda row: _X(row, ls[-1]) < _X(row, rs[0])),
+        right=_nodes(rs, r, lvl+1, lambda row: _X(row, ls[-1]) >= _X(row, rs[0])) if all else None)
 
   return (_nodes(rows or self.rows),  # tree
           ydists(DATA(self.cols.names, labels.values())))  # items labelled while making tree
 
-def leaf(self: TREE, row) -> DATA:
+def leaf(self: CLUSTER, row) -> DATA:
   "Return the data most relevant (nearest) to `row`." 
   if self:
     for kid in [self.left, self.right]:
       if kid and kid.guard(row): return leaf(kid, row)
     return self.data
   
-def leaves(self: TREE) -> Generator:
+def leaves(self: CLUSTER) -> Generator:
   "Iterate through the leaves."
   if self:
     if not self.left and not self.right:
@@ -320,7 +320,7 @@ def leaves(self: TREE) -> Generator:
       for leaf in leaves(kid): 
         yield leaf
 
-def showTree(self: TREE) -> None:
+def showTree(self: CLUSTER) -> None:
   "Display tree."
   if self:
     mid1 = mid(self.data)
@@ -332,6 +332,18 @@ def showTree(self: TREE) -> None:
 # ## Tree -----------------------------------------------------------------------------
 #  _|_  ._   _    _
 #   |_  |   (/_  (/_ 
+
+class TREE(o): pass
+
+def decisionTree(self:DATA, datas:classes, stop=10, lvl=0, guard=None):
+  kids=[]
+  d = {y:len(rows) for y,rows in datas}
+  n = sum(d.values())
+  if n > stop and ent(d) != 0:
+    for guard in gaurds(self,datas):
+      datas1 = {y:[row for y,rows in datas for row in rows if gaurd.gaurd(row)]}
+      kids += [decisionTree(self, datas1, stop=stop, lvl=lvl+1, guard)]
+  return TREE(lvl=lvl, datas=datas, guard=guard, kids=kids)
 
 def inc(d, x, n=1): d[x] = d.get(x,0) + n; return x
 def dec(d, x) : return inc(d,x,-1) 
@@ -346,19 +358,18 @@ def guards(self:DATA, datas:classes):
    return guards
 
 def guardSyms(self:SYM,xys): 
-  N,d,n = 0,{},{}
+  d,n = {},{}
   for x,y in xys:
     d[x] = d.get(x,{})
     inc(d[x],y)
     inc(n,x) 
-    N += 1
   guards= [o(txt=f"{self.name} == {x}", n=n[x], guard==lambda row: row[self.at] in ["?",x]) 
            for x in d.keys()]
-  return o(e=sum(n[x]/N*ent(y) for x,y in d.items()), guards=guards)
+  return o(e=sum((n[x]/len(xys)) * ent(y) for x,y in d.items()), guards=guards)
 
 def guardNums(self:NUM, xys):
   least = len(xys)/(6/the.cohen)
-  guards, left, right, now,n = None, {},{},[],0
+  guards, left, right, now = None, {}, {}, []
   [_inc(right, y) for _,y in xys]
   lo = ent(right)
   for i,(x,y) in enumerate(xys):
@@ -369,14 +380,12 @@ def guardNums(self:NUM, xys):
         e2,n2 = ent(right, 1)
         e = (n1 * e1 + n2 * e2)/(n1+n2)
         if e < lo:
-          lo,now,n = e,[]
+          lo,now = e,[]
           guards= o(e=lo, guards=[
-                  o(txt=f"{self.name} <= {guard}", 
-                    n=n,           
-                    guard=lambda row: row[self.at]=="?" or row[self.at]<= guard),
-                  o(txt=f"{self.name}  > {guard}", 
-                    n=len(xys)- n, 
-                    guard=lambda row: row[self.at]=="?" or row[self.at]>  guard)])
+                    o(txt=f"{self.name} <= {guard}", n=n,           
+                      guard=lambda row: row[self.at]=="?" or row[self.at]<= guard),
+                    o(txt=f"{self.name}  > {guard}", n=len(xys)- n, 
+                      guard=lambda row: row[self.at]=="?" or row[self.at]>  guard)])
   return guards
 
 
