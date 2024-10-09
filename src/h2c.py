@@ -147,37 +147,37 @@ def norm(self: NUM, x) -> float:
 
 def like(self: DATA, row: row, nall: int, nh: int) -> float:
   "Compute likelihood that row belongs to a DATA."
-  def sym(sym1, x, prior):
+  def _sym(sym1, x, prior):
     return (sym1.counts.get(x, 0) + the.m*prior) / (sym1.n + the.m)
 
-  def num(num1, x, _):
+  def _num(num1, x, _):
     v = num1.sd**2 + 1E-32
     tmp = exp(-1*(x - num1.mu)**2/(2*v)) / (2*pi*v) ** 0.5
     return min(1, tmp + 1E-32)
 
   prior = (len(self.rows) + the.k) / (nall + the.k*nh)
-  likes = [(num if c.isNum else sym)(c, row[c.at], prior) for c in self.cols.x]
+  likes = [(_num if c.isNum else _sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tuple[dict,row]:
+def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
   "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
-  def Y(a): labels[id(a)] = a; return ydist(self, a)
+  def _Y(a): labels[id(a)] = a; return ydist(self, a)
 
-  def guess(todo, done):
+  def _guess(todo, done):
     def key(r):
-      return 0 if R() > guesses else score(like(best, r, len(done), 2), like(rest, r, len(done), 2))
-    nBest   = int(len(done)**the.end)
+      return 0 if R() > guesses else fun(like(b, row, len(done), 2), like(r, row, len(done), 2))
     guesses = min(the.guesses, len(todo)) / len(todo)
-    best    = DATA(self.cols.names, done[:nBest])
-    rest    = DATA(self.cols.names, done[nBest:])
+    n = int(len(done)**the.end)
+    b = DATA(self.cols.names, done[:n])
+    r = DATA(self.cols.names, done[n:])
     return sorted(todo, key=key, reverse=True)
 
-  def loop(todo, done):
+  def _loop(todo, done):
     lives, least, out = the.lives, big, None
     while len(done) < the.Stop and lives>0:
       top, *todo = guess(todo, done)
-      done = sorted(done + [top], key=Y)
+      done = sorted(done + [top], key=_Y)
       if ydist(self,done[0]) < least: 
         least = ydist(self,done[0])
         lives += the.lives
@@ -187,7 +187,7 @@ def acquire(self: DATA, rows: rows, labels=None, score=lambda b,r: b+b-r) -> tup
 
   b4 = list(labels.values())
   m = max(0, the.start - len(b4))
-  return labels, loop(rows[m:], sorted(rows[:m] + b4, key=Y))
+  return labels, _loop(rows[m:], sorted(rows[:m] + b4, key=_Y))
 
 # ## Utils -----------------------------------------------------------------------------
 # |          _|_  o  |   _
@@ -248,9 +248,9 @@ def shuffle(lst: list) -> list:
 
 def xdist(self: DATA, row1: row, row2: row) -> float:
   "Minkowski distance between independent columns of two rows."
-  def sym(_, x, y): return x != y
+  def _sym(_, x, y): return x != y
 
-  def num(num1, x, y):
+  def _num(num1, x, y):
     x, y = norm(num1, x), norm(num1, y)
     x = x if x != "?" else (1 if y < .5 else 0)
     y = y if y != "?" else (1 if x < .5 else 0)
@@ -258,7 +258,7 @@ def xdist(self: DATA, row1: row, row2: row) -> float:
   n = d = 0
   for c in self.cols.x:
     a, b = row1[c.at], row2[c.at]
-    d += 1 if a == b == "?" else (num if c.isNum else sym)(c, a, b)**the.p
+    d += 1 if a == b == "?" else (_num if c.isNum else _sym)(c, a, b)**the.p
     n += 1
   return (d/n) ** (1/the.p)
 
@@ -278,30 +278,30 @@ def cluster(self: DATA,
   "Recursively divide data via 2 distance points. Return all the tree or just best branch."
   stop = len(rows or self.rows)**the.end
   labels = {}
-  def Y(a)  : labels[id(a)] = a; return ydist(self, a)
-  def X(a, b): return xdist(self, a, b)
+  def _Y(a)  : labels[id(a)] = a; return ydist(self, a)
+  def _X(a, b): return xdist(self, a, b)
 
-  def cut(rows, above=None):
-    l, r = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z: X(*z))
-    l, r = (r, l) if sortp and Y(r) < Y(l) else (l, r)
-    C = X(l, r)
-    rows = sorted(rows, key=lambda row: (X(row, l)**2 + C**2 - X(row, r)**2)/(2*C + 1/big))
+  def _cut(rows, above=None):
+    l, r = max([(above or one(rows), one(rows)) for _ in range(the.far)], key=lambda z: _X(*z))
+    l, r = (r, l) if sortp and _Y(r) < _Y(l) else (l, r)
+    C = _X(l, r)
+    rows = sorted(rows, key=lambda row: (_X(row, l)**2 + C**2 - _X(row, r)**2)/(2*C + 1/big))
     n = int(len(rows) // 2)
     return rows[:n], l, rows[n:], r
 
-  def nodes(rows, above=None, lvl=0, guard=None):
+  def _nodes(rows, above=None, lvl=0, guard=None):
     if len(rows) >= stop and lvl <= maxDepth:
-      ls, l, rs, r = cut(rows, above)
+      ls, l, rs, r = _cut(rows, above)
       data2 = DATA(self.cols.names, rows)
       return TREE(
         data=data2,
-        y=ydist(self, l),
+        y=_Y(self, l),
         lvl=lvl,
         guard=guard,
-        left=nodes(ls, l, lvl+1, lambda row: X(row, ls[-1]) < X(row, rs[0])),
-        right=nodes(rs, r, lvl+1, lambda row: X(row, ls[-1]) >= X(row, rs[0])) if all else None)
+        left=nodes(ls, l, lvl+1, lambda row: _X(row, ls[-1]) < _X(row, rs[0])),
+        right=nodes(rs, r, lvl+1, lambda row: _X(row, ls[-1]) >= _X(row, rs[0])) if all else None)
 
-  return (nodes(rows or self.rows),  # tree
+  return (_nodes(rows or self.rows),  # tree
           ydists(DATA(self.cols.names, labels.values())))  # items labelled while making tree
 
 def leaf(self: TREE, row) -> DATA:
@@ -333,62 +333,54 @@ def showTree(self: TREE) -> None:
 #  _|_  ._   _    _
 #   |_  |   (/_  (/_ 
 
-# def dt(self:DATA):
-#    nodes, _ = cluster(self, sortp=False, maxDepth=4, all=True)
-#    groups   = [(i,n.data) for i,n in enumerate(leaves(nodes))]
-#    if cuts1 := cuts(self, groups):
-#
-# def selects(cut, groups):
-#   
-# def select(cut,row):
-#   x = row[cut.at]
-#   return  x=="?" or x==cut.cut or cut.span and cut.lo < x <= cut.hi
-#
-#
-# def cuts(self:DATA, datas:classes):
-#   def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
-#   def sub(d, x)     : return add(d,x,-1) 
-#
-#   def nums(num1:NUM, xys):
-#     least = len(xys)/(6/the.cohen)
-#     cut, left, right, now = None, {},{},[]
-#     [add(right, y) for _,y in xys]
-#     lo,N = ent(right, 1)
-#     for i,(x,y) in enumerate(xys):
-#       now += [add(left, sub(right, y))]
-#       if least <= i < len(xys) - least:
-#         if len(now) >= least:
-#           if x != xys[i+1][0]:
-#             if now[-1] - now[0] > the.cohen*num1.sd:
-#               e1,n1 = ent(left, 1)
-#               e2,n2 = ent(right, 1)
-#               e = (n1 * e1 + n2 * e2)/N
-#               if e < lo:
-#                 lo,cut,now = e,x,[]
-#     return o(e=lo, guards=[
-#              o(txt=f"{num.txt} <= {cut}", guard=lambda x: x=="?" or x<= cut),
-#              o(txt=f"{num.txt}  > {cut}", guard=lambda x: x=="?" or x>  cut)])
-#
-#   def syms(sym1,xys): 
-#     N,d,n = 0,{},{}
-#     for x,y in xys:
-#       d[x] = d.get(x,{})
-#       add(d[x],y)
-#       add(n,x) 
-#       N += 1
-#     return o(e=sum(n[x]/N*ent(y) for x,y in d.items()), guards=[
-#              o(txt=f"{num.txt} == {cut}", guard=lambda x: x=="?" or x== cut) 
-#              for cut in d.keys()])
-#
-#   all = [(c, sorted([(r[c.at],y) for y,d in datas 
-#                                  for r   in d.rows if r[c.at] != "?"]))
-#          for c in self.cols.x]
-#   all = [(nums if c.isNum else syms)(c,xys) for c,xys in all]
-#   for x in sorted(all, key=lambda x:x.e):
-#     if x.cut:
-#       yield x
+def inc(d, x, n=1): d[x] = d.get(x,0) + n; return x
+def dec(d, x) : return inc(d,x,-1) 
 
-# ## Main -----------------------------------------------------------------------------
+def guards(self:DATA, datas:classes):
+  min= big
+  for c in self.cols.x:
+    all= [(r[c.at],y) for y,d in datas for r  in d.rows if r[c.at] != "?"]
+    if now := (guardNums if c.isNum else guardSyms)(c,sorted(all))
+      if now.e > min: 
+        min, guards, =now.e, sorted(now.guards, key=lambda guard: -guard.n)
+   return guards
+
+def guardSyms(self:SYM,xys): 
+  N,d,n = 0,{},{}
+  for x,y in xys:
+    d[x] = d.get(x,{})
+    inc(d[x],y)
+    inc(n,x) 
+    N += 1
+  guards= [o(txt=f"{self.name} == {x}", n=n[x], guard==lambda row: row[self.at] in ["?",x]) 
+           for x in d.keys()]
+  return o(e=sum(n[x]/N*ent(y) for x,y in d.items()), guards=guards)
+
+def guardNums(self:NUM, xys):
+  least = len(xys)/(6/the.cohen)
+  guards, left, right, now,n = None, {},{},[],0
+  [_inc(right, y) for _,y in xys]
+  lo = ent(right)
+  for i,(x,y) in enumerate(xys):
+    now += [inc(left, dec(right, y))]
+    if least <= i < len(xys) - least and len(now) >= least:
+      if x != xys[i+1][0] and now[-1] - now[0] > the.cohen*self.sd:
+        e1,n1 = ent(left, 1)
+        e2,n2 = ent(right, 1)
+        e = (n1 * e1 + n2 * e2)/(n1+n2)
+        if e < lo:
+          lo,now,n = e,[]
+          guards= o(e=lo, guards=[
+                  o(txt=f"{self.name} <= {guard}", 
+                    n=n,           
+                    guard=lambda row: row[self.at]=="?" or row[self.at]<= guard),
+                  o(txt=f"{self.name}  > {guard}", 
+                    n=len(xys)- n, 
+                    guard=lambda row: row[self.at]=="?" or row[self.at]>  guard)])
+  return guards
+
+
+# -----------------------------------------------------------------------------
 #  ._ _    _.  o  ._
 #  | | |  (_|  |  | |
 
