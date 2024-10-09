@@ -333,60 +333,60 @@ def showTree(self: TREE) -> None:
 #  _|_  ._   _    _
 #   |_  |   (/_  (/_ 
 
-def dt(self:DATA):
-   nodes, _ = cluster(self, sortp=False, maxDepth=4, all=True)
-   groups   = [(i,n.data) for i,n in enumerate(leaves(nodes))]
-   if cuts1 := cuts(self, groups):
-
-def selects(cut, groups):
-  
-def select(cut,row):
-  x = row[cut.at]
-  return  x=="?" or x==cut.cut or cut.span and cut.lo < x <= cut.hi
-
-
-def cuts(self:DATA, datas:classes):
-  def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
-  def sub(d, x)     : return add(d,x,-1) 
-
-  def nums(num1:NUM, xys):
-    least = len(xys)/(6/the.cohen)
-    cut, left, right, now = None, {},{},[]
-    [add(right, y) for _,y in xys]
-    lo,N = ent(right, 1)
-    for i,(x,y) in enumerate(xys):
-      now += [add(left, sub(right, y))]
-      if least <= i < len(xys) - least:
-        if len(now) >= least:
-          if x != xys[i+1][0]:
-            if now[-1] - now[0] > the.cohen*num1.sd:
-              e1,n1 = ent(left, 1)
-              e2,n2 = ent(right, 1)
-              e = (n1 * e1 + n2 * e2)/N
-              if e < lo:
-                lo,cut,now = e,x,[]
-    return o(e=lo, guards=[
-             o(txt=f"{num.txt} <= {cut}", guard=lambda x: x=="?" or x<= cut),
-             o(txt=f"{num.txt}  > {cut}", guard=lambda x: x=="?" or x>  cut)])
-
-  def syms(sym1,xys): 
-    N,d,n = 0,{},{}
-    for x,y in xys:
-      d[x] = d.get(x,{})
-      add(d[x],y)
-      add(n,x) 
-      N += 1
-    return o(e=sum(n[x]/N*ent(y) for x,y in d.items()), guards=[
-             o(txt=f"{num.txt} == {cut}", guard=lambda x: x=="?" or x== cut) 
-             for cut in d.keys()])
-
-  all = [(c, sorted([(r[c.at],y) for y,d in datas 
-                                 for r   in d.rows if r[c.at] != "?"]))
-         for c in self.cols.x]
-  all = [(nums if c.isNum else syms)(c,xys) for c,xys in all]
-  for x in sorted(all, key=lambda x:x.e):
-    if x.cut:
-      yield x
+# def dt(self:DATA):
+#    nodes, _ = cluster(self, sortp=False, maxDepth=4, all=True)
+#    groups   = [(i,n.data) for i,n in enumerate(leaves(nodes))]
+#    if cuts1 := cuts(self, groups):
+#
+# def selects(cut, groups):
+#   
+# def select(cut,row):
+#   x = row[cut.at]
+#   return  x=="?" or x==cut.cut or cut.span and cut.lo < x <= cut.hi
+#
+#
+# def cuts(self:DATA, datas:classes):
+#   def add(d, x, n=1): d[x] = d.get(x,0) + n; return x
+#   def sub(d, x)     : return add(d,x,-1) 
+#
+#   def nums(num1:NUM, xys):
+#     least = len(xys)/(6/the.cohen)
+#     cut, left, right, now = None, {},{},[]
+#     [add(right, y) for _,y in xys]
+#     lo,N = ent(right, 1)
+#     for i,(x,y) in enumerate(xys):
+#       now += [add(left, sub(right, y))]
+#       if least <= i < len(xys) - least:
+#         if len(now) >= least:
+#           if x != xys[i+1][0]:
+#             if now[-1] - now[0] > the.cohen*num1.sd:
+#               e1,n1 = ent(left, 1)
+#               e2,n2 = ent(right, 1)
+#               e = (n1 * e1 + n2 * e2)/N
+#               if e < lo:
+#                 lo,cut,now = e,x,[]
+#     return o(e=lo, guards=[
+#              o(txt=f"{num.txt} <= {cut}", guard=lambda x: x=="?" or x<= cut),
+#              o(txt=f"{num.txt}  > {cut}", guard=lambda x: x=="?" or x>  cut)])
+#
+#   def syms(sym1,xys): 
+#     N,d,n = 0,{},{}
+#     for x,y in xys:
+#       d[x] = d.get(x,{})
+#       add(d[x],y)
+#       add(n,x) 
+#       N += 1
+#     return o(e=sum(n[x]/N*ent(y) for x,y in d.items()), guards=[
+#              o(txt=f"{num.txt} == {cut}", guard=lambda x: x=="?" or x== cut) 
+#              for cut in d.keys()])
+#
+#   all = [(c, sorted([(r[c.at],y) for y,d in datas 
+#                                  for r   in d.rows if r[c.at] != "?"]))
+#          for c in self.cols.x]
+#   all = [(nums if c.isNum else syms)(c,xys) for c,xys in all]
+#   for x in sorted(all, key=lambda x:x.e):
+#     if x.cut:
+#       yield x
 
 # ## Main -----------------------------------------------------------------------------
 #  ._ _    _.  o  ._
