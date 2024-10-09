@@ -69,7 +69,9 @@ def col(self: COL, x) -> None:
       self.most, self.mode = tmp, x
 
 def mid(self: DATA) -> row:
-  return [(c.mu if c.isNum else c.mode) for c in self.cols.all]
+  "Return the row closest to the middle of a DATA."
+  tmp = [(c.mu if c.isNum else c.mode) for c in self.cols.all]
+  return min(self.rows, key=lambda row: xdist(self, row, tmp))
 
 def read(file: str, sortp=False) -> DATA:
   src = csv(file)
@@ -262,7 +264,30 @@ class main:
     data1 = read(the.train)
     tree1, _ = cluster(data1, sortp=True, all=True, maxDepth=3)
     #showTree(tree1)
-    for leaf in leaves(tree1): print(leaf.c)
+    leaves = sorted(leaves(tree1), key=lambda l:l.c, reverse=True)
+    d={}
+    for i,leaf1 in enumerate(leaves):
+      leaf1.id=i
+      for j,leaf2 in enumerate(leaves):
+        if j>i:
+          d[(i,j)] = d[(j,i)] = xdist(data1, mid(leaf1,data), mid(leaf2.data))
+    for i,leaf1 in enumerate(leaves):
+      a,b = sorted(leaves,key=lambda leaf2: d[(i,leaf2.id)])[1:3]
+      C = d[(a.id, b.id)]
+      A = d[(a.id, leaf1.id)]
+      B = d[(b.id, leaf1.id)]
+      X = (A**2 + C**2 - B**2)/(2*C) 
+      w1,w2 = x/c, (c-x)/x
+
+      leaf.mid = mid(leaf.data)
+      lead.id  = i
+      d[i] = {}
+    for l1 in leaves(tree1): 
+      l1
+      for l2 in leaves(tree1): 
+        if l1.id >1 l2.id
+          d[l1.id][l2.id] = d[l1.id][l2.id] = xdist(l1.mid, l2.mid)
+
 
 # ## Start -----------------------------------------------------------------------------
 #   _  _|_   _.  ._  _|_
