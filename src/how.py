@@ -1,37 +1,27 @@
+#!/usr/bin/python3.13 -B
+
 from typing import Any as any
 from typing import Union, List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
 from math import sqrt, exp, log, cos, pi
 import random, sys, ast, re
 
-big=1E32
-
 class o:
   def __init__(self, **d): self.__dict__.update(**d)
   def __repr__(self): return self.__class__.__name__ + say(self.__dict__)
 
+the = o(k=1, m=2, train="../../moot/optimize/misc/auto93.csv")
+
 DATA, COLS = o, o
 NUM, SYM  = o, o
 COL = NUM | SYM
-
 number = float | int   #
 atom = number | bool | str  # and sometimes "?"
 row = list[atom]
 rows = list[row]
 classes = dict[str, rows]  # `str` is the class name
 
-the = o(k=1, m=2, train="../../moot/optimize/misc/auto93.csv")
-
-def coerce(s: str) -> atom:
-  try: return ast.literal_eval(s)
-  except Exception: return s
-
-def csv(file: str) -> Generator:
-  with file_or_stdin(None if file == "−" else file) as src:
-    for line in src:
-      line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
-      if line:
-        yield [coerce(s.strip()) for s in line.split(",")]
+big=1E32
 
 def SYM(at=0, txt=" ") -> SYM:
   return o(nump=False, n=0, at=at, txt=txt, most=0, mode=None, counts={})
@@ -122,6 +112,17 @@ def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple
 def norm(self: NUM, x) -> float:
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
 
+def coerce(s: str) -> atom:
+  try: return ast.literal_eval(s)
+  except Exception: return s
+
+def csv(file: str) -> Generator:
+  with file_or_stdin(None if file == "−" else file) as src:
+    for line in src:
+      line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
+      if line:
+        yield [coerce(s.strip()) for s in line.split(",")]
+
 def ydist(self: DATA, row) -> float:
   return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
 
@@ -137,13 +138,20 @@ def say(x: any) -> str:
   return "(" + ' '.join(f":{k} {say(v)}"
                         for k, v in x.items() if not str(k)[0] == "_") + ")"
 
-[print(col) for col in read(the.train).cols.y]
-
 class main:
-  def acquire(_):
+  def the(): print(the)
+  def acquire():
     data1 = ydists(read(the.train))
     labels, rows = acquire(data1, shuffle(data1.rows))
     better = (asIs.mu - toBe.mu)/asIs.sd
     print(f"{the.lives:3} :labels {samples.mu:3.1f} :asIs {asIs.mu:.3f} :todo {toBe.mu:.3f} :delta {better:.3f}")
+
+random.seed(the.seed)
+if __name__ == "__main__":
+  for i,s in enumerate(sys.argv):
+    if s[:1] in the.__dict__:
+      the.__dict__[s:1] = coerce(sys.argv[1+i])
+      random.seed(the.seed)
+    if s[:2] == "--": getattr(main,s[:2], lambda: True)()
 
 
