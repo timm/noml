@@ -96,21 +96,24 @@ def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
 
-  def guess(todo, done):
-    def key(r):
-      return 0 if R()>guesses else fun(like(best, r, len(done), 2),like(rest, r, len(done), 2))
+  def score(r,best,rest): 
+    return fun(like(best, r, len(done), 2),like(rest, r, len(done), 2))
+
+  def guess(todo, done, last):
     nBest   = int(len(done)**the.end)
     guesses = min(the.guesses, len(todo)) / len(todo)
     best    = DATA(self.cols.names, done[:nBest])
     rest    = DATA(self.cols.names, done[nBest:])
-    return sorted(todo, key=key, reverse=True)
+    return sorted(todo, reverse=True,
+                  #key=lambda r: (0 if R()>guesses else score(r,best,rest)))
+                  key=lambda r:score(r,best,rest) if  last else (0 if R()>guesses else score(r,best,rest)))
 
   b4   = list(labels.values())
   m    = max(0, the.start - len(b4))
   todo = rows[m:]
   done = sorted(rows[:m] + b4, key=Y)
   while len(done) < the.Stop:
-    top, *todo = guess(todo, done)
+    top, *todo = guess(todo, done, the.Stop - len(done)>1)
     done = sorted(done + [top], key=Y)
   return labels, done
 
@@ -147,21 +150,28 @@ def say(x: any) -> str:
 
 class main:
   def the(): print(the)
+   
+  def like():
+    data1 = read(the.train)
+    print(sorted([like(data1, row,len(data1.rows),2)
+                   for row in data1.rows]))
 
   def acquire():
     data1 = read(the.train)
+    print(the.train)
     asIs, toBe = NUM(), NUM()
     labels, rows = acquire(data1, shuffle(data1.rows))
     [col(asIs, ydist(data1, row)) for row in data1.rows]
     [col(toBe, ydist(data1, row)) for row in rows]
-    better = (asIs.mu - toBe.mu)/asIs.sd
-    print(f":labels {len(labels.values())} :asIs {asIs.mu:.3f} :todo {toBe.mu:.3f} :delta {better:.3f}")
+    print(f":labels {len(labels.values())} :asIs {asIs.mu:.3f} :found {toBe.lo:.3f}")
 
 if __name__ == "__main__":
   for i,s in enumerate(sys.argv):
-    if s[1:] in the.__dict__:
-      the.__dict__[s[1:]] = coerce(sys.argv[i+1])
-      random.seed(the.seed)
-    if s[:2] == "--": getattr(main,s[2:], lambda: print(s[2:],"?"))()
+    if s[:2] == "--": 
+      getattr(main,s[2:], lambda: print(s[2:],"?"))()
+    elif s[0]=="-":
+      for k in the.__dict__: 
+        if k[0] == s[1]: the.__dict__[k] = coerce(sys.argv[i+1])
+        random.seed(the.seed)
 
 
