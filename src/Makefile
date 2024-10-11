@@ -113,7 +113,18 @@ ege:; python3 mink.py -t ../../moot/optimize/config/SS-E.csv  -kmeans2  |sort -n
 egf:; python3 mink.py -t ../../moot/optimize/config/SS-F.csv  -kmeans2  |sort -n |cat -n
 egg:; python3 mink.py -t ../../moot/optimize/config/SS-G.csv  -kmeans2  |sort -n |cat -n
 
-how20:
+acts:
+	echo "stop rows x y n asIs toBe rand eps0 eps1 ms file"
 	$(foreach d,config hpo misc process, \
 		$(foreach f,$(wildcard ../../moot/optimize/$d/*.csv), \
-			 (python3.13 how.py -t $f --acquire &); ))
+			 (python3.13 how.py -t $f --$(Act)  &); ))
+
+acquires:
+	$(MAKE) Act=acquire acts | tee ~/tmp/acquires.out
+
+acquiresX:
+	 echo "asIs,20,25,30,60,sd"
+	cat ~/tmp/acquires.out |		gawk \
+		'/^20/ {printf $$6 "," $$7} /^25/ {printf "," $$7} /^30/ {printf ","$$7} \
+     /^60/ {print "," $$7 "," $$(NF-3)}' \
+		 | sort -t,  -n

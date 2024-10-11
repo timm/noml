@@ -7,7 +7,7 @@ from typing import Any as any
 from typing import Union, List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
 from math import sqrt, exp, log, cos, pi
-import random, sys, ast, re
+import random, time, sys, ast, re
 
 class o:
   def __init__(self, **d): self.__dict__.update(**d)
@@ -16,9 +16,11 @@ class o:
 the = o(
     cohen=0.35, 
     end=.5, 
+    far=30,
     guesses=100,
     k=1, 
     m=2, 
+    p=2,
     rseed=1234567891,  
     Repeats=20,
     start=4, 
@@ -118,15 +120,14 @@ def read(file: str) -> DATA:
   likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, 
-           fun=lambda b,r: b+b-r) -> tuple[dict,row]:
+def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda _,b,r:b+b-r):
   "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
 
   def guess(todo, done, last):
     def score(r): 
-      return fun(like(best, r, len(done), 2),like(rest, r, len(done), 2))
+      return fun(len(done), like(best, r, len(done), 2),like(rest, r, len(done), 2))
     nBest   = int(len(done)**the.end)
     guesses = min(the.guesses, len(todo)) / len(todo)
     best    = DATA(self.cols.names, done[:nBest])
@@ -134,6 +135,7 @@ def acquire(self: DATA, rows:rows,  eps=0.058, labels=None,
     return sorted(todo, reverse=True,
                         key=lambda r:last and score(r) or  R()<guesses and score(r) or 0)
 
+  if not labels: [Y(row) for row in slash4(self)]
   b4   = list(labels.values())
   m    = max(0, the.start - len(b4))
   todo = rows[m:]
@@ -141,9 +143,24 @@ def acquire(self: DATA, rows:rows,  eps=0.058, labels=None,
   while len(done) < the.Stop:
     top, *todo = guess(todo, done, len(done)==the.Stop - 1)
     done = sorted(done + [top], key=Y)
-    if ydist(self, top) <= eps:
+    if ydist(self, top) <= eps or len(todo) < 3:
       break
   return labels, done
+
+def slash4(data1, labels=None):
+   def half(rows,a,b):
+     C = xdist(data1,a,b)
+     rows = sorted(rows,key=lambda r: (xdist(data1,a,r)**2 + C**2 - xdist(data1,b,r)**2)/(2*C))
+     return rows[:int(len(rows)//2)]
+   def two(rows, above=None):
+     one = lambda: random.choice(rows)
+     a,b = max([(above or one(), one()) for _ in range(the.far)], key=lambda z: xdist(data1,z[0],z[1]))
+     return (a,b) if ydist(data1,a) < ydist(data1, b) else (b,a)
+   rows = data1.rows
+   c,d = two(rows); rows = half(rows,c,d)
+   b,c = two(rows,c); rows = half(rows,b,c)
+   a,b = two(rows,b)
+   return [a,b,c,d]
 
 def norm(self: NUM, x) -> float:
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
@@ -161,12 +178,46 @@ def csv(file: str) -> Generator:
       if line:
         yield [coerce(s.strip()) for s in line.split(",")]
 
+def mid(self: DATA) -> row:
+  "Return the row closest to the middle of a DATA."
+  tmp = [(c.mu if c.nump else c.mode) for c in self.cols.all]
+  return min(self.rows, key=lambda row: xdist(self, row, tmp))
+
+def xdist(self: DATA, row1: row, row2: row) -> float:
+  "Minkowski distance between independent columns of two rows."
+  def _sym(_,x,y): return x!=y
+  def _num(num1, x, y):
+    x, y = norm(num1, x), norm(num1, y)
+    x = x if x != "?" else (1 if y < .5 else 0)
+    y = y if y != "?" else (1 if x < .5 else 0)
+    return abs(x - y)
+
+  n = d = 0
+  for c in self.cols.x:
+    a, b = row1[c.at], row2[c.at]
+    d += 1 if a == b == "?" else (_num if c.nump else _sym)(c, a, b)**the.p
+    n += 1
+  return (d/n) ** (1/the.p)
+
 def ydist(self: DATA, row) -> float:
   return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
 
 def ydists(self: DATA) -> DATA:
   self.rows.sort(key=lambda r: ydist(self, r))
   return self
+
+def kmeans(data1, k=8, loops=5, samples=1024):
+  def loop(n, centroids):
+    datas = {}
+    for row in rows:
+      k = id(min(centroids, key=lambda centroid: xdist(data1,centroid,row)))
+      datas[k] = datas.get(k,None) or DATA(data1.cols.names)
+      data(datas[k], row)
+    return datas.values() if n==0 else loop(n-1, [mid(d) for d in datas.values()])
+
+  random.shuffle(data1.rows)
+  rows = data1.rows[:samples]
+  return loop(loops, rows[:k])
 
 def say(x: any) -> str:
   if isinstance(x, float): 
@@ -197,21 +248,39 @@ class dashDash:
     data1 = read(the.train)
     print(sorted([round(like(data1,row,len(data1.rows),2),2)
                    for i,row in enumerate(data1.rows) if i % 20 ==0]))
+   
+  def xdist():
+    data1 = read(the.train)
+    print(sorted([round(xdist(data1,row,data1.rows[0]),2)
+                   for i,row in enumerate(data1.rows) if i % 20 ==0]))
+
+  def kmeans():
+    data1 = read(the.train)
+    for data in kmeans(data1): print(mid(data))
+
+
+  def slash4():
+    data1 = read(the.train)
+    for row in slash4(data1): print(ydist(data1,row))
 
   def acquire():
     data1 = read(the.train)
-    asIs, deltas, toBe, rand = NUM(), NUM(),NUM(),NUM()
+    asIs = NUM()
     [add(asIs, ydist(data1, row)) for row in data1.rows]
-    for _ in range(the.Repeats):
-      labels, rows = acquire(data1, shuffle(data1.rows))
-      y = ydist(data1, rows[0])
-      add(toBe, y)
-      add(deltas, (asIs.mu - y)/asIs.sd)
-      some = random.choices(data1.rows,k=the.Stop)
-      yrand = ydist(data1, ydists(clone(data1, some)).rows[0]) 
-      add(rand, yrand)
-    print(f"{len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labels.values())}",end=" ")
-    print(f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f}",end=" ")
-    print(re.sub(r"/","  ", the.train))
+    for the.Stop in [20,25,30,60]:
+      rand, deltas, toBe = NUM(), NUM(), NUM()
+      t1= time.time_ns()
+      for _ in range(the.Repeats):
+        some = random.choices(data1.rows,k=the.Stop)
+        best = ydists(clone(data1,some)).rows[0]
+        add(rand, ydist(data1, best))
+        labels, rows = acquire(data1, shuffle(data1.rows))
+        y = ydist(data1, rows[0])
+        add(toBe, y)
+        add(deltas, (asIs.mu - y)/asIs.sd)
+      t2= (time.time_ns() - t1)/the.Repeats // 1000000
+      print(f"{the.Stop} {len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labels.values())}",end=" ")
+      print(f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f} {rand.sd:.2f} {t2}",end=" ")
+      print(the.train.split("/")[-1])
 
 if __name__ == "__main__": cli(sys.argv, the.__dict__)
