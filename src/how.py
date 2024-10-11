@@ -43,7 +43,7 @@ def SYM(at=0, txt=" ") -> SYM:
 
 def NUM(at=0, txt=" "): 
   return o(nump=True, n=0, at=at, txt=txt, m2=0, mu=0, sd=0, lo=big, hi=-big,
-          goal = 0 if txt[-1] in "-" else 1)
+          goal = 0 if txt[-1] == "-" else 1)
 
 def DATA(names, rows=None): 
   return datas(o(rows=[], cols=COLS(names)), rows)
@@ -58,9 +58,6 @@ def COLS(names: list[str]) -> COLS:
   return o(names=names, all=all, x=x, y=y)
 
 #------------------------------------------------
-def clone(self:DATA, rows=None):
-  return datas(DATA(self.cols.names),rows)
-
 def stdev(self:NUM): return  0 if self.n < 2 else (self.m2/(self.n - 1))**.5
 
 def add(self: COL, x) -> None:
@@ -92,21 +89,22 @@ def subtracts(self:DATA, row:row):
       else:
         col.counts[x] -= 1
 
-def datas(self:DATA, rows=None):
-  [data(self,row) for row in rows or []]
-  return self
-
 def data(self:DATA, row):
   self.rows += [row]
   [add(c, row[c.at]) for c in self.cols.all]
 
-def read(file: str) -> DATA:
-  src = csv(file)
-  self = DATA(next(src))
-  [data(self, row) for row in src]
+def datas(self:DATA, rows=None):
+  [data(self,row) for row in rows or []]
   return self
 
-def like(self: DATA, row: row, nall: int, nh: int) -> float:
+def clone(self:DATA, rows=None):
+  return datas(DATA(self.cols.names), rows)
+
+def read(file: str) -> DATA:
+  src = csv(file)
+  return datas(DATA(next(src)), src)
+
+def like(self: DATA, row: row, nall: int, nh: int) -> float:
   def _sym(sym1, x, prior):
     return (sym1.counts.get(x, 0) + the.m*prior) / (sym1.n + the.m)
 
@@ -119,7 +117,7 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
   likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
+def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
   "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
