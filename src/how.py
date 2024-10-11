@@ -20,6 +20,7 @@ the = o(
     k=1, 
     m=2, 
     rseed=1234567891,  
+    Repeats=20,
     start=4, 
     Stop=10, 
     train="../../moot/optimize/misc/auto93.csv"
@@ -117,7 +118,8 @@ def read(file: str) -> DATA:
   likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
+def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, 
+           fun=lambda b,r: b+b-r) -> tuple[dict,row]:
   "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
@@ -174,32 +176,6 @@ def say(x: any) -> str:
   return "(" + ' '.join(f":{k} {say(v)}"
                         for k, v in x.items() if not str(k)[0] == "_") + ")"
 
-#------------------------------------------------------------------------------
-class dashDash:
-  "things that can be called from the command line using --x"
-  def the(): print(the)
-   
-  def like():
-    data1 = read(the.train)
-    print(sorted([round(like(data1,row,len(data1.rows),2),2)
-                   for i,row in enumerate(data1.rows) if i % 20 ==0]))
-
-  def acquire():
-    repeats=20
-    data1 = read(the.train)
-    asIs, deltas, toBe, rand = NUM(), NUM(),NUM(),NUM()
-    [add(asIs, ydist(data1, row)) for row in data1.rows]
-    for _ in range(repeats):
-      labels, rows = acquire(data1, shuffle(data1.rows))
-      y = ydist(data1, rows[0])
-      add(toBe, y)
-      add(deltas, (asIs.mu - y)/asIs.sd)
-      some = random.choices(data1.rows,k=the.Stop)
-      yrand = ydist(data1, ydists(clone(data1, some)).rows[0]) 
-      add(rand, yrand)
-    print(f"{len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labels.values())} {asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f}",end=" ")
-    print(re.sub(r"/","  ", the.train))
-
 def cli(a:list[str], d:dict) -> None:
   slots = {f"-{k[0]}": k for k in d} 
   for i,s in enumerate(a):
@@ -211,5 +187,31 @@ def cli(a:list[str], d:dict) -> None:
       k = slots[s]
       d[k] = coerce(d[k]==True and "False" or d[k]==False and "True" or a[i+1])
       if k=="rseed": random.seed(d[k])
+
+#------------------------------------------------------------------------------
+class dashDash:
+  "things that can be called from the command line using --x"
+  def the(): print(the)
+   
+  def like():
+    data1 = read(the.train)
+    print(sorted([round(like(data1,row,len(data1.rows),2),2)
+                   for i,row in enumerate(data1.rows) if i % 20 ==0]))
+
+  def acquire():
+    data1 = read(the.train)
+    asIs, deltas, toBe, rand = NUM(), NUM(),NUM(),NUM()
+    [add(asIs, ydist(data1, row)) for row in data1.rows]
+    for _ in range(the.Repeats):
+      labels, rows = acquire(data1, shuffle(data1.rows))
+      y = ydist(data1, rows[0])
+      add(toBe, y)
+      add(deltas, (asIs.mu - y)/asIs.sd)
+      some = random.choices(data1.rows,k=the.Stop)
+      yrand = ydist(data1, ydists(clone(data1, some)).rows[0]) 
+      add(rand, yrand)
+    print(f"{len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labels.values())}",end=" ")
+    print(f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f}",end=" ")
+    print(re.sub(r"/","  ", the.train))
 
 if __name__ == "__main__": cli(sys.argv, the.__dict__)
