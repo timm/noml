@@ -1,4 +1,7 @@
 #!/usr/bin/env python3.13 -B
+"""
+how.py: how to change your mind, with very little information
+(c) Tim Menzies <timm@ieee.org>, BSD-2 license """
 
 from typing import Any as any
 from typing import Union, List, Dict, Type, Callable, Generator
@@ -10,12 +13,21 @@ class o:
   def __init__(self, **d): self.__dict__.update(**d)
   def __repr__(self): return self.__class__.__name__ + say(self.__dict__)
 
-the = o(k=1, m=2, seed=1234567891,  start=4, Stop=30, end=.5, guesses=100,
-        train="../../moot/optimize/misc/auto93.csv")
+the = o(
+    cohen=0.35, 
+    end=.5, 
+    guesses=100,
+    k=1, 
+    m=2, 
+    rseed=1234567891,  
+    start=4, 
+    Stop=10, 
+    train="../../moot/optimize/misc/auto93.csv"
+)
 
 big=1E32
 R=random.random
-random.seed(the.seed)
+random.seed(the.rseed)
 
 DATA, COLS = o, o
 NUM, SYM  = o, o
@@ -36,9 +48,6 @@ def NUM(at=0, txt=" "):
 def DATA(names, rows=None): 
   return datas(o(rows=[], cols=COLS(names)), rows)
 
-def clone(self:DATA, rows=None):
-  return datas(DATA(self.cols.names),rows)
-
 def COLS(names: list[str]) -> COLS:
   all,x,y,nums = [],[],[],[]
   for at,s in enumerate(names):
@@ -48,7 +57,13 @@ def COLS(names: list[str]) -> COLS:
        (y if s[-1] in "+-!" else x).append(col)
   return o(names=names, all=all, x=x, y=y)
 
-def col(self: COL, x) -> None:
+#------------------------------------------------
+def clone(self:DATA, rows=None):
+  return datas(DATA(self.cols.names),rows)
+
+def stdev(self:NUM): return  0 if self.n < 2 else (self.m2/(self.n - 1))**.5
+
+def add(self: COL, x) -> None:
   if x != "?" : 
     self.n += 1
     if self.nump:
@@ -57,12 +72,25 @@ def col(self: COL, x) -> None:
       d = x - self.mu
       self.mu += d / self.n
       self.m2 += d * (x - self.mu)
-      self.sd = 0 if self.n < 2 else (self.m2/(self.n - 1))**.5
+      self.sd = stdev(self)
     else:
       tmp = self.counts[x] = 1 + self.counts.get(x, 0)
       if tmp > self.most:
         self.most, self.mode = tmp, x
   return x
+
+def subtracts(self:DATA, row:row):
+  for col in self.cols.all:
+    x = row[col.at]
+    if x !="?":
+      col.n -= 1
+      if col.nump:
+        d = x - col.mu
+        col.mu -= d / col.n
+        col.m2 -= d * (x - col.mu)
+        col.sd  = stdev(col)
+      else:
+        col.counts[x] -= 1
 
 def datas(self:DATA, rows=None):
   [data(self,row) for row in rows or []]
@@ -70,7 +98,7 @@ def datas(self:DATA, rows=None):
 
 def data(self:DATA, row):
   self.rows += [row]
-  [col(c, row[c.at]) for c in self.cols.all]
+  [add(c, row[c.at]) for c in self.cols.all]
 
 def read(file: str) -> DATA:
   src = csv(file)
@@ -91,30 +119,30 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
   likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
+def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
   "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
 
-  def score(r,best,rest): 
-    return fun(like(best, r, len(done), 2),like(rest, r, len(done), 2))
-
   def guess(todo, done, last):
+    def score(r): 
+      return fun(like(best, r, len(done), 2),like(rest, r, len(done), 2))
     nBest   = int(len(done)**the.end)
     guesses = min(the.guesses, len(todo)) / len(todo)
     best    = DATA(self.cols.names, done[:nBest])
     rest    = DATA(self.cols.names, done[nBest:])
     return sorted(todo, reverse=True,
-       #key=lambda r: (0 if R()>guesses else score(r,best,rest)))
-       key=lambda r:score(r,best,rest) if  last else (0 if R()>guesses else score(r,best,rest)))
+                        key=lambda r:last and score(r) or  R()<guesses and score(r) or 0)
 
   b4   = list(labels.values())
   m    = max(0, the.start - len(b4))
   todo = rows[m:]
   done = sorted(rows[:m] + b4, key=Y)
   while len(done) < the.Stop:
-    top, *todo = guess(todo, done, the.Stop - len(done)>1)
+    top, *todo = guess(todo, done, len(done)==the.Stop - 1)
     done = sorted(done + [top], key=Y)
+    if ydist(self, top) <= eps:
+      break
   return labels, done
 
 def norm(self: NUM, x) -> float:
@@ -149,30 +177,41 @@ def say(x: any) -> str:
                         for k, v in x.items() if not str(k)[0] == "_") + ")"
 
 #------------------------------------------------------------------------------
-class main:
+class dashDash:
+  "things that can be called from the command line using --x"
   def the(): print(the)
    
   def like():
     data1 = read(the.train)
-    print(sorted([like(data1, row,len(data1.rows),2)
-                   for row in data1.rows]))
+    print(sorted([round(like(data1,row,len(data1.rows),2),2)
+                   for i,row in enumerate(data1.rows) if i % 20 ==0]))
 
   def acquire():
+    repeats=20
     data1 = read(the.train)
-    print(the.train)
-    asIs, toBe = NUM(), NUM()
-    labels, rows = acquire(data1, shuffle(data1.rows))
-    [col(asIs, ydist(data1, row)) for row in data1.rows]
-    [col(toBe, ydist(data1, row)) for row in rows]
-    print(f":labels {len(labels.values())} :asIs {asIs.mu:.3f} :found {toBe.lo:.3f}")
+    asIs, deltas, toBe, rand = NUM(), NUM(),NUM(),NUM()
+    [add(asIs, ydist(data1, row)) for row in data1.rows]
+    for _ in range(repeats):
+      labels, rows = acquire(data1, shuffle(data1.rows))
+      y = ydist(data1, rows[0])
+      add(toBe, y)
+      add(deltas, (asIs.mu - y)/asIs.sd)
+      some = random.choices(data1.rows,k=the.Stop)
+      yrand = ydist(data1, ydists(clone(data1, some)).rows[0]) 
+      add(rand, yrand)
+    print(f"{len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labels.values())} {asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f}",end=" ")
+    print(re.sub(r"/","  ", the.train))
 
-if __name__ == "__main__":
-  for i,s in enumerate(sys.argv):
-    if s[:2] == "--": 
-      getattr(main,s[2:], lambda: print(s[2:],"?"))()
-    elif s[0]=="-":
-      for k in the.__dict__: 
-        if k[0] == s[1]: the.__dict__[k] = coerce(sys.argv[i+1])
-        random.seed(the.seed)
+def cli(a:list[str], d:dict) -> None:
+  slots = {f"-{k[0]}": k for k in d} 
+  for i,s in enumerate(a):
+    if s in ["-h", "--help"]: 
+      sys.exit(print(__doc__))
+    elif s[:2] == "--": 
+      getattr(dashDash, s[2:], lambda: print("?",s[2:]))()
+    elif s in slots:
+      k = slots[s]
+      d[k] = coerce(d[k]==True and "False" or d[k]==False and "True" or a[i+1])
+      if k=="rseed": random.seed(d[k])
 
-
+if __name__ == "__main__": cli(sys.argv, the.__dict__)
