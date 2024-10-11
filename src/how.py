@@ -91,7 +91,7 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
   likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
+def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
   "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
   def Y(a): labels[id(a)] = a; return ydist(self, a)
@@ -105,8 +105,8 @@ def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple
     best    = DATA(self.cols.names, done[:nBest])
     rest    = DATA(self.cols.names, done[nBest:])
     return sorted(todo, reverse=True,
-                  #key=lambda r: (0 if R()>guesses else score(r,best,rest)))
-                  key=lambda r:score(r,best,rest) if  last else (0 if R()>guesses else score(r,best,rest)))
+       #key=lambda r: (0 if R()>guesses else score(r,best,rest)))
+       key=lambda r:score(r,best,rest) if  last else (0 if R()>guesses else score(r,best,rest)))
 
   b4   = list(labels.values())
   m    = max(0, the.start - len(b4))
@@ -117,7 +117,7 @@ def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple
     done = sorted(done + [top], key=Y)
   return labels, done
 
-def norm(self: NUM, x) -> float:
+def norm(self: NUM, x) -> float:
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
 
 def shuffle(lst): random.shuffle(lst); return lst
@@ -148,6 +148,7 @@ def say(x: any) -> str:
   return "(" + ' '.join(f":{k} {say(v)}"
                         for k, v in x.items() if not str(k)[0] == "_") + ")"
 
+#------------------------------------------------------------------------------
 class main:
   def the(): print(the)
    
