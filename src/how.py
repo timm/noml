@@ -1,4 +1,4 @@
-#!/usr/bin/python3.13 -B
+#!/usr/bin/env python3.13 -B
 
 from typing import Any as any
 from typing import Union, List, Dict, Type, Callable, Generator
@@ -10,7 +10,12 @@ class o:
   def __init__(self, **d): self.__dict__.update(**d)
   def __repr__(self): return self.__class__.__name__ + say(self.__dict__)
 
-the = o(k=1, m=2, train="../../moot/optimize/misc/auto93.csv")
+the = o(k=1, m=2, seed=1234567891,  start=4, Stop=30, end=.5, guesses=100,
+        train="../../moot/optimize/misc/auto93.csv")
+
+big=1E32
+R=random.random
+random.seed(the.seed)
 
 DATA, COLS = o, o
 NUM, SYM  = o, o
@@ -21,8 +26,6 @@ row = list[atom]
 rows = list[row]
 classes = dict[str, rows]  # `str` is the class name
 
-big=1E32
-
 def SYM(at=0, txt=" ") -> SYM:
   return o(nump=False, n=0, at=at, txt=txt, most=0, mode=None, counts={})
 
@@ -30,9 +33,13 @@ def NUM(at=0, txt=" "):
   return o(nump=True, n=0, at=at, txt=txt, m2=0, mu=0, sd=0, lo=big, hi=-big,
           goal = 0 if txt[-1] in "-" else 1)
 
-def DATA(names): return o(rows=[], cols=COLS(names))
+def DATA(names, rows=None): 
+  return datas(o(rows=[], cols=COLS(names)), rows)
 
-def COLS(names):
+def clone(self:DATA, rows=None):
+  return datas(DATA(self.cols.names),rows)
+
+def COLS(names: list[str]) -> COLS:
   all,x,y,nums = [],[],[],[]
   for at,s in enumerate(names):
     col = (NUM if s[0].isupper() else SYM)(at=at, txt=s)
@@ -57,8 +64,13 @@ def col(self: COL, x) -> None:
         self.most, self.mode = tmp, x
   return x
 
+def datas(self:DATA, rows=None):
+  [data(self,row) for row in rows or []]
+  return self
+
 def data(self:DATA, row):
-  self.rows.append( [col(c, row[c.at]) for c in self.cols.all] )
+  self.rows += [row]
+  [col(c, row[c.at]) for c in self.cols.all]
 
 def read(file: str) -> DATA:
   src = csv(file)
@@ -80,37 +92,32 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
   return sum(log(x) for x in likes + [prior] if x > 0)
 
 def acquire(self: DATA, rows: rows, labels=None, fun=lambda b,r: b+b-r) -> tuple[dict,row]:
+  "From a model built so far, label next most interesting example. And repeat."
   labels = labels or {}
-  def _Y(a): labels[id(a)] = a; return ydist(self, a)
+  def Y(a): labels[id(a)] = a; return ydist(self, a)
 
-  def _guess(todo, done):
+  def guess(todo, done):
     def key(r):
-      return 0 if R() > guesses else fun (like(best, r, len(done), 2), 
-                                            like(rest, r, len(done), 2))
+      return 0 if R()>guesses else fun(like(best, r, len(done), 2),like(rest, r, len(done), 2))
     nBest   = int(len(done)**the.end)
     guesses = min(the.guesses, len(todo)) / len(todo)
     best    = DATA(self.cols.names, done[:nBest])
     rest    = DATA(self.cols.names, done[nBest:])
     return sorted(todo, key=key, reverse=True)
 
-  def _loop(todo, done):
-    lives, least, out = the.lives, big, None
-    while len(done) < the.Stop and lives>0:
-      top, *todo = _guess(todo, done)
-      done = sorted(done + [top], key=Y)
-      if ydist(self,done[0]) < least: 
-        least = ydist(self,done[0])
-        lives += the.lives
-      else:
-        lives -= 1
-    return done
-
-  b4 = list(labels.values())
-  m = max(0, the.start - len(b4))
-  return labels, _loop(rows[m:], sorted(rows[:m] + b4, key=_Y))
+  b4   = list(labels.values())
+  m    = max(0, the.start - len(b4))
+  todo = rows[m:]
+  done = sorted(rows[:m] + b4, key=Y)
+  while len(done) < the.Stop:
+    top, *todo = guess(todo, done)
+    done = sorted(done + [top], key=Y)
+  return labels, done
 
 def norm(self: NUM, x) -> float:
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
+
+def shuffle(lst): random.shuffle(lst); return lst
 
 def coerce(s: str) -> atom:
   try: return ast.literal_eval(s)
@@ -140,18 +147,21 @@ def say(x: any) -> str:
 
 class main:
   def the(): print(the)
-  def acquire():
-    data1 = ydists(read(the.train))
-    labels, rows = acquire(data1, shuffle(data1.rows))
-    better = (asIs.mu - toBe.mu)/asIs.sd
-    print(f"{the.lives:3} :labels {samples.mu:3.1f} :asIs {asIs.mu:.3f} :todo {toBe.mu:.3f} :delta {better:.3f}")
 
-random.seed(the.seed)
+  def acquire():
+    data1 = read(the.train)
+    asIs, toBe = NUM(), NUM()
+    labels, rows = acquire(data1, shuffle(data1.rows))
+    [col(asIs, ydist(data1, row)) for row in data1.rows]
+    [col(toBe, ydist(data1, row)) for row in rows]
+    better = (asIs.mu - toBe.mu)/asIs.sd
+    print(f":labels {len(labels.values())} :asIs {asIs.mu:.3f} :todo {toBe.mu:.3f} :delta {better:.3f}")
+
 if __name__ == "__main__":
   for i,s in enumerate(sys.argv):
-    if s[:1] in the.__dict__:
-      the.__dict__[s:1] = coerce(sys.argv[1+i])
+    if s[1:] in the.__dict__:
+      the.__dict__[s[1:]] = coerce(sys.argv[i+1])
       random.seed(the.seed)
-    if s[:2] == "--": getattr(main,s[:2], lambda: True)()
+    if s[:2] == "--": getattr(main,s[2:], lambda: print(s[2:],"?"))()
 
 
