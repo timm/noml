@@ -122,6 +122,9 @@ acts:
 acquires:
 	$(MAKE) Act=acquire acts | tee ~/tmp/acquires.out
 
+acquiresTF:
+	gawk '/ 28 / {print $$1, $$2} ' ~/tmp/acquires.out | sort | uniq -c
+
 acquiresX:
 	 echo "asIs,7,28,128,sd"
 	cat ~/tmp/acquires.out |		gawk \
