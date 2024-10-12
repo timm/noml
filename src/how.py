@@ -34,6 +34,7 @@ big=1E32
 R=random.random
 random.seed(the.rseed)
 
+# ## TYPES --------------------------------------------------------------------
 DATA, COLS = o, o
 NUM, SYM  = o, o
 COL = NUM | SYM
@@ -43,18 +44,13 @@ row = list[atom]
 rows = list[row]
 classes = dict[str, rows]  # `str` is the class name
 
-def BIN(lo,sym1:SYM):
-  return o(lo=lo, hi=lo, y=sym1)
-
+# ## CREATE -------------------------------------------------------------------
 def SYM(at=0, txt=" ") -> SYM:
   return o(nump=False, n=0, at=at, txt=txt, most=0, mode=None, counts={})
 
 def NUM(at=0, txt=" "): 
   return o(nump=True, n=0, at=at, txt=txt, m2=0, mu=0, sd=0, lo=big, hi=-big,
           goal = 0 if txt[-1] == "-" else 1)
-
-def DATA(names, rows=None): 
-  return datas(o(rows=[], cols=COLS(names)), rows)
 
 def COLS(names: list[str]) -> COLS:
   all,x,y,nums = [],[],[],[]
@@ -65,27 +61,41 @@ def COLS(names: list[str]) -> COLS:
        (y if s[-1] in "+-!" else x).append(col)
   return o(names=names, all=all, x=x, y=y)
 
-#------------------------------------------------
-def stdev(self:NUM): return  0 if self.n < 2 else (self.m2/(self.n - 1))**.5
+def DATA(names, rows=None): 
+  return datas(o(rows=[], cols=COLS(names)), rows)
 
+def clone(self:DATA, rows=None):
+  return datas(DATA(self.cols.names), rows)
+
+def read(file: str) -> DATA:
+  src = csv(file)
+  return datas(DATA(next(src)), src)
+
+# ## UPDATE -------------------------------------------------------------------
 def adds(self: COL, src):
   [add(self,x) for x in src]
   return self
 
 def add(self: COL, x) -> None:
-  if x != "?" : 
+  return (num if self.nump else sym)(self,x)
+ 
+def num(self:NUM,x):
+  if x != "?": 
     self.n += 1
-    if self.nump:
-      self.lo = min(x, self.lo)
-      self.hi = max(x, self.hi)
-      d = x - self.mu
-      self.mu += d / self.n
-      self.m2 += d * (x - self.mu)
-      self.sd = stdev(self)
-    else:
-      tmp = self.counts[x] = 1 + self.counts.get(x, 0)
-      if tmp > self.most:
-        self.most, self.mode = tmp, x
+    self.lo = min(x, self.lo)
+    self.hi = max(x, self.hi)
+    d = x - self.mu
+    self.mu += d / self.n
+    self.m2 += d * (x - self.mu)
+    self.sd = stdev(self)
+  return x
+
+def sym(self:SYM, x, n=1):
+  if x != "?": 
+    self.n += n
+    tmp = self.counts[x] = n + self.counts.get(x, 0)
+    if tmp > self.most:
+      self.most, self.mode = tmp, x
   return x
 
 def subtracts(self:DATA, row:row):
@@ -101,35 +111,27 @@ def subtracts(self:DATA, row:row):
       else:
         col.counts[x] -= 1
 
-def data(self:DATA, row):
-  self.rows += [row]
-  [add(c, row[c.at]) for c in self.cols.all]
-
 def datas(self:DATA, rows=None):
   [data(self,row) for row in rows or []]
   return self
 
-def clone(self:DATA, rows=None):
-  return datas(DATA(self.cols.names), rows)
+def data(self:DATA, row):
+  self.rows += [row]
+  [add(c, row[c.at]) for c in self.cols.all]
 
-def read(file: str) -> DATA:
-  src = csv(file)
-  return datas(DATA(next(src)), src)
+# ## QUERY --------------------------------------------------------------------
+def norm(self: NUM, x) -> float:
+  return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
 
-def discretize(col,x):
-  return x=="?" and x or col.nump and int(the.bins*cdf(col,x)) or x
+def stdev(self:NUM): return  0 if self.n < 2 else (self.m2/(self.n - 1))**.5
 
 def cdf(self:NUM,x):
  fun = lambda x: 1 - 0.5 * exp(-0.717*x - 0.416*x*x) 
  z = (x - i.mu) / i.sd
  return fun(z) if z>=0 else 1 - fun(-z)
 
-def bin(self:BIN, x,y):
-  self.lo = min(x, self.lo)
-  self.hi = max(x, self.hi)
-  add(self.y, y)
-
-def like(self: DATA, row: row, nall: int, nh: int) -> float:
+# ## Bayes ------------------------------------------------------------------- 
+def like(self: DATA, row: row, nall: int, nh: int) -> float:
   def _sym(sym1, x, prior):
     return (sym1.counts.get(x, 0) + the.m*prior) / (sym1.n + the.m)
 
@@ -168,34 +170,11 @@ def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda _,b,r:b+b
       break
   return labels, done
 
-def norm(self: NUM, x) -> float:
-  return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
-
-def shuffle(lst): random.shuffle(lst); return lst
-
-def coerce(s: str) -> atom:
-  try: return ast.literal_eval(s)
-  except Exception: return s
-
-def csv(file: str) -> Generator:
-  with file_or_stdin(None if file == "−" else file) as src:
-    for line in src:
-      line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
-      if line:
-        yield [coerce(s.strip()) for s in line.split(",")]
-
-def mid(self: DATA) -> row:
-  "Return the row closest to the middle of a DATA."
-  tmp = [(c.mu if c.nump else c.mode) for c in self.cols.all]
-  return min(self.rows, key=lambda row: xdist(self, row, tmp))
-
-#-------------------------------------------------------------
-# explain
+# ## EXPLAIN ------------------------------------------------------------------
+def discretize(col,x):
+  return (x=="?" and x) or (not col.nump and x) or (int(the.bins*cdf(col,x)))
 
 class BIN(o):
-  def __init__(self,lo,sym1): 
-    self.lo = self.hi = lo; self.y = sym
-
   def __repr__(self):
     s,lo,hi= self.y.txt, self.lo, self.hi
     if bin.lo==inf   : return f"{s}  < {hi}"
@@ -203,7 +182,12 @@ class BIN(o):
     if bin.hi==inf   : return f"{s} >= {lo}"
     return f"{lo} <= {s} < {hi}"
 
-  def accepts(self:BIN, row):
+  def add(self, x,y):
+    self.lo = min(x, self.lo)
+    self.hi = max(x, self.hi)
+    add(self.y, y)
+
+  def accepts(self, row):
     x = row[self.y.at]
     return x=="?" or self.lo==x==self.hi or self.lo <= x < self.hi 
 
@@ -217,15 +201,15 @@ def cuts(self:data, datas:classes):
         if x != "?":
           N += 1
           b = discretize(col,x)
-          tmp[b] = d.get(b,None) or BIN(x, SYM(at, txt))
-          bin(tmp[b], x, y)
-    e = sum(ent(bin.y)*bin.y.n for bin in bins.values()) / N
+          tmp[b] = d.get(b,None) or BIN(lo=x,hi=x, y=SYM(col.at, col.txt))
+          tmp[b].add(x, y)
+    e = sum(ent(bin.y)*bin.y.n for bin in tmp.values()) / N
     if e < lo:
-      lo, out = e, complete(bins.values())
+      lo, out = e, complete(tmp.values())
   return out
 
 def complete(col, bins):
-  if  col.nump: 
+  if col.nump: 
     for i,bin in enumerate(sorted(bins, key=lambda b: b.lo)):
       if i < len(bins): bin.hi = bins[i+1].lo
     bins[ 0].lo = -inf
@@ -235,8 +219,7 @@ def complete(col, bins):
 class TREE(o): pass
 
 def tree(self:DATA, datas:classes, stop=10, lvl=0, cut=None):
-  kids=[]
-  d = {y:len(rows) for y,rows in datas}
+  kids,g = [], {y:len(rows) for y,rows in datas}
   n = sum(d.values())
   if n > stop and ent(d) != 0:
     for one in cuts(self, datas):
@@ -249,7 +232,7 @@ def showDecisions(self: TREE) -> None:
     print( f"{'|.. ' * self.lvl}{self.cut}")
     [showDecisions(kid) for kid in kids]
 
-#----------------------------------------------------------------
+# ## DISTANCE -----------------------------------------------------------------
 def xdist(self: DATA, row1: row, row2: row) -> float:
   "Minkowski distance between independent columns of two rows."
   def _sym(_,x,y): return x!=y
@@ -267,25 +250,14 @@ def xdist(self: DATA, row1: row, row2: row) -> float:
   return (d/n) ** (1/the.p)
 
 def ydist(self: DATA, row) -> float:
-  return (sum(abs(c.goal - norm(c, row[c.at]))**the.p for c in self.cols.y)/len(self.cols.y))**1/the.p
+  return (sum(abs(c.goal - norm(c, row[c.at]))**the.p 
+              for c in self.cols.y)/len(self.cols.y))**1/the.p
 
 def ydists(self: DATA) -> DATA:
   self.rows.sort(key=lambda r: ydist(self, r))
   return self
 
-def kmeans(data1, k=8, loops=5, samples=1024):
-  def loop(n, centroids):
-    datas = {}
-    for row in rows:
-      k = id(min(centroids, key=lambda centroid: xdist(data1,centroid,row)))
-      datas[k] = datas.get(k,None) or DATA(data1.cols.names)
-      data(datas[k], row)
-    return datas.values() if n==0 else loop(n-1, [mid(d) for d in datas.values()])
-
-  random.shuffle(data1.rows)
-  rows = data1.rows[:samples]
-  return loop(loops, rows[:k])
-
+# ## UTILS --------------------------------------------------------------------
 def say(x: any) -> str:
   if isinstance(x, float): 
     return str(x) if int(x) == x else f"{x:.3f}"
@@ -300,14 +272,27 @@ def cli(a:list[str], d:dict) -> None:
     if s in ["-h", "--help"]: 
       sys.exit(print(__doc__))
     elif s[:2] == "--": 
-      getattr(dashDash, s[2:], lambda: print("?",s[2:]))()
+      getattr(main, s[2:], lambda: print("?",s[2:]))()
     elif s in slots:
       k = slots[s]
       d[k] = coerce(d[k]==True and "False" or d[k]==False and "True" or a[i+1])
       if k=="rseed": random.seed(d[k])
 
-#------------------------------------------------------------------------------
-class dashDash:
+def shuffle(lst): random.shuffle(lst); return lst
+
+def coerce(s: str) -> atom:
+  try: return ast.literal_eval(s)
+  except Exception: return s
+
+def csv(file: str) -> Generator:
+  with file_or_stdin(None if file == "−" else file) as src:
+    for line in src:
+      line = re.sub(r"([\n\t\r ]|\#.*)", "", line)
+      if line:
+        yield [coerce(s.strip()) for s in line.split(",")]
+
+# ## START UP -----------------------------------------------------------------
+class main:
   "things that can be called from the command line using --x"
   def the(): print(the)
    
