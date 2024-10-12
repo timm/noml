@@ -209,7 +209,7 @@ def cuts(self:data, datas:classes):
         if x != "?":
           N += 1
           b = discretize(col,x)
-          tmp[b] = d.get(b,None) or BIN(lo=x,hi=x, y=SYM(col.at, col.txt))
+          tmp[b] = d.get(b,None) or BIN(lo=x, hi=x, y=SYM(col.at, col.txt))
           tmp[b].add(x, y)
     e = sum(ent(bin.y)*bin.y.n for bin in tmp.values()) / N
     if e < lo:
@@ -218,8 +218,7 @@ def cuts(self:data, datas:classes):
 
 def complete(col, bins, n):
   if col.nump: 
-    bins = merges(bins,n)
-    for i,bin in enumerate(sorted(bins, key=lambda b: b.lo)):
+    for i,bin in enumerate(merges(sorted(bins, key=lambda b: b.lo), n)):
       if i < len(bins): bin.hi = bins[i+1].lo
     bins[ 0].lo = -inf
     bins[-1].hi =  inf
@@ -230,8 +229,8 @@ def merges(b4:list[BIN],n) -> list[BIN]:
   while i < len(b4):
     bin = b4[i]
     if i < len(b4) - 1:
-      if tmp := merged(bin, b4[i+1],n)
-         bin = tmp
+      if tmp := merged(bin.y, b4[i+1].y, n)
+         bin = BIN(lo=bin.lo, hi=b4[i+1].hi, y=tmp)
          i += 1
     now += [bin]
     i += 1
