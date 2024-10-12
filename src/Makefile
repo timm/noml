@@ -123,8 +123,19 @@ acquires:
 	$(MAKE) Act=acquire acts | tee ~/tmp/acquires.out
 
 acquiresX:
-	 echo "asIs,20,25,30,60,sd"
+	 echo "asIs,7,28,128,sd"
 	cat ~/tmp/acquires.out |		gawk \
-		'/^20/ {printf $$6 "," $$7} /^25/ {printf "," $$7} /^30/ {printf ","$$7} \
-     /^60/ {print "," $$7 "," $$(NF-3)}' \
+		'/^7/ {printf $$6 "," $$7} /^28/ {printf "," $$7} \
+     /^128/ {print "," $$7 "," $$(NF-3) } ' \
 		 | sort -t,  -n
+
+
+acquiresR:
+	 echo "asIs,7,28,128,sd"
+	cat ~/tmp/acquires.out |		gawk \
+		'/^7/ {printf $$6 "," $$8} /^28/ {printf "," $$8} \
+     /^128/ {print "," $$8 "," $$(NF-3) } ' \
+		 | sort -t,  -n
+
+
+

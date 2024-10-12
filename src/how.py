@@ -8,13 +8,14 @@ from typing import Union, List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
 from math import sqrt, exp, log, cos, inf,pi
 import random, time, sys, ast, re
+from stats import SOME
 
 class o:
   def __init__(self, **d): self.__dict__.update(**d)
   def __repr__(self): return self.__class__.__name__ + say(self.__dict__)
 
 the = o(
-  bins=7.
+  bins=7,
   cohen=0.35, 
   end=.5, 
   far=30,
@@ -67,6 +68,10 @@ def COLS(names: list[str]) -> COLS:
 #------------------------------------------------
 def stdev(self:NUM): return  0 if self.n < 2 else (self.m2/(self.n - 1))**.5
 
+def adds(self: COL, src):
+  [add(self,x) for x in src]
+  return self
+
 def add(self: COL, x) -> None:
   if x != "?" : 
     self.n += 1
@@ -115,9 +120,9 @@ def discretize(col,x):
   return x=="?" and x or col.nump and int(the.bins*cdf(col,x)) or x
 
 def cdf(self:NUM,x):
- fun = lambda x: 1 − 0.5 * exp(−0.717*x − 0.416*x*x) 
- z = (x − i.mu) / i.sd
- return fun(z) if z>=0 else 1 − fun(−z)
+ fun = lambda x: 1 - 0.5 * exp(-0.717*x - 0.416*x*x) 
+ z = (x - i.mu) / i.sd
+ return fun(z) if z>=0 else 1 - fun(-z)
 
 def bin(self:BIN, x,y):
   self.lo = min(x, self.lo)
@@ -152,7 +157,6 @@ def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda _,b,r:b+b
     return sorted(todo, reverse=True,
                         key=lambda r:last and score(r) or  R()<guesses and score(r) or 0)
 
-  if not labels: [Y(row) for row in slash4(self)]
   b4   = list(labels.values())
   m    = max(0, the.start - len(b4))
   todo = rows[m:]
@@ -163,21 +167,6 @@ def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda _,b,r:b+b
     if ydist(self, top) <= eps or len(todo) < 3:
       break
   return labels, done
-
-def slash4(data1, labels=None):
-   def half(rows,a,b):
-     C = xdist(data1,a,b)
-     rows = sorted(rows,key=lambda r: (xdist(data1,a,r)**2 + C**2 - xdist(data1,b,r)**2)/(2*C))
-     return rows[:int(len(rows)//2)]
-   def two(rows, above=None):
-     one = lambda: random.choice(rows)
-     a,b = max([(above or one(), one()) for _ in range(the.far)], key=lambda z: xdist(data1,z[0],z[1]))
-     return (a,b) if ydist(data1,a) < ydist(data1, b) else (b,a)
-   rows = data1.rows
-   c,d = two(rows); rows = half(rows,c,d)
-   b,c = two(rows,c); rows = half(rows,b,c)
-   a,b = two(rows,b)
-   return [a,b,c,d]
 
 def norm(self: NUM, x) -> float:
   return x if x == "?" else (x - self.lo)/(self.hi - self.lo + 1/big)
@@ -204,21 +193,21 @@ def mid(self: DATA) -> row:
 # explain
 
 class BIN(o):
- def __init__(self,lo,sym1): 
+  def __init__(self,lo,sym1): 
     self.lo = self.hi = lo; self.y = sym
 
- def __repr__(self):
-   s,lo,hi= self.y.txt, self.lo, self.hi
-   if bin.lo==inf   : return f"{s}  < {hi}"
-   if bin.lo==bin.hi: return f"{s} == {lo}"
-   if bin.hi==inf   : return f"{s} >= {lo}"
-   return f"{lo} <= {s} < {hi}"
+  def __repr__(self):
+    s,lo,hi= self.y.txt, self.lo, self.hi
+    if bin.lo==inf   : return f"{s}  < {hi}"
+    if bin.lo==bin.hi: return f"{s} == {lo}"
+    if bin.hi==inf   : return f"{s} >= {lo}"
+    return f"{lo} <= {s} < {hi}"
 
   def accepts(self:BIN, row):
     x = row[self.y.at]
     return x=="?" or self.lo==x==self.hi or self.lo <= x < self.hi 
 
-def cuts(self:data, datas:classes)
+def cuts(self:data, datas:classes):
   out,lo = {}, big
   for col in self.cols.x:
     tmp,N = {},0
@@ -255,10 +244,10 @@ def tree(self:DATA, datas:classes, stop=10, lvl=0, cut=None):
                stop=stop, lvl=lvl+1, cut=one)]
   return TREE(datas=datas, stop=stop, lvl=lvl, cut=cut, kids=kids)
 
-def showDecisions(self: Tree) -> None:
+def showDecisions(self: TREE) -> None:
   if self:
     print( f"{'|.. ' * self.lvl}{self.cut}")
-    [showDecisions(kid) for kids]
+    [showDecisions(kid) for kid in kids]
 
 #----------------------------------------------------------------
 def xdist(self: DATA, row1: row, row2: row) -> float:
@@ -344,19 +333,26 @@ class dashDash:
   def acquire():
     data1 = read(the.train)
     asIs = NUM()
-    [add(asIs, ydist(data1, row)) for row in data1.rows]
-    for the.Stop in [20,25,30,60]:
+    asIsS=[]
+    for y in  [ydist(data1, row) for row in data1.rows]: add(asIs,y); asIsS += [y]
+    for the.Stop in [7,28,128]:
       rand, deltas, toBe = NUM(), NUM(), NUM()
+      rands, toBes = [],[]
       t1= time.time_ns()
       for _ in range(the.Repeats):
         some = random.choices(data1.rows,k=the.Stop)
         best = ydists(clone(data1,some)).rows[0]
         add(rand, ydist(data1, best))
+        rands += [ydist(data1,best)]
         labels, rows = acquire(data1, shuffle(data1.rows))
         y = ydist(data1, rows[0])
         add(toBe, y)
+        toBes += [y]
         add(deltas, (asIs.mu - y)/asIs.sd)
       t2= (time.time_ns() - t1)/the.Repeats // 1000000
+      s1,s2=SOME(rands,txt="rand"),SOME(toBes,txt="toBe")
+      print(s2.mid()<s1.mid(), s2 != s1, end=" ")
+
       print(f"{the.Stop} {len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labels.values())}",end=" ")
       print(f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f} {rand.sd:.2f} {t2}",end=" ")
       print(the.train.split("/")[-1])
