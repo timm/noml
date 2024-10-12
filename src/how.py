@@ -144,10 +144,10 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
   likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
   return sum(log(x) for x in likes + [prior] if x > 0)
 
-def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda _,b,r:b+b-r):
+def acquire(self: DATA, rows:rows,  eps=0.058, labelled=None, fun=lambda _,b,r:b+b-r):
   "From a model built so far, label next most interesting example. And repeat."
-  labels = labels or {}
-  def Y(a): labels[id(a)] = a; return ydist(self, a)
+  labelled = labelled or {}
+  def Y(a): labelled[id(a)] = a; return ydist(self, a)
 
   def guess(todo, done, last):
     def score(r): 
@@ -159,7 +159,7 @@ def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda _,b,r:b+b
     return sorted(todo, reverse=True,
                         key=lambda r:last and score(r) or  R()<guesses and score(r) or 0)
 
-  b4   = list(labels.values())
+  b4   = list(labelled.values())
   m    = max(0, the.start - len(b4))
   todo = rows[m:]
   done = sorted(rows[:m] + b4, key=Y)
@@ -168,7 +168,7 @@ def acquire(self: DATA, rows:rows,  eps=0.058, labels=None, fun=lambda _,b,r:b+b
     done = sorted(done + [top], key=Y)
     if ydist(self, top) <= eps or len(todo) < 3:
       break
-  return labels, done
+  return labelled, done
 
 # ## EXPLAIN ------------------------------------------------------------------
 def discretize(col,x):
@@ -329,7 +329,7 @@ class main:
         best = ydists(clone(data1,some)).rows[0]
         add(rand, ydist(data1, best))
         rands += [ydist(data1,best)]
-        labels, rows = acquire(data1, shuffle(data1.rows))
+        labelled, rows = acquire(data1, shuffle(data1.rows))
         y = ydist(data1, rows[0])
         add(toBe, y)
         toBes += [y]
@@ -338,7 +338,7 @@ class main:
       s1,s2=SOME(rands,txt="rand"),SOME(toBes,txt="toBe")
       print(s2.mid()<s1.mid(), s2 != s1, end=" ")
 
-      print(f"{the.Stop} {len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labels.values())}",end=" ")
+      print(f"{the.Stop} {len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labelled.values())}",end=" ")
       print(f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f} {toBe.sd:.2f} {rand.sd:.2f} {t2}",end=" ")
       print(the.train.split("/")[-1])
 
