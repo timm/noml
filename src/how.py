@@ -19,7 +19,7 @@ the = o(
   cohen=0.35, 
   end=.5, 
   far=30,
-  guesses=400,
+  guesses=100,
   k=1, 
   m=2, 
   p=2,
@@ -267,7 +267,7 @@ def xdist(self: DATA, row1: row, row2: row) -> float:
   return (d/n) ** (1/the.p)
 
 def ydist(self: DATA, row) -> float:
-  return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
+  return (sum(abs(c.goal - norm(c, row[c.at]))**the.p for c in self.cols.y)/len(self.cols.y))**1/the.p
 
 def ydists(self: DATA) -> DATA:
   self.rows.sort(key=lambda r: ydist(self, r))
@@ -335,7 +335,7 @@ class dashDash:
     asIs = NUM()
     asIsS=[]
     for y in  [ydist(data1, row) for row in data1.rows]: add(asIs,y); asIsS += [y]
-    for the.Stop in [7,28,128]:
+    for the.Stop in [6,12,24,48]:
       rand, deltas, toBe = NUM(), NUM(), NUM()
       rands, toBes = [],[]
       t1= time.time_ns()
@@ -354,7 +354,7 @@ class dashDash:
       print(s2.mid()<s1.mid(), s2 != s1, end=" ")
 
       print(f"{the.Stop} {len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labels.values())}",end=" ")
-      print(f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f} {rand.sd:.2f} {t2}",end=" ")
+      print(f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f} {toBe.sd:.2f} {rand.sd:.2f} {t2}",end=" ")
       print(the.train.split("/")[-1])
 
 if __name__ == "__main__": cli(sys.argv, the.__dict__)

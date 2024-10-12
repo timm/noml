@@ -123,21 +123,21 @@ acquires:
 	$(MAKE) Act=acquire acts | tee ~/tmp/acquires.out
 
 acquiresTF:
-	gawk '/ 28 / {print $$1, $$2} ' ~/tmp/acquires.out | sort | uniq -c
+	gawk '$$3== 24  {print $$1, $$2} ' ~/tmp/acquires.out | sort | uniq -c
 
 acquiresX:
-	 echo "asIs,7,28,128,sd"
+	 echo "asIs,6,12,24,48"
 	cat ~/tmp/acquires.out |		gawk \
-		'/^7/ {printf $$6 "," $$7} /^28/ {printf "," $$7} \
-     /^128/ {print "," $$7 "," $$(NF-3) } ' \
+		'$$3== 6  {printf $$8 "," $$9} $$3== 12  {printf "," $$9} $$3== 24  {printf "," $$9} \
+     $$3== 48  {print "," $$9 "," $$(NF-4)  } ' \
 		 | sort -t,  -n
 
 
 acquiresR:
-	 echo "asIs,7,28,128,sd"
+	 echo "asIs,6,12,24,48,sd"
 	cat ~/tmp/acquires.out |		gawk \
-		'/^7/ {printf $$6 "," $$8} /^28/ {printf "," $$8} \
-     /^128/ {print "," $$8 "," $$(NF-3) } ' \
+		'$$3==6  {printf $$8 "," $$10} $$3==12 {printf "," $$10}  $$3==24 {printf "," $$10}\
+     $$3==48 {print "," $$10 "," $$(NF-4) } ' \
 		 | sort -t,  -n
 
 
