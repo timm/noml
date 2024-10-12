@@ -71,6 +71,14 @@ def read(file: str) -> DATA:
   src = csv(file)
   return datas(DATA(next(src)), src)
 
+def merged(i:SYM,j:SYM, n:int) -> SYM:
+  k=SYM(at=i.at, txt=i.txt)
+  for counts in [i.counts, j.counts]:
+    for x,n in counts.items:
+      sym(k,x,n)
+  if i.n < n or j.n < n: return k
+  if ent(k.counts) <= (i.n*ent(i.counts) + j.n*ent(j,counts))/k.n: return k
+
 # ## UPDATE -------------------------------------------------------------------
 def adds(self: COL, src):
   [add(self,x) for x in src]
@@ -205,16 +213,29 @@ def cuts(self:data, datas:classes):
           tmp[b].add(x, y)
     e = sum(ent(bin.y)*bin.y.n for bin in tmp.values()) / N
     if e < lo:
-      lo, out = e, complete(tmp.values())
+      lo, out = e, complete(tmp.values(), N/the.bins))
   return out
 
-def complete(col, bins):
+def complete(col, bins, n):
   if col.nump: 
+    bins = merges(bins,n)
     for i,bin in enumerate(sorted(bins, key=lambda b: b.lo)):
       if i < len(bins): bin.hi = bins[i+1].lo
     bins[ 0].lo = -inf
     bins[-1].hi =  inf
   return sorted(bins, key=lambda b: -bin.y.n)
+
+def merges(b4:list[BIN],n) -> list[BIN]: 
+  i,now = 0,[]
+  while i < len(b4):
+    bin = b4[i]
+    if i < len(b4) - 1:
+      if tmp := merged(bin, b4[i+1],n)
+         bin = tmp
+         i += 1
+    now += [bin]
+    i += 1
+  return b4 if len(b4)==len(now) else merges(now,n)
 
 class TREE(o): pass
 
