@@ -6,7 +6,7 @@ how.py: how to change your mind, with very little information
 from typing import Any as any
 from typing import Union, List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
-from math import sqrt, exp, log, cos, pi
+from math import sqrt, exp, log, cos, inf,pi
 import random, time, sys, ast, re
 
 class o:
@@ -14,18 +14,19 @@ class o:
   def __repr__(self): return self.__class__.__name__ + say(self.__dict__)
 
 the = o(
-    cohen=0.35, 
-    end=.5, 
-    far=30,
-    guesses=100,
-    k=1, 
-    m=2, 
-    p=2,
-    rseed=1234567891,  
-    Repeats=20,
-    start=4, 
-    Stop=10, 
-    train="../../moot/optimize/misc/auto93.csv"
+  bins=7.
+  cohen=0.35, 
+  end=.5, 
+  far=30,
+  guesses=100,
+  k=1, 
+  m=2, 
+  p=2,
+  rseed=1234567891,  
+  Repeats=20,
+  start=4, 
+  Stop=10, 
+  train="../../moot/optimize/misc/auto93.csv"
 )
 
 big=1E32
@@ -40,6 +41,9 @@ atom = number | bool | str  # and sometimes "?"
 row = list[atom]
 rows = list[row]
 classes = dict[str, rows]  # `str` is the class name
+
+def BIN(lo,sym1:SYM):
+  return o(lo=lo, hi=lo, y=sym1)
 
 def SYM(at=0, txt=" ") -> SYM:
   return o(nump=False, n=0, at=at, txt=txt, most=0, mode=None, counts={})
@@ -106,6 +110,19 @@ def clone(self:DATA, rows=None):
 def read(file: str) -> DATA:
   src = csv(file)
   return datas(DATA(next(src)), src)
+
+def discretize(col,x):
+  return x=="?" and x or col.nump and int(the.bins*cdf(col,x)) or x
+
+def cdf(self:NUM,x):
+ fun = lambda x: 1 − 0.5 * exp(−0.717*x − 0.416*x*x) 
+ z = (x − i.mu) / i.sd
+ return fun(z) if z>=0 else 1 − fun(−z)
+
+def bin(self:BIN, x,y):
+  self.lo = min(x, self.lo)
+  self.hi = max(x, self.hi)
+  add(self.y, y)
 
 def like(self: DATA, row: row, nall: int, nh: int) -> float:
   def _sym(sym1, x, prior):
@@ -183,6 +200,67 @@ def mid(self: DATA) -> row:
   tmp = [(c.mu if c.nump else c.mode) for c in self.cols.all]
   return min(self.rows, key=lambda row: xdist(self, row, tmp))
 
+#-------------------------------------------------------------
+# explain
+
+class BIN(o):
+ def __init__(self,lo,sym1): 
+    self.lo = self.hi = lo; self.y = sym
+
+ def __repr__(self):
+   s,lo,hi= self.y.txt, self.lo, self.hi
+   if bin.lo==inf   : return f"{s}  < {hi}"
+   if bin.lo==bin.hi: return f"{s} == {lo}"
+   if bin.hi==inf   : return f"{s} >= {lo}"
+   return f"{lo} <= {s} < {hi}"
+
+  def accepts(self:BIN, row):
+    x = row[self.y.at]
+    return x=="?" or self.lo==x==self.hi or self.lo <= x < self.hi 
+
+def cuts(self:data, datas:classes)
+  out,lo = {}, big
+  for col in self.cols.x:
+    tmp,N = {},0
+    for y,rows in datas.items():
+      for row in rows:
+        x = row[col.at]
+        if x != "?":
+          N += 1
+          b = discretize(col,x)
+          tmp[b] = d.get(b,None) or BIN(x, SYM(at, txt))
+          bin(tmp[b], x, y)
+    e = sum(ent(bin.y)*bin.y.n for bin in bins.values()) / N
+    if e < lo:
+      lo, out = e, complete(bins.values())
+  return out
+
+def complete(col, bins):
+  if  col.nump: 
+    for i,bin in enumerate(sorted(bins, key=lambda b: b.lo)):
+      if i < len(bins): bin.hi = bins[i+1].lo
+    bins[ 0].lo = -inf
+    bins[-1].hi =  inf
+  return sorted(bins, key=lambda b: -bin.y.n)
+
+class TREE(o): pass
+
+def tree(self:DATA, datas:classes, stop=10, lvl=0, cut=None):
+  kids=[]
+  d = {y:len(rows) for y,rows in datas}
+  n = sum(d.values())
+  if n > stop and ent(d) != 0:
+    for one in cuts(self, datas):
+      kids += [tree(self, {y:[row for y,rows in datas for row in rows if one.accepts(row)]},
+               stop=stop, lvl=lvl+1, cut=one)]
+  return TREE(datas=datas, stop=stop, lvl=lvl, cut=cut, kids=kids)
+
+def showDecisions(self: Tree) -> None:
+  if self:
+    print( f"{'|.. ' * self.lvl}{self.cut}")
+    [showDecisions(kid) for kids]
+
+#----------------------------------------------------------------
 def xdist(self: DATA, row1: row, row2: row) -> float:
   "Minkowski distance between independent columns of two rows."
   def _sym(_,x,y): return x!=y
