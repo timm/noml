@@ -144,20 +144,25 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
     return sum(log(x) for x in likes + [prior] if x > 0)
 
 def likes(self: DATA, labelled=None, unlabelled=None):
+    def BEST(r): return like(best,r,len(best.rows) + len(rest.rows),2)
+    def REST(r): return like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-64
+    def BORE(r): return BEST(r)**2 / REST(r)
+    def Y(r)   : return ydist(self,row)
+
     if not labelled:
         rows = shuffle(self.rows)
         labelled, unlabelled = rows[:the.start],rows[the.start:]
-    labelled = sorted(labelled, key=lambda row: ydist(self,row))
-    if len(labelled) >= the.Stop: return labelled
-    n    = int(sqrt(len(labelled)))
-    best = clone(self, labelled[:n])
-    rest = clone(self, labelled[n:])
-    BEST = lambda r: like(best,r,len(best.rows) + len(rest.rows),2)
-    REST = lambda r: like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-64
-    for i,r in enumerate(unlabelled):
-        add(best if BEST(r) > REST(r) else rest, r)
-    top, *unlabelled, bottom = sorted(unlabelled, key= lambda r: BEST(r)**2/REST(r))
-    return likes(self, labelled + [top,bottom], unlabelled)
+    labelled = sorted(labelled, key=Y)
+    if len(labelled) >= the.Stop: 
+        return labelled
+    else:
+        n    = int(sqrt(len(labelled)))
+        best = clone(self, labelled[:n])
+        rest = clone(self, labelled[n:])
+        for r in unlabelled:
+            add(best if BEST(r) > REST(r) else rest, r)
+        top, *unlabelled, bottom = sorted(unlabelled, key= BORE)
+        return likes(self, labelled + [top,bottom], unlabelled)
 
 def acquire(self: DATA, rows: rows, eps=0.058, labelled=None, fun=lambda _, b, r: b+b-r):
     "From a model built so far, label next most interesting example. And repeat."
