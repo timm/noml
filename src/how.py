@@ -197,7 +197,7 @@ class BIN(o):
 
   def accepts(self, row):
     x = row[self.y.at]
-    return x=="?" or self.lo==x==self.hi or self.lo <= x < self.hi 
+    return x=="?" or self.lo == x == self.hi or self.lo <= x < self.hi 
 
 def cuts(self:data, datas:classes):
   out,lo = {}, big
@@ -222,7 +222,7 @@ def complete(col, bins, n):
       if i < len(bins): bin.hi = bins[i+1].lo
     bins[ 0].lo = -inf
     bins[-1].hi =  inf
-  return sorted(bins, key=lambda b: -bin.y.n)
+  return sorted(bins, key=lambda b: bin.y.n)
 
 def merges(b4:list[BIN],n) -> list[BIN]: 
   i,now = 0,[]
