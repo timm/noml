@@ -113,11 +113,16 @@ ege:; python3 mink.py -t ../../moot/optimize/config/SS-E.csv  -kmeans2  |sort -n
 egf:; python3 mink.py -t ../../moot/optimize/config/SS-F.csv  -kmeans2  |sort -n |cat -n
 egg:; python3 mink.py -t ../../moot/optimize/config/SS-G.csv  -kmeans2  |sort -n |cat -n
 
+  #     1  2   3   4    5 6 7  8   9    10    11   12  13   14    15  16 
 acts:
-	echo "stop rows x y n asIs toBe rand eps0 eps1 ms file"
-	$(foreach d,config hpo misc process, \
-		$(foreach f,$(wildcard ../../moot/optimize/$d/*.csv), \
-			 (python3.13 how.py -t $f --$(Act)  &); ))
+	echo "lt,eq,stop,rows,x,y,n,asIs,toBe,rand,eps0,eps1,eps2,liked,ms,file"
+	$(foreach d,misc hpo config process, \
+    $(foreach s, 6 , \
+		  $(foreach f,$(wildcard ../../moot/optimize/$d/*.csv), \
+			   (python3.13 how.py -s $S -t $f --$(Act) & ); )))
+
+go:
+	$(MAKE) Act=$(Act) acts | tee ~/tmp/$(Act).out
 
 acquires:
 	$(MAKE) Act=acquire acts | tee ~/tmp/acquires.out
@@ -126,18 +131,18 @@ acquiresTF:
 	gawk '$$3== 24  {print $$1, $$2} ' ~/tmp/acquires.out | sort | uniq -c
 
 acquiresX:
-	 echo "asIs,6,12,24,48"
+	 echo "asIs,6,12,24,48,d,liked"
 	cat ~/tmp/acquires.out |		gawk \
-		'$$3== 6  {printf $$8 "," $$9} $$3== 12  {printf "," $$9} $$3== 24  {printf "," $$9} \
-     $$3== 48  {print "," $$9 "," $$(NF-4)  } ' \
+		'$$3== 4  {printf $$8 "," $$9} $$3== 8  {printf "," $$9} $$3== 16  {printf "," $$9} \
+     $$3 == 32 {printf "," $$10} $$3== 64  {print "," $$9 "," $$11 ","  $$14 } ' \
 		 | sort -t,  -n
 
 
 acquiresR:
-	 echo "asIs,6,12,24,48,sd"
+	 echo "asIs,6,12,24,48,l,liked"
 	cat ~/tmp/acquires.out |		gawk \
-		'$$3==6  {printf $$8 "," $$10} $$3==12 {printf "," $$10}  $$3==24 {printf "," $$10}\
-     $$3==48 {print "," $$10 "," $$(NF-4) } ' \
+		'$$3==4  {printf $$8 "," $$10} $$3==8 {printf "," $$10}  $$3==16 {printf "," $$10}\
+     $$3==32 {printf "," $$10} $$3==64 {print "," $$10 "," $$11 "," $$14} ' \
 		 | sort -t,  -n
 
 

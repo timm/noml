@@ -144,6 +144,9 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
     return sum(log(x) for x in likes + [prior] if x > 0)
 
 def likes(self: DATA, labelled=None, unlabelled=None):
+    labelled = labelled or {}
+    def Y(a): labelled[id(a)] = a; return ydist(self, a)
+
     def BEST(r): return like(best,r,len(best.rows) + len(rest.rows),2)
     def REST(r): return like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-64
     def BORE(r): return BEST(r) / REST(r)
@@ -151,20 +154,21 @@ def likes(self: DATA, labelled=None, unlabelled=None):
 
     if not labelled:
         rows = shuffle(self.rows)
-        labelled, unlabelled = rows[:the.start],rows[the.start:]
-    labelled = sorted(labelled, key=Y)
+        labelled, unlabelled = rows[:4],rows[4:]
+    labelled = sorted(list(labelled.values()), key=Y)
     if len(labelled) >= the.Stop:
         return labelled
     else:
         n    = int(sqrt(len(labelled)))
-        best = clone(self, labelled[:n])
-        rest = clone(self, labelled[n:])
+        b4   = list(labelled.values())
+        best = clone(self, b4[:n])
+        rest = clone(self, b4[n:])
         guesses = min(the.guesses, len(unlabelled)) / len(unlabelled)
         for r in unlabelled:
             if R() < guesses:
                 data(best if BEST(r) > REST(r) else rest, r)
         top, *unlabelled, bottom = sorted(unlabelled, key= BORE)
-        return likes(self, labelled + [top,bottom], unlabelled)
+        return likes(self, labelled | dict(id(top)=top, id(bottom)=bottom), unlabelled)
 
 def acquire(self: DATA, rows: rows, eps=0.058, labelled=None, fun=lambda _, b, r: b+b-r):
     "From a model built so far, label next most interesting example. And repeat."
@@ -346,17 +350,24 @@ class main:
             print(mid(data))
 
     def likes():
+        def S(s): return f"{s:>7}"
+        def F(f): return f"{f:>7.2f}"
+
         data1 = read(the.train)
         asIs  = adds(NUM(), [ydist(data1,row) for row in data1.rows])
-        print(round(asIs.lo + asIs.sd*the.cohen,3), len(data1.rows))
-        print([round(x,3) for x in [asIs.lo, asIs.mu, asIs.hi]])
-        for the.Stop in [6,12,24,48]:
-             toBe,ns  = NUM(),NUM()
-             for _ in range(the.Repeats):
-                 labelled = likes(data1)
-                 add(ns, len(labelled))
-                 add(toBe, ydist(data1, labelled[0]))
-             print([round(x,3) for x in [toBe.lo, toBe.mu, toBe.hi]],ns.lo,int(ns.mu),ns.hi)
+        #print(round(asIs.lo + asIs.sd*the.cohen,3), len(data1.rows))
+        #print([round(x,3) for x in [asIs.lo, asIs.mu, asIs.hi]])
+        toBe,ns,rand  = NUM(),NUM(),NUM()
+        for _ in range(the.Repeats):
+             some = random.choices(data1.rows, k=the.Stop)
+             best = ydists(clone(data1, some)).rows[0]
+             add(rand, ydist(data1,best))
+
+             labelled = likes(data1)
+             add(ns, len(labelled))
+             add(toBe, ydist(data1, labelled[0]))
+        print("z",the.Stop,"r",S(len(data1.rows)), "x",S(len(data1.cols.x)), "y", S(len(data1.cols.y)),
+                "a",F(asIs.mu),"r",F(rand.mu),"t",F(toBe.mu), "N",F(asIs.sd*.35), the.train.split("/")[-1],sep=", ")
 
     def slash4():
         data1 = read(the.train)
@@ -370,11 +381,12 @@ class main:
         for y in [ydist(data1, row) for row in data1.rows]:
             add(asIs, y)
             asIsS += [y]
-        for the.Stop in [6, 12, 24, 48]:
-            rand, deltas, toBe = NUM(), NUM(), NUM()
-            rands, toBes = [], []
+        for the.Stop in [4, 8, 16, 32,64]:
+            rand, deltas, toBe, liked = NUM(), NUM(), NUM(), NUM()
+            rands, toBes = [],[]
             t1 = time.time_ns()
             for _ in range(the.Repeats):
+                add(liked, ydist(data1, likes(data1)[0]))
                 some = random.choices(data1.rows, k=the.Stop)
                 best = ydists(clone(data1, some)).rows[0]
                 add(rand, ydist(data1, best))
@@ -386,13 +398,16 @@ class main:
                 add(deltas, (asIs.mu - y)/asIs.sd)
             t2 = (time.time_ns() - t1)/the.Repeats // 1000000
             s1, s2 = SOME(rands, txt="rand"), SOME(toBes, txt="toBe")
+            #       1                   2
             print(s2.mid() < s1.mid(), s2 != s1, end=" ")
             print(
+                #   3                 4                   5               6                  7
                 f"{the.Stop} {len(data1.rows)} {len(data1.cols.x)} {len(data1.cols.y)} {len(labelled.values())}",
                 end=" ")
-            print(
-                f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f} {toBe.sd:.2f} {rand.sd:.2f} {t2}",
+            print(  # 8             9               10           11                     12           13            14            15
+                f"{asIs.mu:.2f} {toBe.mu:.2f} {rand.mu:.2f} {asIs.sd*the.cohen:.2f} {toBe.sd:.2f} {rand.sd:.2f} {liked.mu:.2f} {t2}",
                 end=" ")
+                #  16
             print(the.train.split("/")[-1])
 
 
