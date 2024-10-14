@@ -22,14 +22,14 @@ the = o(
     cohen=0.35,
     end=.5,
     far=30,
-    guesses=100,
+    guesses=50,
     k=1,
     m=2,
     p=2,
     rseed=1234567891,
     Repeats=20,
     start=4,
-    Stop=10,
+    Stop=100,
     train="../../moot/optimize/misc/auto93.csv")
 
 big = 1E32
@@ -146,21 +146,23 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
 def likes(self: DATA, labelled=None, unlabelled=None):
     def BEST(r): return like(best,r,len(best.rows) + len(rest.rows),2)
     def REST(r): return like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-64
-    def BORE(r): return BEST(r)**2 / REST(r)
+    def BORE(r): return BEST(r) / REST(r)
     def Y(r)   : return ydist(self,r)
 
     if not labelled:
         rows = shuffle(self.rows)
         labelled, unlabelled = rows[:the.start],rows[the.start:]
     labelled = sorted(labelled, key=Y)
-    if len(labelled) >= the.Stop: 
+    if len(labelled) >= the.Stop:
         return labelled
     else:
         n    = int(sqrt(len(labelled)))
         best = clone(self, labelled[:n])
         rest = clone(self, labelled[n:])
+        guesses = min(the.guesses, len(unlabelled)) / len(unlabelled)
         for r in unlabelled:
-            add(best if BEST(r) > REST(r) else rest, r)
+            if R() < guesses:
+                data(best if BEST(r) > REST(r) else rest, r)
         top, *unlabelled, bottom = sorted(unlabelled, key= BORE)
         return likes(self, labelled + [top,bottom], unlabelled)
 
@@ -345,7 +347,16 @@ class main:
 
     def likes():
         data1 = read(the.train)
-        likes(data1)
+        asIs  = adds(NUM(), [ydist(data1,row) for row in data1.rows])
+        print(round(asIs.lo + asIs.sd*the.cohen,3), len(data1.rows))
+        print([round(x,3) for x in [asIs.lo, asIs.mu, asIs.hi]])
+        for the.Stop in [6,12,24,48]:
+             toBe,ns  = NUM(),NUM()
+             for _ in range(the.Repeats):
+                 labelled = likes(data1)
+                 add(ns, len(labelled))
+                 add(toBe, ydist(data1, labelled[0]))
+             print([round(x,3) for x in [toBe.lo, toBe.mu, toBe.hi]],ns.lo,int(ns.mu),ns.hi)
 
     def slash4():
         data1 = read(the.train)
