@@ -147,7 +147,7 @@ def likes(self: DATA, labelled=None, unlabelled=None):
     def BEST(r): return like(best,r,len(best.rows) + len(rest.rows),2)
     def REST(r): return like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-64
     def BORE(r): return BEST(r)**2 / REST(r)
-    def Y(r)   : return ydist(self,row)
+    def Y(r)   : return ydist(self,r)
 
     if not labelled:
         rows = shuffle(self.rows)
@@ -225,7 +225,7 @@ def cuts(self: data, datas: classes):
                      tmp[b].add(x, y)
     e = sum(ent(bin.y)*bin.y.n for bin in tmp.values()) / N
     if e < lo:
-        lo, out=e, complete(tmp.values(), N/the.bins))
+        lo, out=e, complete(tmp.values(), N/the.bins)
     return out
 
 def complete(col, bins, n):
@@ -242,9 +242,9 @@ def merges(b4: list[BIN], n) -> list[BIN]:
     while i < len(b4):
         bin = b4[i]
         if i < len(b4) - 1:
-            if tmp := merged(bin.y, b4[i+1].y, n)
-            bin = BIN(lo=bin.lo, hi=b4[i+1].hi, y=tmp)
-            i += 1
+            if tmp := merged(bin.y, b4[i+1].y, n):
+              bin = BIN(lo=bin.lo, hi=b4[i+1].hi, y=tmp)
+              i += 1
         now += [bin]
         i += 1
     return b4 if len(b4) == len(now) else merges(now, n)
@@ -342,6 +342,10 @@ class main:
         data1 = read(the.train)
         for data in kmeans(data1):
             print(mid(data))
+
+    def likes():
+        data1 = read(the.train)
+        likes(data1)
 
     def slash4():
         data1 = read(the.train)
