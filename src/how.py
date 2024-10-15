@@ -152,8 +152,8 @@ def likes(self: DATA, labelled=None, unlabelled=None, lives=10):
 
     if not labelled:
         rows = shuffle(self.rows)
-        unlabelled = rows[4:]
-        [Y(row) for row in rows[:4]]
+        unlabelled = rows[2:]
+        [Y(row) for row in rows[:2]]
     ordered = sorted(list(labelled.values()), key=Y)
     now = len(ordered)
     if now >= the.Stop or lives < 0:
