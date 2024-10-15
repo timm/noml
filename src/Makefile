@@ -116,17 +116,18 @@ egg:; python3 mink.py -t ../../moot/optimize/config/SS-G.csv  -kmeans2  |sort -n
   #     1  2   3   4    5 6 7  8   9    10    11   12  13   14    15  16 
 acts:
 	echo "lt,eq,stop,rows,x,y,n,asIs,toBe,rand,eps0,eps1,eps2,liked,ms,file"
+	mkdir -p ~/tmp/$(Act)
+	rm ~/tmp/$(Act)/*.csv
 	$(foreach d,misc hpo config process, \
-    $(foreach S, 6 12 24 48, \
 		  $(foreach f,$(wildcard ../../moot/optimize/$d/*.csv), \
-			   (python3.13 how.py -S $S -t $f --$(Act) & ); )))
+			   ((python3.13 how.py  -t $f --$(Act) | tee ~/tmp/$(Act)/$(notdir $f)) & ); ))
 
 testlikes6:
 	grep 'z 6' ~/tmp/likes.out |  gawk -F, '{print $$12,$$16,$$20,$$24}' | sort  | uniq -c
 
 # timm@TIms-Mac-mini src % grep 'z 6' ~/tmp/likes.out | sed 's/,//g' | gawk '{print $12,$16,$20}' | sort  | uniq -c
 #    6 False False False
-#   33 False False True
+#   33 False False Tru e
 #    7 False True True
 #    3 True True True
 # timm@TIms-Mac-mini src % grep 'z 12' ~/tmp/likes.out | sed 's/,//g' | gawk '{print $12,$16,$20}' | sort  | uniq -c

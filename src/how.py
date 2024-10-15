@@ -11,7 +11,7 @@ from typing import Union, List, Dict, Type, Callable, Generator
 from fileinput import FileInput as file_or_stdin
 from math import sqrt, exp, log, cos, inf, pi
 import random, time, sys, ast, re
-from stats import SOME
+from stats import SOME,report
 
 class o:
     def __init__(self, **d): self.__dict__.update(**d)
@@ -143,9 +143,32 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
     likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
     return sum(log(x) for x in likes + [prior] if x > 0)
 
+def extend(self:DATA):
+    labelled = {}
+    def Y(r): labelled[id(r)] = r; return ydist(self, r)
+    def Ys(rows=[]): [Y(r) for r in rows]; return sorted(labelled.values(), key=Y)
+    def BEST(r): return like(best,r,len(best.rows) + len(rest.rows),2)
+    def REST(r): return like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-128
+    def BORE(r): return -BEST(r)**2 / REST(r)
+    def go(unlabelled):
+       ordered = Ys() 
+       if len(ordered) >= the.Stop/2: return ordered
+       for r in unlabelled:
+            if R() <  min(the.guesses, len(unlabelled)) / len(unlabelled):
+                data(best if BEST(r) > REST(r) else rest, r)
+       top, *unlabelled = sorted(unlabelled, key= BORE)
+       Y(top)
+       return go(unlabelled)
+ 
+    random.shuffle(self.rows)
+    Ys(self.rows[:4])
+    best= clone(self, self.rows[:2])
+    rest= clone(self, self.rows[2:])
+    return go(self.rows[4:])
+
 def likes(self: DATA, labelled=None, unlabelled=None):
     labelled = labelled or {}
-    def Y(r)   : labelled[id(r)] = r; return ydist(self, r)
+    def Y(r): labelled[id(r)] = r; return ydist(self, r)
     def BEST(r): return like(best,r,len(best.rows) + len(rest.rows),2)
     def REST(r): return like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-64
     def BORE(r): return -BEST(r)**2 / REST(r)
@@ -289,9 +312,13 @@ def xdist(self: DATA, row1: row, row2: row) -> float:
     return (d/n) ** (1/the.p)
 
 def ydist(self: DATA, row) -> float:
-    return (sum(abs(c.goal - norm(c, row[c.at]))**the.p
-                for c in self.cols.y)/len(self.cols.y))**1/the.p
+  "Chebyshev distance dependent columns to best possible dependent values."
+  return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
 
+# def ydist(self: DATA, row) -> float:
+#     return (sum(abs(c.goal - norm(c, row[c.at]))**the.p
+#                 for c in self.cols.y)/len(self.cols.y))**1/the.p
+#
 def ydists(self: DATA) -> DATA:
     self.rows.sort(key=lambda r: ydist(self, r))
     return self
@@ -350,27 +377,28 @@ class main:
     def likes():
         def S(s): return f"{s:>7}"
         def F(f): return f"{f:>.4f}"
-
+    
         data1 = read(the.train)
-        asIs  = [ydist(data1,row) for row in data1.rows]
-        print("z",the.Stop,"n",S(len(data1.rows)), "x",S(len(data1.cols.x)), "y", S(len(data1.cols.y)),sep=",",end=", ")
-        acq,rand,liked=[],[],[]
-        for _ in range(the.Repeats):
-             some = random.choices(data1.rows, k=the.Stop)
-             best = ydists(clone(data1, some)).rows[0]
-             rand +=  [ydist(data1,best)]
+        asIs = SOME([ydist(data1,row) for row in data1.rows],txt="asIs")
+        out = [asIs]
+        for the.Stop in [6,12,18,24,32,64]:
+            RANDS,EXTENDS = SOME([],txt=f"rand,{the.Stop}"), SOME([], f"extends,{int(the.Stop/2)}")
+            LIKES, ACQUIRES = SOME([],f"like,{the.Stop}"), SOME([],f"acquires,{the.Stop}")
+            out += [RANDS,EXTENDS,LIKES,ACQUIRES]
+            for _ in range(the.Repeats):
+                 LIKES.add(ydist(data1, likes(data1)[0]))
+                 EXTENDS.add(ydist(data1,extend(data1)[0]))
+              
+                 _, rows = acquire(data1, shuffle(data1.rows))
+                 ACQUIRES.add(ydist(data1,rows[0]))
 
-             _, rows = acquire(data1, shuffle(data1.rows))
-             acq += [ydist(data1,rows[0])]
-             ls= likes(data1)
-             liked += [ydist(data1, ls[0])]
-        s0,s1,s2,s3  = SOME(asIs), SOME(liked), SOME(rand), SOME(acq)
-        m0, m1,m2,m3 = s0.mid(), s1.mid(), s2.mid(), s3.mid()
-        print("likes>acq", F(m1),F(m3),  s1 != s3 and m1 < m3, end=", ", sep=",")
-        print("likes>rand",F(m1),F(m2),  s1 != s3 and m1 < m2, end=", ",sep=",")
-        print("likes>asIs",F(m1),F(m0),  s1 != s0 and m1 < m0, end=",", sep=",")
-        print("acq>rand", F(m3),F(m2),  s3 != s2 and m3 < m2, end=", ", sep=",")
-        print("")
+                 some = random.choices(data1.rows, k=the.Stop)
+                 some = ydists(clone(data1, some))
+                 RANDS.add(ydist(data1,some.rows[0]))
+            print("z",the.Stop,"n",S(len(data1.rows)), "x",S(len(data1.cols.x)), "y", S(len(data1.cols.y)),sep=",",end=", ")
+            print(F(asIs.mid()),F(ACQUIRES.mid()), F(LIKES.mid()), F(EXTENDS.mid()), F(RANDS.mid()), end=",", sep=", ")
+            print(F(asIs.lo + asIs.div()*0.35), the.train.split("/")[-1],sep=", ")
+        report(out)
 
     def slash4():
         data1 = read(the.train)
