@@ -143,32 +143,32 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
     likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
     return sum(log(x) for x in likes + [prior] if x > 0)
 
-def likes(self: DATA, labelled=None, unlabelled=None):
+def likes(self: DATA, labelled=None, unlabelled=None, lives=10):
     labelled = labelled or {}
-    def Y(a): labelled[id(a)] = a; return ydist(self, a)
-
+    def Y(r)   : labelled[id(r)] = r; return ydist(self, r)
     def BEST(r): return like(best,r,len(best.rows) + len(rest.rows),2)
     def REST(r): return like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-64
     def BORE(r): return BEST(r) / REST(r)
-    def Y(r)   : return ydist(self,r)
 
     if not labelled:
         rows = shuffle(self.rows)
-        labelled, unlabelled = rows[:4],rows[4:]
-    labelled = sorted(list(labelled.values()), key=Y)
-    if len(labelled) >= the.Stop:
-        return labelled
+        unlabelled = rows[4:]
+        [Y(row) for row in rows[:4]]
+    ordered = sorted(list(labelled.values()), key=Y)
+    now = len(ordered)
+    if now >= the.Stop or lives < 0:
+        return ordered
     else:
-        n    = int(sqrt(len(labelled)))
-        b4   = list(labelled.values())
-        best = clone(self, b4[:n])
-        rest = clone(self, b4[n:])
+        nBest   = int(sqrt(now))
+        best    = clone(self, ordered[:nBest])
+        rest    = clone(self, ordered[nBest:])
         guesses = min(the.guesses, len(unlabelled)) / len(unlabelled)
         for r in unlabelled:
             if R() < guesses:
                 data(best if BEST(r) > REST(r) else rest, r)
         top, *unlabelled, bottom = sorted(unlabelled, key= BORE)
-        return likes(self, labelled | dict(id(top)=top, id(bottom)=bottom), unlabelled)
+        Y(top), Y(bottom)
+        return likes(self, labelled, unlabelled, lives-1)
 
 def acquire(self: DATA, rows: rows, eps=0.058, labelled=None, fun=lambda _, b, r: b+b-r):
     "From a model built so far, label next most interesting example. And repeat."
@@ -355,8 +355,6 @@ class main:
 
         data1 = read(the.train)
         asIs  = adds(NUM(), [ydist(data1,row) for row in data1.rows])
-        #print(round(asIs.lo + asIs.sd*the.cohen,3), len(data1.rows))
-        #print([round(x,3) for x in [asIs.lo, asIs.mu, asIs.hi]])
         toBe,ns,rand  = NUM(),NUM(),NUM()
         for _ in range(the.Repeats):
              some = random.choices(data1.rows, k=the.Stop)
@@ -366,8 +364,9 @@ class main:
              labelled = likes(data1)
              add(ns, len(labelled))
              add(toBe, ydist(data1, labelled[0]))
-        print("z",the.Stop,"r",S(len(data1.rows)), "x",S(len(data1.cols.x)), "y", S(len(data1.cols.y)),
-                "a",F(asIs.mu),"r",F(rand.mu),"t",F(toBe.mu), "N",F(asIs.sd*.35), the.train.split("/")[-1],sep=", ")
+        print("z",the.Stop,"n",S(len(data1.rows)), "x",S(len(data1.cols.x)), "y", S(len(data1.cols.y)),
+              "_",F(asIs.mu),"r",F(rand.mu),"l",F(toBe.mu), "N",F(asIs.sd*.35),
+              "e",F(asIs.sd * .35), the.train.split("/")[-1],sep=", ")
 
     def slash4():
         data1 = read(the.train)

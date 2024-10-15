@@ -117,9 +117,9 @@ egg:; python3 mink.py -t ../../moot/optimize/config/SS-G.csv  -kmeans2  |sort -n
 acts:
 	echo "lt,eq,stop,rows,x,y,n,asIs,toBe,rand,eps0,eps1,eps2,liked,ms,file"
 	$(foreach d,misc hpo config process, \
-    $(foreach s, 6 , \
+    $(foreach S, 6 12 24 48, \
 		  $(foreach f,$(wildcard ../../moot/optimize/$d/*.csv), \
-			   (python3.13 how.py -s $S -t $f --$(Act) & ); )))
+			   (python3.13 how.py -S $S -t $f --$(Act) & ); )))
 
 go:
 	$(MAKE) Act=$(Act) acts | tee ~/tmp/$(Act).out
@@ -130,13 +130,22 @@ acquires:
 acquiresTF:
 	gawk '$$3== 24  {print $$1, $$2} ' ~/tmp/acquires.out | sort | uniq -c
 
-acquiresX:
-	 echo "asIs,6,12,24,48,d,liked"
-	cat ~/tmp/acquires.out |		gawk \
-		'$$3== 4  {printf $$8 "," $$9} $$3== 8  {printf "," $$9} $$3== 16  {printf "," $$9} \
-     $$3 == 32 {printf "," $$10} $$3== 64  {print "," $$9 "," $$11 ","  $$14 } ' \
-		 | sort -t,  -n
+# 	echo "2,4,6,8,10,12,14,16"
+# 	echo "z,n,x,y,_,r,l,N"
 
+likesX:
+	cat ~/tmp/likes.out |		gawk -F,  \
+		'$$2==6  {printf $$10 "," $$14} $$2==12 {printf "," $$14}  $$2==24 {printf "," $$14}\
+     $$2==48 {print "," $$14 "," $$18 } ' 
+
+likesR:
+	cat ~/tmp/likes.out |		gawk -F,  \
+		'$$2==6  {printf $$10 "," $$12} $$2==12 {printf "," $$12}  $$2==24 {printf "," $$12}\
+     $$2==48 {print "," $$12 "," $$18 } ' 
+
+
+# 		 | sort -t,  -n
+#
 
 acquiresR:
 	 echo "asIs,6,12,24,48,l,liked"
