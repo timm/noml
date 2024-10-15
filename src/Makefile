@@ -121,6 +121,33 @@ acts:
 		  $(foreach f,$(wildcard ../../moot/optimize/$d/*.csv), \
 			   (python3.13 how.py -S $S -t $f --$(Act) & ); )))
 
+testlikes6:
+	grep 'z 6' ~/tmp/likes.out |  gawk -F, '{print $$12,$$16,$$20,$$24}' | sort  | uniq -c
+
+# timm@TIms-Mac-mini src % grep 'z 6' ~/tmp/likes.out | sed 's/,//g' | gawk '{print $12,$16,$20}' | sort  | uniq -c
+#    6 False False False
+#   33 False False True
+#    7 False True True
+#    3 True True True
+# timm@TIms-Mac-mini src % grep 'z 12' ~/tmp/likes.out | sed 's/,//g' | gawk '{print $12,$16,$20}' | sort  | uniq -c
+#    1 False False False
+#   23 False False True
+#    1 False True True
+#    1 True False False
+#    9 True False True
+#    1 True True False
+#   13 True True True
+# timm@TIms-Mac-mini src % grep 'z 24' ~/tmp/likes.out | sed 's/,//g' | gawk '{print $12,$16,$20}' | sort  | uniq -c
+#   14 False False True
+#    1 False True True
+#   16 True False True
+#   18 True True True
+# timm@TIms-Mac-mini src % grep 'z 48' ~/tmp/likes.out | sed 's/,//g' | gawk '{print $12,$16,$20}' | sort  | uniq -c
+#    8 False False True
+#    1 False True True
+#   19 True False True
+#   21 True True True
+#
 go:
 	$(MAKE) Act=$(Act) acts | tee ~/tmp/$(Act).out
 

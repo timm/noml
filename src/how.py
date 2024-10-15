@@ -143,32 +143,30 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
     likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
     return sum(log(x) for x in likes + [prior] if x > 0)
 
-def likes(self: DATA, labelled=None, unlabelled=None, lives=10):
+def likes(self: DATA, labelled=None, unlabelled=None):
     labelled = labelled or {}
     def Y(r)   : labelled[id(r)] = r; return ydist(self, r)
     def BEST(r): return like(best,r,len(best.rows) + len(rest.rows),2)
     def REST(r): return like(rest,r,len(best.rows) + len(rest.rows),2) + 1E-64
-    def BORE(r): return BEST(r) / REST(r)
+    def BORE(r): return -BEST(r)**2 / REST(r)
 
     if not labelled:
-        rows = shuffle(self.rows)
-        unlabelled = rows[2:]
-        [Y(row) for row in rows[:2]]
+        random.shuffle(self.rows)
+        unlabelled = self.rows[4:]
+        [Y(row) for row in self.rows[:4]]
     ordered = sorted(list(labelled.values()), key=Y)
-    now = len(ordered)
-    if now >= the.Stop or lives < 0:
+    if  len(ordered) >=the.Stop:
         return ordered
     else:
-        nBest   = int(sqrt(now))
-        best    = clone(self, ordered[:nBest])
-        rest    = clone(self, ordered[nBest:])
-        guesses = min(the.guesses, len(unlabelled)) / len(unlabelled)
+        cut     = int(sqrt(len(ordered)))
+        best    = clone(self, ordered[:cut])
+        rest    = clone(self, ordered[cut:])
         for r in unlabelled:
-            if R() < guesses:
+            if R() <  min(the.guesses, len(unlabelled)) / len(unlabelled):
                 data(best if BEST(r) > REST(r) else rest, r)
         top, *unlabelled, bottom = sorted(unlabelled, key= BORE)
         Y(top), Y(bottom)
-        return likes(self, labelled, unlabelled, lives-1)
+        return likes(self, labelled, unlabelled)
 
 def acquire(self: DATA, rows: rows, eps=0.058, labelled=None, fun=lambda _, b, r: b+b-r):
     "From a model built so far, label next most interesting example. And repeat."
@@ -351,22 +349,28 @@ class main:
 
     def likes():
         def S(s): return f"{s:>7}"
-        def F(f): return f"{f:>7.2f}"
+        def F(f): return f"{f:>.4f}"
 
         data1 = read(the.train)
-        asIs  = adds(NUM(), [ydist(data1,row) for row in data1.rows])
-        toBe,ns,rand  = NUM(),NUM(),NUM()
+        asIs  = [ydist(data1,row) for row in data1.rows]
+        print("z",the.Stop,"n",S(len(data1.rows)), "x",S(len(data1.cols.x)), "y", S(len(data1.cols.y)),sep=",",end=", ")
+        acq,rand,liked=[],[],[]
         for _ in range(the.Repeats):
              some = random.choices(data1.rows, k=the.Stop)
              best = ydists(clone(data1, some)).rows[0]
-             add(rand, ydist(data1,best))
+             rand +=  [ydist(data1,best)]
 
-             labelled = likes(data1)
-             add(ns, len(labelled))
-             add(toBe, ydist(data1, labelled[0]))
-        print("z",the.Stop,"n",S(len(data1.rows)), "x",S(len(data1.cols.x)), "y", S(len(data1.cols.y)),
-              "_",F(asIs.mu),"r",F(rand.mu),"l",F(toBe.mu), "N",F(asIs.sd*.35),
-              "e",F(asIs.sd * .35), the.train.split("/")[-1],sep=", ")
+             _, rows = acquire(data1, shuffle(data1.rows))
+             acq += [ydist(data1,rows[0])]
+             ls= likes(data1)
+             liked += [ydist(data1, ls[0])]
+        s0,s1,s2,s3  = SOME(asIs), SOME(liked), SOME(rand), SOME(acq)
+        m0, m1,m2,m3 = s0.mid(), s1.mid(), s2.mid(), s3.mid()
+        print("likes>acq", F(m1),F(m3),  s1 != s3 and m1 < m3, end=", ", sep=",")
+        print("likes>rand",F(m1),F(m2),  s1 != s3 and m1 < m2, end=", ",sep=",")
+        print("likes>asIs",F(m1),F(m0),  s1 != s0 and m1 < m0, end=",", sep=",")
+        print("acq>rand", F(m3),F(m2),  s3 != s2 and m3 < m2, end=", ", sep=",")
+        print("")
 
     def slash4():
         data1 = read(the.train)
