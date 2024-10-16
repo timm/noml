@@ -105,7 +105,7 @@ function SYM:div(     e)
   e=0; for _,n in pairs(self.has) do e = e - n/self.n*log(n/self.n, 2) end 
   return e end
 
--- ## Bayes
+-- ## Bayes
 
 function SYM:like(x,prior)
   return ((self.has[x] or 0) + the.m*prior) / (self.n + the.m) end
@@ -166,7 +166,7 @@ function DATA:ydists() -- () -> DATA
   table.sort(self.rows, function(r) return self:ydist(r) end)
   return self end
 
--- ## Misc
+-- ## Misc
 
 function l.data(file,     it,self) -- (str) -> DATA
   it = l.csv(file)
