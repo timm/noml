@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Less, but better, analytics (“better”= faster, cheaper, explicable). Mostly instance-based AI. No complex models. Really simple code.</title>
+  <title>How to make and test defensible decisions from incomplete knowledge, while maturing your model of the world.</title>
   <style>
     code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
@@ -102,16 +102,15 @@
 <a href="https://github.com/timm/noml/blob/main/LICENSE.md">&copy;2024</a>,  tim menzies 
 (timm@ieee.org)</p><hr>
 <header id="title-block-header">
-<h1 class="title"><em>Less, but better, analytics (“better”= faster,
-cheaper, explicable). Mostly instance-based AI. No complex models.
-Really simple code.</em></h1>
+<h1 class="title"><em>How to make and test defensible decisions from
+incomplete knowledge, while maturing your model of the world.</em></h1>
 </header>
 <h2 id="about">About</h2>
-<ul>
-<li>Using as few dependent variables as possible..</li>
-<li>…incrementally build models that recognize (best,rest) examples
-(where “best” can be defined by multiple goals).</li>
-</ul>
+<p>tHis code is about <em>less, but better</em>, analytics where
+“better”= faster, cheaper, explicable, really simple to code, no complex
+models (mostly instance-based AI). - Using as few dependent variables as
+possible.. - …incrementally build models that recognize (best,rest)
+examples (where “best” can be defined by multiple goals).</p>
 <h3 id="for-this-code">For this code</h3>
 <ul>
 <li>The raw source files are in markdown, where type annotations are
@@ -370,7 +369,7 @@ class="sourceCode lua"><code class="sourceCode lua"><span id="cb7-1"><a href="#c
 <span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>  <span class="kw">local</span> <span class="va">out</span><span class="op">,</span><span class="va">cut</span><span class="op">,</span><span class="va">best</span><span class="op">,</span><span class="va">rest</span><span class="op">,</span><span class="va">fun</span><span class="op">,</span><span class="va">top</span><span class="op">,</span><span class="va">j</span><span class="op">,</span><span class="va">k</span> <span class="op">=</span> <span class="op">{},</span> <span class="fu">math.min</span><span class="op">(</span><span class="va">the</span><span class="op">.</span><span class="va">cut</span><span class="op">,#</span><span class="va">todo</span><span class="op">)/#</span><span class="va">todo</span></span>
 <span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>  <span class="va">best</span><span class="op">,</span><span class="va">rest</span> <span class="op">=</span> <span class="va">self</span><span class="op">:</span>clone<span class="op">(</span><span class="va">done</span><span class="op">):</span>bestRest<span class="op">()</span></span>
 <span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>  <span class="va">fun</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">,</span><span class="va">t</span><span class="op">,</span>    <span class="va">s</span><span class="op">)</span> </span>
-<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>          <span class="va">s</span> <span class="op">=</span> <span class="fu">math.random</span><span class="op">()&gt;</span><span class="va">cut</span> <span class="kw">and</span> <span class="dv">0</span> <span class="kw">or</span> score<span class="op">(</span><span class="va">best</span><span class="op">:</span>like<span class="op">(</span><span class="va">t</span><span class="op">,#</span><span class="va">done</span><span class="op">,</span><span class="dv">2</span><span class="op">),</span> <span class="va">rest</span><span class="op">:</span>like<span class="op">(</span><span class="va">t</span><span class="op">,#</span><span class="va">done</span><span class="op">,</span><span class="dv">2</span><span class="op">))</span></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>          <span class="va">s</span> <span class="op">=</span> <span class="fu">math.random</span><span class="op">()&gt;</span><span class="va">cut</span> <span class="kw">and</span> <span class="op">-</span><span class="va">big</span> <span class="kw">or</span> score<span class="op">(</span><span class="va">best</span><span class="op">:</span>like<span class="op">(</span><span class="va">t</span><span class="op">,#</span><span class="va">done</span><span class="op">,</span><span class="dv">2</span><span class="op">),</span> <span class="va">rest</span><span class="op">:</span>like<span class="op">(</span><span class="va">t</span><span class="op">,#</span><span class="va">done</span><span class="op">,</span><span class="dv">2</span><span class="op">))</span></span>
 <span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>          <span class="cf">return</span> <span class="op">{</span><span class="va">s</span><span class="op">,</span><span class="va">t</span><span class="op">}</span> <span class="kw">end</span></span>
 <span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> <span class="va">i</span><span class="op">,</span><span class="va">t</span> <span class="kw">in</span> <span class="fu">pairs</span><span class="op">(</span><span class="va">l</span><span class="op">.</span>sort<span class="op">(</span><span class="va">l</span><span class="op">.</span>maps<span class="op">(</span><span class="va">todo</span><span class="op">,</span><span class="va">fun</span><span class="op">),</span> <span class="va">l</span><span class="op">.</span>gt<span class="op">(</span><span class="dv">1</span><span class="op">)))</span> <span class="cf">do</span> </span>
 <span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="va">i</span><span class="op">==</span><span class="dv">1</span> <span class="cf">then</span> <span class="va">top</span><span class="op">=</span><span class="va">t</span><span class="op">[</span><span class="dv">2</span><span class="op">]</span> <span class="cf">else</span> <span class="va">l</span><span class="op">.</span>push<span class="op">(</span><span class="va">out</span><span class="op">,</span> <span class="va">t</span><span class="op">[</span><span class="dv">2</span><span class="op">])</span> <span class="cf">end</span> <span class="cf">end</span></span>
