@@ -85,9 +85,10 @@ pretty:
 	@mkdir -p docs
 	@echo "pdf-ing $@ ... "
 	@a2ps -Bjr    -q                        \
-		-L 125 \
+		--chars-per-line=100 \
 		--line-numbers=1                    \
 		--highlight-level=normal  \
+		--columns 3                 \
 		--borders=no --pro=color --columns 3 \
 		--right-footer="" --left-footer=""    \
 		--pretty-print=../etc/lua.ssh             \
