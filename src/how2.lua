@@ -124,34 +124,28 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
        out = out + log(tmp) end end
   return out end
 
+function DATA:besRest(rows)
+  best, rest = self.clone(), self.clone()
+  for i,row in pairs(done) do 
+    (i <= sqrt(#rows) and best or rest).add(row) end
+  return best,rest end
+
 function DATA:acquire(  labels,fun) -- (?tuple[list,float],?function) -> list,list[list]
-  local Y,order,guess
   fun = fun or function(b,r) return b + b -r end
   labels = labels or {}
-  function Y(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
-  function order(rows) return self.ydists(self.clone(rows)).rows end
-
-  function guess(todo, done,     score,best,rest)
-    function score(row,     b,r)
-      b = best.like(row, #done, 2)
-      r = rest.like(row, #done, 2)
-      return fun(b,r) end
-    best, rest = self:clone(), self:clone()
-    for i,row in pairs(done) do 
-      (i <= sqrt(#done) and best or rest).add(row) end
-    table.sort(todo, score)
-    return table.remove(todo), todo end
-
   local b4,todo,done,m,top = {},{},{},nil,nil
+  local function Y(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
   for row in pairs(labels) do l.push(b4,row) end
   m = max(1, the.start - #b4)
   for i,row in pairs(l.shufflex(b4)) do 
     l.push(i<=m and todo or done, row) end
-  while #done <= the.Stop do
-    top,todo = guess(todo,done)
-    l.push(done,top)
-    done = order(done)
-    if #todo <= 3 then break end end 
+  while true do
+    done = self.ydists(self.clone(done)).rows 
+    if #todo <= 3 or  #done > the.Stop then break end
+    best, rest = self:bestRest(done)
+    todo = sorted(todo, function(r) return fun(best.like(r,#done,2),
+                                               rest.like(r,#done,2)) end) 
+    l.push(done, table.remove(todo))
   return done end
 
 -- ## Dists
