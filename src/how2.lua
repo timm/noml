@@ -130,23 +130,29 @@ function DATA:besRest(rows)
     (i <= sqrt(#rows) and best or rest).add(row) end
   return best,rest end
 
-function DATA:acquire(  labels,fun) -- (?tuple[list,float],?function) -> list,list[list]
-  fun = fun or function(b,r) return b + b -r end
-  labels = labels or {}
-  local b4,todo,done,m,top = {},{},{},nil,nil
-  local function Y(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
-  for row in pairs(labels) do l.push(b4,row) end
-  m = max(1, the.start - #b4)
-  for i,row in pairs(l.shufflex(b4)) do 
-    l.push(i<=m and todo or done, row) end
+local function _todo_done(labels)
+  local b4, todo, done = {},{},{}
+  for row in pairs(labels) do l.push(b4,row) end -- collected labelled items
+  n = max(1, the.start - #b4)                    -- how many more labels to collect?         
+  for i,row in pairs(l.shuffle(b4)) do l.push(i<=n and done or todo, row) end    
+  return todo, done end
+
+function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list,list[list]
+                      todo,done,best,rest,Y) 
+  labels     = labels or {}
+  todo, done = _todo_done(labels)
+  Y          = function (r) 
+                 labels[r] = labels[r] or self:ydist(r)
+                 return labels[r] end
+  guess      = function (r) 
+                 fun = fun or function(b,r) return b + b -r end
+                 return fun(best.like(r,#done,2),rest.like(r,#done,2)) end 
   while true do
-    done = self.ydists(self.clone(done)).rows 
-    if #todo <= 3 or  #done > the.Stop then break end
-    best, rest = self:bestRest(done)
-    todo = sorted(todo, function(r) return fun(best.like(r,#done,2),
-                                               rest.like(r,#done,2)) end) 
-    l.push(done, table.remove(todo))
-  return done end
+    done = sorted(done,Y)                             -- sort labelled items
+    if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
+    best,rest = self:bestRest(done)                   -- divide labels into two groups
+    table.sort(todo, guess)                           -- sort using "fun"
+    l.push(done, table.remove(todo)) end end          -- labell the best gues
 
 -- ## Dists
 
