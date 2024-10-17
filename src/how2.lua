@@ -53,9 +53,13 @@ function COLS:new(names,    col) -- (list[str]) -> COLS
       l.push(txt:find"[!+-]$" and self.y or self.x, col) end end
   return self end
 
--- Rows are summarizes in columns (se.data).
+-- Rows are summarizes in columns (se.data). DATA is my data amalytics  swiss army knife. It is
+-- used everywhere. Decision tree nodes divide one DATA into multiple sub-DATAs. K-means splits
+-- one DATAs into smaller DATAs (one per cluster). My Baues classifier stores data from different classes
+-- in different DATAs. When I want stats from some ros, I load those rows into a DATA and report
+-- the columns, etc.
 function DATA:new(names,  rows) -- (list[str], ?list[list], ?bool) -> DATA
-  return l.new(DATA, {rows={}, COLS(names)}):adds(rows) end
+  return l.new(DATA, {rows={}, cols=COLS:new(names)}):adds(rows) end
 
 -- New data can mimic the strucutre of existing data (se.data).
 function DATA:clone(rows) -- (list[t]) -> DATA
@@ -65,12 +69,13 @@ function DATA:clone(rows) -- (list[t]) -> DATA
 
 -- Visitors traverse a data structure, calling something at each step (se.patterns).
 function DATA:adds(rows) -- (list[list]) -> DATA
-  for _,row in pairs(rows or {}) do self:add(row) end end
+  for _,row in pairs(rows or {}) do self:add(row) end
+  return self end
 
 -- Incremental learners update their knowledge with each new example (se.ml).
 function DATA:add(row) -- (list) -> DATA
   l.push(self.rows, row) 
-  for _,col in pairs(self.cols.all) do col:add(row[self.at]) end end
+  for _,col in pairs(self.cols.all) do col:add(row[col.at]) end end
 
 function NUM:add(x,    d) --(num) -> nil
   if x ~= "?" then
@@ -124,41 +129,36 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
        out = out + log(tmp) end end
   return out end
 
-local acquire={}
+function DATA:split(rows,n,       first,rest)
+  first, rest = self:clone(), self:clone()
+  for i,row in pairs(rows) do 
+    (i <= n and first or rest):add(row) end
+  return first,rest end
 
-function acquire.go(data1:DATA,
-                    labels,fun, -- (?tuple[list,float],?function) -> list,list[list]
-                    todo,done,best,rest,Y,guess) 
-  fun       = fun or function(b,r) return b + b -r end
-  labels    = labels or {}
-  Y         = function(r) labels[r] = labels[r] or data1:ydist(r); return labels[r] end
-  todo,done = acquire.init(data1.rows, labels)
+function DATA:acquire(labels,fun, -- (?tuple[list,float],?function) -> list[list]
+                      Y,todo,done,best,rest)
+  fun    = fun or function(b,r) return b + b -r end
+  labels = labels or {}
+  Y      = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
+  todo   = l.shsuffle(self.rows)
+  done   = {}
+  for row in pairs(labels)     do l.push(done, row) end 
+  for i = 1, the.start - #done do l.push(done, table.remove(todo)) end
   while true do
     done = l.sorted(done,Y)                   -- sort labelled items
     if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
-    best,rest = acquire.bestRest(data1,done, sqrt(done))        -- divide labels into two groups
-    table.sort(todo, function(r) return fun(best.like(r,#done,2),rest.like(r,#done,2)) end)
+    best,rest = self:split(done, sqrt(done))        -- divide labels into two groups
+    done = l.zort(done, function(r) if   math.random() > the.guesses/#todo 
+                                    then return -big
+                                    else return fun(best.like(r,#done,2),
+                                                    rest.like(r,#done,2)) end end)
     l.push(done, table.remove(todo)) end end  -- labell the best gues
-
-function acquire.init(rows, labels,    todo,done,n) 
-  todo, done, n = shuffle(rows),{},0
-  for row in pairs(labels) do l.push(done,row) end 
-  for i = 1, max(0, the.start - #done) do 
-    l.push(done, table.remove(todo)) end
-  return todo, done end
-
-function acquire.bestRest(data1,rows,n,       best,rest)
-  best, rest = data1:clone(), data1:clone()
-  for i,row in pairs(rows) do 
-    (i <= n and best or rest).add(row) end
-  return best,rest end
 
 -- ## Dists
 
 -- Chebyshev distance is max distance of any one attribute to another (ml.dist). 
-function DATA:ydist(row) -- (list) -> number
-  local d = 0
-  for _,col in pairs(self.cols.y) do d = max(d, abs(col:norm(row[col.at]) - col.goal)) end
+function DATA:ydist(row,    d) -- (list) -> number
+  d = 0; for _,y in pairs(self.cols.y) do d = max(d, abs(y:norm(row[y.at]) - y.goal)) end
   return d end
 
 function DATA:ydists() -- () -> DATA
@@ -170,9 +170,10 @@ function DATA:ydists() -- () -> DATA
 l.fmt = string.format
 
 function l.data(file,     it,self) -- (str) -> DATA
-  it = l.csv(file)
-  self = DATA(next(it))
-  for _,row in pairs(it) do self:add(row) end
+  for row in l.csv(file) do
+    if   self 
+    then self:add(row) 
+    else self = DATA:new(row) end end
   return self end
 
 function l.shuffle(t,    j) --> list
@@ -183,14 +184,14 @@ function l.coerce(s,     fun) --> atom
   fun = function(s) return s=="true" and true or s ~= "false" and s end
   return math.tointeger(s) or tonumber(s) or fun(l.trim(s)) end
 
-function l.csv(file, fun,      src,s,cells,n) --> nil
-  cells = function(s,    t)
-            t={}; for s1 in s:gmatch"([^,]+)" do l.push(t,l.coerce(s1)) end; return t end
-  src = io.input(file)
-  n   = -1
-  while true do
+function l.csv(file,     src) --> nil
+  if file and file~="-" then src=io.input(file) end
+  return function(     s,t)
     s = io.read()
-    if s then n=n+1; fun(n,cells(s)) else return io.close(src) end end end
+    if not s then 
+      if src then io.close(src) end 
+    else
+      t={}; for s1 in s:gmatch"([^,]+)" do l.push(t,l.coerce(s1)) end; return t end end end
 
 function l.trim( s ) --> str
   return s:match"^%s*(.-)%s*$" end
@@ -234,6 +235,20 @@ function l.lts(a,b,c)
 
 function l.push(t,x) t[#t+1]=x; return x end
 
+function l.lt(x) return function(t,u) return t[x] < u[x] end end
+
+-- (se.pattern) decorate-sort-undecorate; also known as the  Schwartzian transform 
+function  l.zort(t,fun,     u,v)
+  u={}; for _,x in t do l.push(u, {fun(x),x}) end
+  v={}; for _,x in l.sorted(u,l.lt(1)) do l.push(v, x[2]) end
+  return v end
+
+-- OO is defined by class, instances, methods, messaging, inheritance, abstractions, 
+-- encapuslation (formatio hiding, which can be optional or enfored or somewhere in between), polymorphism (se.prog.oo).
+-- Encapulation and packaging ahve a connection. Abstaction needs querying support (see lipskov iterators and error handlers).
+-- For a nice, and brief, survey of the literature, see https://www.tonymarston.co.uk/php-mysql/abstraction.txt.
+-- Note that this comment is LONGER than the code required for my LUA implementation of class, instance, methods,
+-- messaging, encapulation, abstraction and polymorphism.
 function l.new(klass, obj) --> obj 
   klass.__index    = klass
   klass.__tostring = klass.__tostring or l.o
@@ -253,13 +268,23 @@ function eg.sym(     s)
 	for _,x in pairs{"a","a","a","a","b","b","c"} do s:add(x) end
 	assert(s.n==7 and s:mid() == "a" and l.lts(1.37, s:div(), 1.38)) end
 
-function eg.COLS()
+function eg.COLS(       t)
   t = COLS:new({"name","Age","ShoesX","Growth-"}).all
 	assert(t[#t].goal == 0)
 	assert(getmetatable(t[1]) == SYM) end
 
-function eg.DATA()
-  d=l.data(the.train) end
+function eg.csv() 
+  for row in l.csv(the.train) do l.oo(row) end end
+
+function eg.DATA(       d,n) 
+  d=l.data(the.train) 
+  assert(#d.rows==398) 
+  n=0; for _,row in pairs(d.rows) do n = n + #row end; assert(n==3184)
+  assert(#d.cols.y==3) 
+  assert(#d.cols.x==4) 
+  assert(0 == d.cols.y[1].goal)
+  assert(l.lts(5.45,d.cols.x[1]:mid(),5.5))
+end
 
 -- se.dry: help string consistent with settings if settings derived from help   
 -- se.re: regulatr expressions are very useful   
