@@ -125,7 +125,7 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
 
 local acquire={}
 
-function acquire.go(self:DATA
+function acquire.go(self:DATA,
                     labels,fun, -- (?tuple[list,float],?function) -> list,list[list]
                     todo,done,best,rest,Y,guess) 
   labels= labels or {}
@@ -135,7 +135,7 @@ function acquire.go(self:DATA
   guess = function (r) 
             fun = fun or function(b,r) return b + b -r end
             return fun(best.like(r,#done,2),rest.like(r,#done,2)) end 
-  todo,done = acquire.init(labels)
+  todo,done = acquire.init(self.rows, labels)
   while true do
     done = l.sorted(done,Y)                   -- sort labelled items
     if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
@@ -143,11 +143,11 @@ function acquire.go(self:DATA
     table.sort(todo, guess)                   -- sort using "fun"
     l.push(done, table.remove(todo)) end end  -- labell the best gues
 
-function acquire.init(labels) XXXX rows 
+function acquire.init(rows, labels) 
   local todo, done, n = {},{},0
   for row in pairs(labels) do l.push(done,row) end -- collected labelled items
-  n = max(1, the.start - #done)                    -- how many more labels to collect?         
-  for i,row in pairs(l.shuffle(b4)) do l.push(i<n and done or todo, row) end    
+  n = max(0, the.start - #done)                    -- how many more labels to collect?         
+  for i,row in pairs(shuffle(rows)) do l.push(i<=n and done or todo, row) end    
   return todo, done end
 
 function acquire.bestRest(self,rows,       best,rest)
@@ -155,7 +155,6 @@ function acquire.bestRest(self,rows,       best,rest)
   for i,row in pairs(rows) do 
     (i <= sqrt(#rows) and best or rest).add(row) end
   return best,rest end
-
 
 -- ## Dists
 
