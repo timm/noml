@@ -128,26 +128,22 @@ local acquire={}
 function acquire.go(self:DATA,
                     labels,fun, -- (?tuple[list,float],?function) -> list,list[list]
                     todo,done,best,rest,Y,guess) 
-  labels= labels or {}
-  Y = function (r)  
-        labels[r] = labels[r] or self:ydist(r)
-        return labels[r] end
-  guess = function (r) 
-            fun = fun or function(b,r) return b + b -r end
-            return fun(best.like(r,#done,2),rest.like(r,#done,2)) end 
+  labels    = labels or {}
+  Y         = function (r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
+  fun       = fun or function(b,r) return b + b -r end
   todo,done = acquire.init(self.rows, labels)
   while true do
     done = l.sorted(done,Y)                   -- sort labelled items
     if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
     best,rest = acquire.bestRest(done)        -- divide labels into two groups
-    table.sort(todo, guess)                   -- sort using "fun"
+    table.sort(todo, function(r) return fun(best.like(r,#done,2),rest.like(r,#done,2)) end)
     l.push(done, table.remove(todo)) end end  -- labell the best gues
 
 function acquire.init(rows, labels) 
   local todo, done, n = {},{},0
   for row in pairs(labels) do l.push(done,row) end -- collected labelled items
   n = max(0, the.start - #done)                    -- how many more labels to collect?         
-  for i,row in pairs(shuffle(rows)) do l.push(i<=n and done or todo, row) end    
+  for i,row in pairs(l.shuffle(rows)) do l.push(i<=n and done or todo, row) end    
   return todo, done end
 
 function acquire.bestRest(self,rows,       best,rest)
