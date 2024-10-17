@@ -20,8 +20,7 @@ OPTIONS:
   -p p       distance coeffecient = 2
   -r rseed   random seed          = 1234567891
   -S Stop    stopping for acquire = 30
-
-]]
+	-t train   data                 = ../../moot/optimize/misc/auto93.csv]]
 
 -- There are many standard cliches; e.g. create update query (se.patterns).
 local big = 1E64
@@ -38,8 +37,8 @@ function SYM:new(at, txt) -- (int, str) -> SYM
 
 -- Numeric goals have a best value: 0 if minimizing and 1 if maximizing (se.data).
 function NUM:new(at, txt) -- (int, str) -> NUM
-  return l.new(NUM, {n=0, at=at or 0, txt=txt or "", mu=0, m2=0, lo=l.big, hi=-l.big,
-                     goal = (at or ""):find"-$" and 0 or 1}) end
+  return l.new(NUM, {n=0, at=at or 0, txt=txt or "", mu=0, m2=0, lo=big, hi=-big,
+                     goal = (txt or ""):find"-$" and 0 or 1}) end
 
 -- A factory is a generator of instances. e.g. COLS makes SYMs or NUMs (se.pattern).
 -- Columns have differnt roles; x-columns are known as independent inputs (observables or
@@ -124,35 +123,35 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
        out = out + log(tmp) end end
   return out end
 
-function DATA:besRest(rows)
-  best, rest = self.clone(), self.clone()
-  for i,row in pairs(done) do 
+local function _acquireBestRest(self,rows,       best,rest)
+  best, rest = self:clone(), self:clone()
+  for i,row in pairs(rows) do 
     (i <= sqrt(#rows) and best or rest).add(row) end
   return best,rest end
 
-local function _todo_done(labels)
-  local b4, todo, done = {},{},{}
+local function _acquireInit(labels)
+  local b4, todo, done, n = {},{},{},0
   for row in pairs(labels) do l.push(b4,row) end -- collected labelled items
   n = max(1, the.start - #b4)                    -- how many more labels to collect?         
-  for i,row in pairs(l.shuffle(b4)) do l.push(i<=n and done or todo, row) end    
+  for i,row in pairs(l.shuffle(b4)) do l.push(i<n and done or todo, row) end    
   return todo, done end
 
 function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list,list[list]
-                      todo,done,best,rest,Y) 
-  labels     = labels or {}
-  todo, done = _todo_done(labels)
-  Y          = function (r) 
-                 labels[r] = labels[r] or self:ydist(r)
-                 return labels[r] end
-  guess      = function (r) 
-                 fun = fun or function(b,r) return b + b -r end
-                 return fun(best.like(r,#done,2),rest.like(r,#done,2)) end 
+                      todo,done,best,rest,Y,guess) 
+  labels= labels or {}
+  Y     = function (r)  
+            labels[r] = labels[r] or self:ydist(r)
+            return labels[r] end
+  guess = function (r) 
+            fun = fun or function(b,r) return b + b -r end
+            return fun(best.like(r,#done,2),rest.like(r,#done,2)) end 
+  todo,done = _acquireInit(labels)
   while true do
-    done = sorted(done,Y)                             -- sort labelled items
+    done = l.sorted(done,Y)                   -- sort labelled items
     if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
-    best,rest = self:bestRest(done)                   -- divide labels into two groups
-    table.sort(todo, guess)                           -- sort using "fun"
-    l.push(done, table.remove(todo)) end end          -- labell the best gues
+    best,rest = _acquireBestRest(done)        -- divide labels into two groups
+    table.sort(todo, guess)                   -- sort using "fun"
+    l.push(done, table.remove(todo)) end end  -- labell the best gues
 
 -- ## Dists
 
@@ -168,39 +167,41 @@ function DATA:ydists() -- () -> DATA
 
 -- ## Misc
 
+l.fmt = string.format
+
 function l.data(file,     it,self) -- (str) -> DATA
   it = l.csv(file)
   self = DATA(next(it))
   for _,row in pairs(it) do self:add(row) end
   return self end
 
-  function l.shuffle(t,    j) --> list
-    for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
-    return t end
-  
-  function l.coerce(s,     fun) --> atom
-    fun = function(s) return s=="true" and true or s ~= "false" and s end
-    return math.tointeger(s) or tonumber(s) or fun(l.trim(s)) end
-  
-  function l.csv(file, fun,      src,s,cells,n) --> nil
-    function cells(s,    t)
-      t={}; for s1 in s:gmatch"([^,]+)" do l.push(t,l.coerce(s1)) end; return t end
-    src = io.input(file)
-    n   = -1
-    while true do
-      s = io.read()
-      if s then n=n+1; fun(n,cells(s)) else return io.close(src) end end end
-  
-  function l.trim( s ) --> str
-    return s:match"^%s*(.-)%s*$" end
-  
-  function l.o(x,     f,g) --> str
-    if type(x) == "number" then return l.fmt("%g",x) end
-    if type(x) ~= "table"  then return tostring(x)   end
-    f=function(x)   return l.o(x) end
-    g=function(k,v) return l.o(k):find"^_" and nil or l.fmt(":%s %s",k,l.o(x[k])) end 
-    return "{" .. table.concat(#x>0 and l.map(x,f) or l.sort(l.maps(x,g))," ").."}" end
-  
+function l.shuffle(t,    j) --> list
+  for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
+  return t end
+
+function l.coerce(s,     fun) --> atom
+  fun = function(s) return s=="true" and true or s ~= "false" and s end
+  return math.tointeger(s) or tonumber(s) or fun(l.trim(s)) end
+
+function l.csv(file, fun,      src,s,cells,n) --> nil
+  cells = function(s,    t)
+            t={}; for s1 in s:gmatch"([^,]+)" do l.push(t,l.coerce(s1)) end; return t end
+  src = io.input(file)
+  n   = -1
+  while true do
+    s = io.read()
+    if s then n=n+1; fun(n,cells(s)) else return io.close(src) end end end
+
+function l.trim( s ) --> str
+  return s:match"^%s*(.-)%s*$" end
+
+function l.o(x,     f,g) --> str
+  if type(x) == "number" then return l.fmt("%g",x) end
+  if type(x) ~= "table"  then return tostring(x)   end
+  f=function(x)   return l.o(x) end
+  g=function(k,v) return l.o(k):find"^_" and nil or l.fmt(":%s %s",k,l.o(x[k])) end 
+  return "{" .. table.concat(#x>0 and l.map(x,f) or l.sort(l.maps(x,g))," ").."}" end
+
 function l.oo(x) --> nil
     print(l.o(x)) end
 
@@ -228,19 +229,47 @@ function l.cli(t)
   math.randomseed(the.rseed or 1)
   return t end
 
+function l.lts(a,b,c)
+  return a<b and b<c end
+
+function l.push(t,x) t[#t+1]=x; return x end
+
+function l.new(klass, obj) --> obj 
+  klass.__index    = klass
+  klass.__tostring = klass.__tostring or l.o
+  return setmetatable(obj,klass) end
+
 -- ## Start
 local eg={}
-function eg.the() print(the) end
+function eg.the() l.oo(the) end -- try ths with different command line settings
+
+function eg.num(     n)
+  n=NUM:new()
+	for i=1,10^3 do n:add(l.normal(10,2)) end
+	assert(n.n==1000 and l.lts(9.9, n:mid(),10) and l.lts(1.95,n:div(),2)) end
+
+function eg.sym(     s)
+  s=SYM:new()
+	for _,x in pairs{"a","a","a","a","b","b","c"} do s:add(x) end
+	assert(s.n==7 and s:mid() == "a" and l.lts(1.37, s:div(), 1.38)) end
+
+function eg.COLS()
+  t = COLS:new({"name","Age","ShoesX","Growth-"}).all
+	assert(t[#t].goal == 0)
+	assert(getmetatable(t[1]) == SYM) end
+
+function eg.DATA()
+  d=l.data(the.train) end
 
 -- se.dry: help string consistent with settings if settings derived from help   
 -- se.re: regulatr expressions are very useful   
--- se.ll: a little text parsing defines a short syntax for a common task 
+-- se.ll: a little text parsing defines a convenient shorthand for a common task 
 -- ai.seeds: debugging, reproducibility needs control of random seeds  
 help:gsub("\n%s+-%S%s(%S+)[^=]+=%s+(%S+)", function(k,v) the[k]= l.coerce(v) end)
 math.randomseed(the.rseed)
 
 if arg[0]:find"how2.lua" then
-  l.cli(arg)
+  l.cli(the)
   for i,s in pairs(arg) do
      if  eg[s:sub(3)] then eg[s:sub(3)]() end end end
 

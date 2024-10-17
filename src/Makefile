@@ -77,6 +77,10 @@ pretty:
 	1>&2 echo "... $@"
 	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
 
+~/tmp/%.html : %.lua
+	pycco -d ~/tmp $^
+	open $@
+
 ../docs/%.html : ../src/%.py
 	echo "$< ... "
 	gawk -f etc/py2html.awk $< | pandoc $(Pandoc) -o $@
@@ -85,7 +89,7 @@ pretty:
 	@mkdir -p docs
 	@echo "pdf-ing $@ ... "
 	@a2ps -Bjr    -q                        \
-		--chars-per-line=100 \
+		--chars-per-line=120 \
 		--line-numbers=1                    \
 		--highlight-level=normal  \
 		--columns 3                 \
