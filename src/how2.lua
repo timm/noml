@@ -3,7 +3,7 @@
 -- Line of UNIX shell scripts can list the interpreter for that file (se.sh).
 -- All code needs explanation, even your own in a few months time (se.doc).
 -- All code has magic control params, which has to be controlled and tuned (se.config).
--- License your code, before someone else takes it over (se.license).
+-- License your code, least someone else takes it from yauo (se.license).
 local the,help = {},[[
 how.lua : how to change your mind (using TPE + Bayes classifier)
 (c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
@@ -19,6 +19,7 @@ OPTIONS:
   -m m       bayes control        = 2
   -p p       distance coeffecient = 2
   -r rseed   random seed          = 1234567891
+  -s start   init number of samples= 4
   -S Stop    stopping for acquire = 30
 	-t train   data                 = ../../moot/optimize/misc/auto93.csv]]
 
@@ -80,7 +81,7 @@ function NUM:add(x,    d) --(num) -> nil
     if x > self.hi then self.hi = x end
     if x < self.lo then self.lo = x end end end  
 
-function SYM:add(x,  n) -- (atom) -> nil
+function SYM:add(x,  n) -- (atom,?int) -> nil
   if x ~= "?" then
     n           = n or 1
     self.n      = n + self.n 
@@ -94,11 +95,11 @@ function SYM:add(x,  n) -- (atom) -> nil
 function NUM:norm(x)
   return x=="?" and x or (x - self.lo) / (self.hi - self.lo + 1/big) end
 
--- Numerics' _central tendancy_ and _diversity_ are `mu` and `sd` (se.data).
+-- Numerics' _central tendency_ and _diversity_ are `mu` and `sd` (se.data).
 function NUM:mid() return self.mu end
 function NUM:div() return self.n < 2 and 0 or (self.m2/(self.n - 1))^.5 end
 
--- Symbols _central tendancy_ and _diversity_ are `mode` and `entropy` (se.data).
+-- Symbols _central tendency_ and _diversity_ are `mode` and `entropy` (se.data).
 function SYM:mid() return self.mode end
 function SYM:div(     e) 
   e=0; for _,n in pairs(self.has) do e = e - n/self.n*log(n/self.n, 2) end 
@@ -112,7 +113,7 @@ function SYM:like(x,prior)
 function NUM:like(x,_ ,      v,tmp)
   v = self:div()^2 + 1/big
   tmp = exp(-1*(x - self.mu)^2/(2*v)) / (2*pi*v) ^ 0.5
-  return min(1, tmp + 1/big) end
+  return max(0,min(1, tmp + 1/big)) end
 
 function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) -> number
   prior = (#self.rows + the.k) / (nall + the.k*nh)
@@ -128,9 +129,9 @@ local acquire={}
 function acquire.go(data1:DATA,
                     labels,fun, -- (?tuple[list,float],?function) -> list,list[list]
                     todo,done,best,rest,Y,guess) 
-  labels    = labels or {}
-  Y         = function (r) labels[r] = labels[r] or data1:ydist(r); return labels[r] end
   fun       = fun or function(b,r) return b + b -r end
+  labels    = labels or {}
+  Y         = function(r) labels[r] = labels[r] or data1:ydist(r); return labels[r] end
   todo,done = acquire.init(data1.rows, labels)
   while true do
     done = l.sorted(done,Y)                   -- sort labelled items
