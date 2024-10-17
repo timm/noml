@@ -13,15 +13,16 @@ USAGE:
   ./how.lua [OPTIONS]
 
 OPTIONS:
-  -e end     size of              = .5
-  -h help    show help            = false
-  -k k       bayes control        = 1
-  -m m       bayes control        = 2
-  -p p       distance coeffecient = 2
-  -r rseed   random seed          = 1234567891
-  -s start   init number of samples= 4
-  -S Stop    stopping for acquire = 30
-	-t train   data                 = ../../moot/optimize/misc/auto93.csv]]
+  -e end     size of                  = .5
+  -g guesses how many todos to sample = 256
+  -h help    show help                = false
+  -k k       bayes control            = 1
+  -m m       bayes control            = 2
+  -p p       distance coeffecient     = 2
+  -r rseed   random seed              = 1234567891
+  -s start   init number of samples   = 4
+  -S Stop    stopping for acquire     = 30
+	-t train   data                     = ../../moot/optimize/misc/auto93.csv]]
 
 -- There are many standard cliches; e.g. create update query (se.patterns).
 local big = 1E64
@@ -110,6 +111,12 @@ function SYM:div(     e)
   e=0; for _,n in pairs(self.has) do e = e - n/self.n*log(n/self.n, 2) end 
   return e end
 
+function DATA:split(rows,n,       first,rest)
+  first, rest = self:clone(), self:clone()
+  for i,row in pairs(rows) do 
+    (i <= n and first or rest):add(row) end
+  return first,rest end
+
 -- ## Bayes
 
 function SYM:like(x,prior)
@@ -129,12 +136,6 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
        out = out + log(tmp) end end
   return out end
 
-function DATA:split(rows,n,       first,rest)
-  first, rest = self:clone(), self:clone()
-  for i,row in pairs(rows) do 
-    (i <= n and first or rest):add(row) end
-  return first,rest end
-
 function DATA:acquire(labels,fun, -- (?tuple[list,float],?function) -> list[list]
                       Y,todo,done,best,rest)
   fun    = fun or function(b,r) return b + b -r end
@@ -145,10 +146,10 @@ function DATA:acquire(labels,fun, -- (?tuple[list,float],?function) -> list[list
   for row in pairs(labels)     do l.push(done, row) end 
   for i = 1, the.start - #done do l.push(done, table.remove(todo)) end
   while true do
-    done = l.sorted(done,Y)                   -- sort labelled items
+    done = l.sort(done,Y)                   -- sort labelled items
     if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
     best,rest = self:split(done, sqrt(done))        -- divide labels into two groups
-    done = l.zort(done, function(r) if   math.random() > the.guesses/#todo 
+    todo = l.sort(todo, function(r) if   math.random() > min(#todo, the.guesses)/#todo 
                                     then return -big
                                     else return fun(best.like(r,#done,2),
                                                     rest.like(r,#done,2)) end end)
@@ -184,6 +185,7 @@ function l.coerce(s,     fun) --> atom
   fun = function(s) return s=="true" and true or s ~= "false" and s end
   return math.tointeger(s) or tonumber(s) or fun(l.trim(s)) end
 
+-- (se.abstraction) aka information hiding. liskov iterators
 function l.csv(file,     src) --> nil
   if file and file~="-" then src=io.input(file) end
   return function(     s,t)
@@ -212,8 +214,13 @@ function l.map(t,fun,     u) --> list
 function l.maps(t,fun,    u) --> list
   u={}; for k,v in pairs(t) do u[1+#u]=fun(k,v)  end; return u end
 
-function l.sort(t, fun) --> list
-  table.sort(t,fun); return t end
+function l.lt(x) return function(t,u) return t[x] < u[x] end end
+
+-- (se.pattern) decorate-sort-undecorate; also known as the  Schwartzian transform 
+function l.sort(t,fun,     u,v)
+  u={}; for _,x in t do l.push(u, {fun(x),x}) end
+  v={}; for _,x in l.sort(u,l.lt(1)) do l.push(v, x[2]) end
+  return v end
 
 function l.normal(mu,sd,    r)
   r = math.random
@@ -234,14 +241,6 @@ function l.lts(a,b,c)
   return a<b and b<c end
 
 function l.push(t,x) t[#t+1]=x; return x end
-
-function l.lt(x) return function(t,u) return t[x] < u[x] end end
-
--- (se.pattern) decorate-sort-undecorate; also known as the  Schwartzian transform 
-function  l.zort(t,fun,     u,v)
-  u={}; for _,x in t do l.push(u, {fun(x),x}) end
-  v={}; for _,x in l.sorted(u,l.lt(1)) do l.push(v, x[2]) end
-  return v end
 
 -- OO is defined by class, instances, methods, messaging, inheritance, abstractions, 
 -- encapuslation (formatio hiding, which can be optional or enfored or somewhere in between), polymorphism (se.prog.oo).
