@@ -25,7 +25,7 @@ OPTIONS:
 	-t train   data                     = ../../moot/optimize/misc/auto93.csv]]
 
 -- There are many standard cliches; e.g. create update query (se.patterns).
-local big = 1E64
+local big = 1E32
 local NUM, SYM, DATA, COLS, l = {}, {}, {}, {}, {}
 local abs, cos, exp, log = math.abs,  math.cos,  math.exp, math.log
 local max, min, pi, sqrt = math.max,  math.min,  math.pi, math.sqrt
@@ -133,7 +133,7 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
   prior = (#self.rows + the.k) / (nall + the.k*nh)
   out,likes = 0,log(prior)
   for _,col in pairs(self.cols.y) do 
-    tmp = col:like(row[c.at], prior) 
+    tmp = col:like(row[col.at], prior) 
     if tmp > 0 then
        out = out + log(tmp) end end
   return out end
@@ -152,36 +152,40 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
   --   x1 = (-b + math.sqrt(b**2 - 4 * a * c)) / (2 * a)
   --   x2 = (-b - math.sqrt(b**2 - 4 * a * c)) / (2 * a)
   --   return x1 if m1 <= x1 <= m2 else x2
-  --
-function DATA:acquire(labels,fun, -- (?tuple[list,float],?function) -> list[list]
+
+function _guess(row, todo,done,best,rest,fun)
+  if   math.random() > min(#todo, the.guesses)/#todo 
+  then return -10^8
+  else return fun(best:like(row,#done,2),
+                  rest:like(row,#done,2)) end end
+
+function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[list]
                       Y,todo,done,best,rest)
   fun    = fun or function(b,r) return b + b -r end
   labels = labels or {}
   Y      = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
-  todo   = l.shsuffle(self.rows)
+  todo   = l.shuffle(self.rows)
   done   = {}
   for row in pairs(labels)     do l.push(done, row) end 
   for i = 1, the.start - #done do l.push(done, table.remove(todo)) end
   while true do
-    done = l.sort(done,Y)                   -- sort labelled items
+    done = l.keysort(done,Y)                   -- sort labelled items
     if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
-    best,rest = self:split(done, sqrt(done))        -- divide labels into two groups
-    todo = l.sort(todo, function(r) -- sort todo by some function of like(best), like(rest)
-                         if   math.random() > min(#todo, the.guesses)/#todo 
-                         then return -big
-                         else return fun(best.like(r,#done,2),
-                                         rest.like(r,#done,2)) end end)
+    best,rest = self:split(done, sqrt(#done))        -- divide labels into two groups
+    todo = l.keysort(todo, function(r) -- sort todo by some function of like(best), like(rest)
+                             return _guess(r,todo,done,best,rest,fun) end )
     l.push(done, table.remove(todo)) end end  -- label the best todo
 
 -- ## Dists
 
 -- Chebyshev distance is max distance of any one attribute to another (ml.dist). 
 function DATA:ydist(row,    d) -- (list) -> number
-  d = 0; for _,y in pairs(self.cols.y) do d = max(d, abs(y:norm(row[y.at]) - y.goal)) end
+  d = 0
+	for _,y in pairs(self.cols.y) do d = max(d, abs(y:norm(row[y.at]) - y.goal)) end
   return d end
 
 function DATA:ydists() -- () -> DATA
-  self.rows = l.sort(self.rows, function(r) return self:ydist(r) end)
+  self.rows = l.keysort(self.rows, function(r) return self:ydist(r) end)
   return self end
 
 -- ## Misc
@@ -234,10 +238,12 @@ function l.maps(t,fun,    u) --> list
 
 function l.lt(x) return function(t,u) return t[x] < u[x] end end
 
+function l.sort(t,fun) table.sort(t,fun); return t end
+
 -- (se.pattern) decorate-sort-undecorate; also known as the  Schwartzian transform 
-function l.sort(t,fun,     u,v)
+function l.keysort(t,fun,     u,v)
   u={}; for _,x in pairs(t) do l.push(u, {fun(x),x}) end
-  v={}; for _,x in pairs(l.sort(u,l.lt(1))) do l.push(v, x[2]) end
+  v={}; for _,x in pairs(l.sort(u, l.lt(1))) do l.push(v, x[2]) end
   return v end
 
 function l.normal(mu,sd,    r)
@@ -311,11 +317,31 @@ function eg.rxy(       d)
 		  d = l.data(f) 
 			print(l.fmt("%8s, %8s, %8s,  %8s", #d.rows,#d.cols.x,#d.cols.y, (f:gsub(".*/", "  ")))) end end end
 
-function eg.likes(    d)
+function eg.ydist(    d,num)
   d = l.data(the.train)
+	num=NUM:new()
 	for i,row in pairs(d:ydists().rows) do
-	  if (i-1) % 30 == 0 then print(i,l.o(row)) end end end 
--- se.dry: help string consistent with settings if settings derived from help   
+	  y=d:ydist(row)
+		num:add(y)
+	  if i==1 or i % 30 == 0 then print(i,l.o(row),y) end end 
+	print(num:mid()) end 
+
+function eg.likes(    d,n)
+  d = l.data(the.train)
+	for i,row in pairs(l.keysort(d.rows, 
+	                          function(r) return d:like(r,#d.rows,2) end)) do
+	  if i==1 or i % 30 == 0 then 
+		  print(i,l.o(row),d:like(row,#d.rows,2)) end end  end
+
+function eg.acquires(    d,n)
+  S = function(n) return l.fmt("%.3f",n) end
+  d = l.data(the.train)
+	base = d:ydist(d:ydists().rows[#d.rows//2])
+  t={}; for i=1,20 do l.push(t, d:ydist(d:acquire()[1])) end
+ 	t = l.sort(t)
+    print(S(t[2]), S(t[6]), S(t[10]), S(t[14]), S(t[18]),"|",S(base))
+   end
+	-- se.dry: help string consistent with settings if settings derived from help   
 -- se.re: regulatr expressions are very useful   
 -- se.ll: a little text parsing defines a convenient shorthand for a common task 
 -- ai.seeds: debugging, reproducibility needs control of random seeds  
