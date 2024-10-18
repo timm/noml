@@ -138,6 +138,21 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
        out = out + log(tmp) end end
   return out end
 
+  -- def valley(m1,std1,m2,std2):
+  -- """https://stackoverflow.com/questions/22579434/
+  -- python-finding-the-intersection-point-of-two-gaussian-curves"""
+  -- if std1 < 0.0001: return (m1+m2)/2
+  -- if std2 < 0.0001: return (m1+m2)/2
+  -- if abs(std1-std2) < 0.01:
+  --   return (m1+m2)/2
+  -- else:
+  --   a  = 1/(2*std1**2) - 1/(2*std2**2)
+  --   b  = m2/(std2**2) - m1/(std1**2)
+  --   c  = m1**2 /(2*std1**2) - m2**2 / (2*std2**2) - math.log(std2/std1)
+  --   x1 = (-b + math.sqrt(b**2 - 4 * a * c)) / (2 * a)
+  --   x2 = (-b - math.sqrt(b**2 - 4 * a * c)) / (2 * a)
+  --   return x1 if m1 <= x1 <= m2 else x2
+  --
 function DATA:acquire(labels,fun, -- (?tuple[list,float],?function) -> list[list]
                       Y,todo,done,best,rest)
   fun    = fun or function(b,r) return b + b -r end
@@ -151,11 +166,12 @@ function DATA:acquire(labels,fun, -- (?tuple[list,float],?function) -> list[list
     done = l.sort(done,Y)                   -- sort labelled items
     if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
     best,rest = self:split(done, sqrt(done))        -- divide labels into two groups
-    todo = l.sort(todo, function(r) if   math.random() > min(#todo, the.guesses)/#todo 
-                                    then return -big
-                                    else return fun(best.like(r,#done,2),
-                                                    rest.like(r,#done,2)) end end)
-    l.push(done, table.remove(todo)) end end  -- labell the best gues
+    todo = l.sort(todo, function(r) -- sort todo by some function of like(best), like(rest)
+                         if   math.random() > min(#todo, the.guesses)/#todo 
+                         then return -big
+                         else return fun(best.like(r,#done,2),
+                                         rest.like(r,#done,2)) end end)
+    l.push(done, table.remove(todo)) end end  -- label the best todo
 
 -- ## Dists
 
