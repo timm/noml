@@ -78,22 +78,23 @@ function DATA:add(row) -- (list) -> DATA
   l.push(self.rows, row) 
   for _,col in pairs(self.cols.all) do col:add(row[col.at]) end end
 
+-- (maths) [Welford's algorithm](https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm)
 function NUM:add(x,    d) --(num) -> nil
   if x ~= "?" then
     self.n  = self.n + 1
     d       = x - self.mu
     self.mu = self.mu + d / self.n
     self.m2 = self.m2 + d * (x - self.mu)
-    if x > self.hi then self.hi = x end
-    if x < self.lo then self.lo = x end end end  
+    self.hi = max(self.hi, x)
+    self.lo = min(self.lo, x) end end
 
 function SYM:add(x,  n) -- (atom,?int) -> nil
   if x ~= "?" then
     n           = n or 1
     self.n      = n + self.n 
     self.has[x] = n + (self.has[x] or 0) 
-    if self.has[x] > self.most then
-    self.most, self.mode = self.has[x], x end end end
+    if self.has[x] > self.most then 
+		  self.most, self.mode = self.has[x], x end end end
 
 -- ## Query
 
@@ -187,7 +188,7 @@ function l.coerce(s,     fun) --> atom
 
 -- (se.abstraction) aka information hiding. liskov iterators
 function l.csv(file,     src) --> nil
-  if file and file~="-" then src=io.input(file) end
+  if file and file ~="-" then src=io.input(file) end
   return function(     s,t)
     s = io.read()
     if not s then 
