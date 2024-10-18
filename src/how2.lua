@@ -112,6 +112,7 @@ function SYM:div(     e)
   e=0; for _,n in pairs(self.has) do e = e - n/self.n*log(n/self.n, 2) end 
   return e end
 
+-- Split one DATA into two.
 function DATA:split(rows,n,       first,rest)
   first, rest = self:clone(), self:clone()
   for i,row in pairs(rows) do 
@@ -164,7 +165,7 @@ function DATA:ydist(row,    d) -- (list) -> number
   return d end
 
 function DATA:ydists() -- () -> DATA
-  table.sort(self.rows, function(r) return self:ydist(r) end)
+  self.rows = l.sort(self.rows, function(r) return self:ydist(r) end)
   return self end
 
 -- ## Misc
@@ -219,8 +220,8 @@ function l.lt(x) return function(t,u) return t[x] < u[x] end end
 
 -- (se.pattern) decorate-sort-undecorate; also known as the  Schwartzian transform 
 function l.sort(t,fun,     u,v)
-  u={}; for _,x in t do l.push(u, {fun(x),x}) end
-  v={}; for _,x in l.sort(u,l.lt(1)) do l.push(v, x[2]) end
+  u={}; for _,x in pairs(t) do l.push(u, {fun(x),x}) end
+  v={}; for _,x in pairs(l.sort(u,l.lt(1))) do l.push(v, x[2]) end
   return v end
 
 function l.normal(mu,sd,    r)
@@ -286,6 +287,18 @@ function eg.DATA(       d,n)
   assert(l.lts(5.45,d.cols.x[1]:mid(),5.5))
 end
 
+function eg.rxy(       d)
+  -- ./how2.lua --rxy ../../moot/optimize/[chmp]*/*.csv | sort -t, -nk 2
+  for _,f in pairs(arg) do
+	  print(f)
+	  if f:find"csv$" then 
+		  d = l.data(f) 
+			print(l.fmt("%8s, %8s, %8s,  %8s", #d.rows,#d.cols.x,#d.cols.y, (f:gsub(".*/", "  ")))) end end end
+
+function eg.likes(    d)
+  d = l.data(the.train)
+	for i,row in pairs(d:ydists().rows) do
+	  if (i-1) % 30 == 0 then print(i,l.o(row)) end end end 
 -- se.dry: help string consistent with settings if settings derived from help   
 -- se.re: regulatr expressions are very useful   
 -- se.ll: a little text parsing defines a convenient shorthand for a common task 
