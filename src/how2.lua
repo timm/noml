@@ -22,7 +22,7 @@ OPTIONS:
   -r rseed   random seed              = 1234567891
   -s start   init number of samples   = 4
   -S Stop    stopping for acquire     = 30
-	-t train   data                     = ../../moot/optimize/misc/auto93.csv]]
+  -t train   data                     = ../../moot/optimize/misc/auto93.csv]]
 
 -- There are many standard cliches; e.g. create update query (se.patterns).
 local big = 1E32
@@ -94,7 +94,7 @@ function SYM:add(x,  n) -- (atom,?int) -> nil
     self.n      = n + self.n 
     self.has[x] = n + (self.has[x] or 0) 
     if self.has[x] > self.most then 
-		  self.most, self.mode = self.has[x], x end end end
+      self.most, self.mode = self.has[x], x end end end
 
 -- ## Query
 
@@ -186,12 +186,57 @@ function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[li
 -- Chebyshev distance is max distance of any one attribute to another (ml.dist). 
 function DATA:ydist(row,    d) -- (list) -> number
   d = 0
-	for _,y in pairs(self.cols.y) do d = max(d, abs(y:norm(row[y.at]) - y.goal)) end
+  for _,y in pairs(self.cols.y) do d = max(d, abs(y:norm(row[y.at]) - y.goal)) end
   return d end
 
 function DATA:ydists() -- () -> DATA
   self.rows = l.keysort(self.rows, function(r) return self:ydist(r) end)
   return self end
+
+function DATA:twoFar(rows,above, Y,sortp)
+  local most,a0,b0,a,b,d
+  most = 0
+  for i=1,the.far do 
+    a0,b0 = above or l.any(rows), l.any(rows)
+    d = self:xDist(a0,b0)
+    if d > most then most,a,b = d,a0,b0 end end
+  if sortp and Y(b) < Y(a) then a,b = a,b end
+  return most,a,b end
+
+function DATA:half(rows,above,Y,  sortp) --> float,rows,rows,row,row
+  local ls,rs,l,r,cos,fun
+  c,l,r = self:twoFar(rows,above,Y,sortp)
+  cos   = function(a,b) return (a^2 + c^2 - b^2) / (2*c+ 1E-32) end 
+  fun   = function(row) return cos(self:xDist(row,l), self:xDist(row,r)) end
+  ls,rs = {},{}
+  for i,row in pairs(l.keysort(rows,fun)) do
+    l.push(i <= #rows//2 and ls or rs, row) end
+  return self:xdist(l,rs[1]), ls, rs, l, r end
+
+function TREE:new(data, lvl, guard, lefts, rights)
+  return new(CLUSTER, {data=data, lvl=lvl, guard=guard, lefts=lefts, rights=rights}) end
+
+function TREE:show()
+  print(l.fmt("%s%s %s", ('|.. ')*self.lvl, #self.data.rows))
+	if self.lefts  then self.lefts:show() end
+	if self.rights then self.rights:show() end
+
+function DATA:tree(rows,  sortp)
+  local labels,Y,stop,fun
+  labels= {}
+  Y     = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
+  stop  = #self.rows^the.leaf
+  function fun(rows, lvl, guard,above)
+    local ls,rs,l,r,goLeft,goRight,lefts,rights
+    if #rows > 2*stop then
+      cut,ls,rs,l,r = self:half(rows,above,Y,sortp)
+      goLeft  = function(row) return self:xDist(row,l) < cut end
+      goRight = function(row) return not goLeft(row) end
+      lefts   = grow(ls, lvl+1, goLeft,l)
+      if sortp then rights = grow(rs, lvl+1, goRight,r) end end
+    return TREE(self:clone(rows), lvl,gaurd,lefts,rights)  
+  end
+  return fun(self.rows, 0), labels end
 
 -- ## Misc
 
@@ -271,6 +316,9 @@ function l.lts(a,b,c)
 
 function l.push(t,x) t[#t+1]=x; return x end
 
+function l.any(t) --> any
+  return t[math.random(#t)] end
+
 -- OO is defined by class, instances, methods, messaging, inheritance, abstractions, 
 -- encapuslation (formatio hiding, which can be optional or enfored or somewhere in between), polymorphism (se.prog.oo).
 -- Encapulation and packaging ahve a connection. Abstaction needs querying support (see lipskov iterators and error handlers).
@@ -288,18 +336,18 @@ function eg.the() l.oo(the) end -- try ths with different command line settings
 
 function eg.num(     n)
   n=NUM:new()
-	for i=1,10^3 do n:add(l.normal(10,2)) end
-	assert(n.n==1000 and l.lts(9.9, n:mid(),10) and l.lts(1.95,n:div(),2)) end
+  for i=1,10^3 do n:add(l.normal(10,2)) end
+  assert(n.n==1000 and l.lts(9.9, n:mid(),10) and l.lts(1.95,n:div(),2)) end
 
 function eg.sym(     s)
   s=SYM:new()
-	for _,x in pairs{"a","a","a","a","b","b","c"} do s:add(x) end
-	assert(s.n==7 and s:mid() == "a" and l.lts(1.37, s:div(), 1.38)) end
+  for _,x in pairs{"a","a","a","a","b","b","c"} do s:add(x) end
+  assert(s.n==7 and s:mid() == "a" and l.lts(1.37, s:div(), 1.38)) end
 
 function eg.COLS(       t)
   t = COLS:new({"name","Age","ShoesX","Growth-"}).all
-	assert(t[#t].goal == 0)
-	assert(getmetatable(t[1]) == SYM) end
+  assert(t[#t].goal == 0)
+  assert(getmetatable(t[1]) == SYM) end
 
 function eg.csv() 
   for row in l.csv(the.train) do l.oo(row) end end
@@ -317,25 +365,25 @@ end
 function eg.rxy(       d)
   -- ./how2.lua --rxy ../../moot/optimize/[chmp]*/*.csv | sort -t, -nk 2
   for _,f in pairs(arg) do
-	  if f:find"csv$" then 
-		  d = l.data(f) 
-			print(l.fmt("%8s, %8s, %8s,  %8s", #d.rows,#d.cols.x,#d.cols.y, (f:gsub(".*/", "  ")))) end end end
+    if f:find"csv$" then 
+      d = l.data(f) 
+      print(l.fmt("%8s, %8s, %8s,  %8s", #d.rows,#d.cols.x,#d.cols.y, (f:gsub(".*/", "  ")))) end end end
 
 function eg.ydist(    d,num)
   d = l.data(the.train)
-	num=NUM:new()
-	for i,row in pairs(d:ydists().rows) do
-	  y=d:ydist(row)
-		num:add(y)
-	  if i==1 or i % 30 == 0 then print(i,l.o(row),y) end end 
-	print(num:mid()) end 
+  num=NUM:new()
+  for i,row in pairs(d:ydists().rows) do
+    y=d:ydist(row)
+    num:add(y)
+    if i==1 or i % 30 == 0 then print(i,l.o(row),y) end end 
+  print(num:mid()) end 
 
 function eg.likes(    d,n)
   d = l.data(the.train)
-	for i,row in pairs(l.keysort(d.rows, 
-	                          function(r) return d:like(r,#d.rows,2) end)) do
-	  if i==1 or i % 30 == 0 then 
-		  print(i,l.o(row),d:like(row,#d.rows,2)) end end  end
+  for i,row in pairs(l.keysort(d.rows, 
+                            function(r) return d:like(r,#d.rows,2) end)) do
+    if i==1 or i % 30 == 0 then 
+      print(i,l.o(row),d:like(row,#d.rows,2)) end end  end
 
 function _guess(data1,n)
    rows = l.shuffle(data1.rows)
@@ -348,7 +396,7 @@ function eg.acqs(    d,n,S,t,u,base)
   acqs = {[12]=NUM:new("acq,15"), [24]=NUM:new("acq,24"), [96]=NUM:new("acq,60")}
   rnds = {[12]=NUM:new("rnd,15"), [24]=NUM:new("rnd,24"), [96]=NUM:new("rnd,60")}
   asIs = NUM:new("asIs")
-	for _,row in pairs(d.rows) do asIs:add(d:ydist(row)) end
+  for _,row in pairs(d.rows) do asIs:add(d:ydist(row)) end
   for n,acq in pairs(acqs) do
     rnd=rnds[n]
     the.Stop = n
