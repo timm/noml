@@ -202,4 +202,6 @@ acquiresR:
 		 | sort -t,  -n
 
 
-
+lacqs:
+	echo "data,rows,x,y,asIs,eps,a7,a30,a120,r7,r30,r120" > ~/tmp/lacqs.csv
+	for f in ../../moot/optimize/[chmp]*/*.csv; do (./how2.lua -t $$f --acqs &); done | tee -a ~/tmp/lacqs.csv

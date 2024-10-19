@@ -34,11 +34,11 @@ local max, min, pi, sqrt = math.max,  math.min,  math.pi, math.sqrt
 
 -- Data can have numeric or symbolic columns (se.data).
 -- Type signatures are very useful (se.doc).
-function SYM:new(at, txt) -- (int, str) -> SYM
+function SYM:new(txt,at) -- (int, str) -> SYM
   return l.new(SYM, {n=0, at=at or 0, txt=txt or "", has={}, most=0, mode=nil}) end
 
 -- Numeric goals have a best value: 0 if minimizing and 1 if maximizing (se.data).
-function NUM:new(at, txt) -- (int, str) -> NUM
+function NUM:new(txt,at) -- (int, str) -> NUM
   return l.new(NUM, {n=0, at=at or 0, txt=txt or "", mu=0, m2=0, lo=big, hi=-big,
                      goal = (txt or ""):find"-$" and 0 or 1}) end
 
@@ -48,7 +48,7 @@ function NUM:new(at, txt) -- (int, str) -> NUM
 function COLS:new(names,    col) -- (list[str]) -> COLS
   self = l.new(COLS, {names=names, all={}, x={}, y={}})
   for at,txt in pairs(self.names) do
-    col = (txt:find"[A-Z]" and NUM or SYM):new(at,txt)
+    col = (txt:find"[A-Z]" and NUM or SYM):new(txt,at)
     l.push(self.all, col)
     if not txt:find"X$" then
       l.push(txt:find"[!+-]$" and self.y or self.x, col) end end
@@ -155,7 +155,8 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
 
 function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[list]
                       Y,todo,done,best,rest)
-  fun    = fun or function(b,r) return b + b -r end
+  --fun    = fun or function(b,r) b,r = exp(b), exp(r); return (b + r)/(abs(b-r)+ 0.0000000001)  end
+  fun    = fun or function(b,r) return b  - r end
   labels = labels or {}
   Y      = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
   H      = function(r) 
@@ -171,10 +172,14 @@ function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[li
   for i = 1, the.start - #done do l.push(done, table.remove(todo)) end
   while true do
     done = l.keysort(done, Y)
-    if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
+    if #todo <= 4 or #done >= the.Stop then return done end -- maybe stop
     best,rest = self:split(done, sqrt(#done))        -- divide labels into two groups
     todo = l.keysort(todo, H)
-    l.push(done, table.remove(todo)) end end -- label the best todo
+    l.push(done, table.remove(todo,1)) 
+    l.push(done, table.remove(todo)) 
+    l.push(done, table.remove(todo,1)) 
+    l.push(done, table.remove(todo)) 
+    end end -- label the best todo
 
 -- ## Dists
 
@@ -312,7 +317,6 @@ end
 function eg.rxy(       d)
   -- ./how2.lua --rxy ../../moot/optimize/[chmp]*/*.csv | sort -t, -nk 2
   for _,f in pairs(arg) do
-	  print(f)
 	  if f:find"csv$" then 
 		  d = l.data(f) 
 			print(l.fmt("%8s, %8s, %8s,  %8s", #d.rows,#d.cols.x,#d.cols.y, (f:gsub(".*/", "  ")))) end end end
@@ -338,18 +342,22 @@ function _guess(data1,n)
    t={}; for i=1,n do  t[1+#t] = data1:ydist(rows[i]) end
    return l.sort(t)[1] end
 
-function eg.acquires(    d,n,S,t,u,base)
-  S = function(n) return l.fmt("%.3f",n) end
+function eg.acqs(    d,n,S,t,u,base)
+  S = function(n) return l.fmt("%.3f,  ",n) end
   d = l.data(the.train)
-	base = d:ydist(d:ydists().rows[#d.rows//2])
-  for _,n in pairs{6,24,64} do
+  acqs = {[12]=NUM:new("acq,15"), [24]=NUM:new("acq,24"), [96]=NUM:new("acq,60")}
+  rnds = {[12]=NUM:new("rnd,15"), [24]=NUM:new("rnd,24"), [96]=NUM:new("rnd,60")}
+  asIs = NUM:new("asIs")
+	for _,row in pairs(d.rows) do asIs:add(d:ydist(row)) end
+  for n,acq in pairs(acqs) do
+    rnd=rnds[n]
     the.Stop = n
-    t={}; for i=1,20 do l.push(t, d:ydist(d:acquire()[1])) end
-    u={}; for i=1,20 do l.push(u,_guess(d, the.Stop)) end
-    for txt,v in pairs{rand=u, acq=t} do
-      v = l.sort(v)
-      print(txt, the.start, the.Stop,
-           S(v[2]), S(v[6]), S(v[10]), S(v[14]), S(v[18]),"|",S(base))  end end end
+    for i=1,20 do acq:add(d:ydist(d:acquire()[1])) end
+    for i=1,20 do rnd:add(_guess(d, the.Stop)) end  end 
+  print(the.train:gsub("^.*/","") ..", "..  #d.rows ..", ".. #d.cols.x ..", ".. #d.cols.y ..", "..
+       S(asIs.mu) ..  S(asIs.lo + asIs:div()*0.35) ..
+        S(acqs[12].mu) .. S(acqs[24].mu) .. S(acqs[96].mu) ..
+        S(rnds[12].mu) .. S(rnds[24].mu) .. S(rnds[96].mu)) end
 
 -- se.dry: help string consistent with settings if settings derived from help   
 -- se.re: regulatr expressions are very useful   
