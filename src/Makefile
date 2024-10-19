@@ -190,7 +190,6 @@ likesR:
 		'$$2==6  {printf $$10 "," $$12} $$2==12 {printf "," $$12}  $$2==24 {printf "," $$12}\
      $$2==48 {print "," $$12 "," $$18 } ' 
 
-
 # 		 | sort -t,  -n
 #
 
@@ -202,6 +201,7 @@ acquiresR:
 		 | sort -t,  -n
 
 
-lacqs:
-	echo "data,rows,x,y,asIs,eps,a7,a30,a120,r7,r30,r120" > ~/tmp/lacqs.csv
-	for f in ../../moot/optimize/[chmp]*/*.csv; do (./how2.lua -t $$f --acqs &); done | tee -a ~/tmp/lacqs.csv
+acqs:
+	mkdir -p ~/tmp
+	echo "data,rows,x,y,asIs,eps,a7,a30,a120,r7,r30,r120" > ~/tmp/$@.csv
+	for f in ../../moot/optimize/[chmp]*/*.csv; do (./how2.lua -t $$f --$@ &); done | tee -a ~/tmp/$@.csv

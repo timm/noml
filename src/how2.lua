@@ -153,17 +153,25 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
   --   x2 = (-b - math.sqrt(b**2 - 4 * a * c)) / (2 * a)
   --   return x1 if m1 <= x1 <= m2 else x2
 
+local function _focus(t,b,r,    l,m)
+  b,r = exp(b), exp(r)
+	l = 0.25
+	m = 1 + (exp(l*t) - 1) / (exp(l*(b-1)) - 1)
+  return ((b+1)^m + (r+1))/ (abs(b-r) + 1E-32) end
+
 function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[list]
                       Y,todo,done,best,rest)
   --fun    = fun or function(b,r) b,r = exp(b), exp(r); return (b + r)/(abs(b-r)+ 0.0000000001)  end
-  fun    = fun or function(b,r) return b  - r end
+  fun    = fun or function(_,b,r) return b  - r end
+  --fun    = fun or function(_,b,r) return math.random() < 0.5 end
   labels = labels or {}
   Y      = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
   H      = function(r) 
                        --#print(min(#todo, the.guesses)/#todo )
                        if   math.random() > min(#todo, the.guesses)/#todo 
                        then return -10^8
-                       else return fun(best:like(r,#done,2),
+                       else return fun(#done,
+											                 best:like(r,#done,2),
                                        rest:like(r,#done,2)) end end
   todo   = {}
   done   = {}
@@ -175,10 +183,9 @@ function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[li
     if #todo <= 4 or #done >= the.Stop then return done end -- maybe stop
     best,rest = self:split(done, sqrt(#done))        -- divide labels into two groups
     todo = l.keysort(todo, H)
-    l.push(done, table.remove(todo,1)) 
-    l.push(done, table.remove(todo)) 
-    l.push(done, table.remove(todo,1)) 
-    l.push(done, table.remove(todo)) 
+    for i=1,2 do
+		  l.push(done, table.remove(todo,1)) 
+      l.push(done, table.remove(todo))  end
     end end -- label the best todo
 
 -- ## Dists
@@ -213,13 +220,14 @@ function DATA:half(rows,above,Y,  sortp) --> float,rows,rows,row,row
     l.push(i <= #rows//2 and ls or rs, row) end
   return self:xdist(l,rs[1]), ls, rs, l, r end
 
+local TREE={}
 function TREE:new(data, lvl, guard, lefts, rights)
-  return new(CLUSTER, {data=data, lvl=lvl, guard=guard, lefts=lefts, rights=rights}) end
+  return new(TREE, {data=data, lvl=lvl, guard=guard, lefts=lefts, rights=rights}) end
 
 function TREE:show()
   print(l.fmt("%s%s %s", ('|.. ')*self.lvl, #self.data.rows))
 	if self.lefts  then self.lefts:show() end
-	if self.rights then self.rights:show() end
+	if self.rights then self.rights:show() end end
 
 function DATA:tree(rows,  sortp)
   local labels,Y,stop,fun
@@ -390,20 +398,22 @@ function _guess(data1,n)
    t={}; for i=1,n do  t[1+#t] = data1:ydist(rows[i]) end
    return l.sort(t)[1] end
 
-function eg.acqs(    d,n,S,t,u,base)
+function eg.acqs(    d,n,S,t,u,base,add)
   S = function(n) return l.fmt("%.3f,  ",n) end
   d = l.data(the.train)
   acqs = {[12]=NUM:new("acq,15"), [24]=NUM:new("acq,24"), [96]=NUM:new("acq,60")}
   rnds = {[12]=NUM:new("rnd,15"), [24]=NUM:new("rnd,24"), [96]=NUM:new("rnd,60")}
   asIs = NUM:new("asIs")
   for _,row in pairs(d.rows) do asIs:add(d:ydist(row)) end
+  eps = asIs:div()*.35
+  add = function(n,x)  n:add( ((0.5 + x/eps)//1)*eps)  end
   for n,acq in pairs(acqs) do
     rnd=rnds[n]
     the.Stop = n
-    for i=1,20 do acq:add(d:ydist(d:acquire()[1])) end
-    for i=1,20 do rnd:add(_guess(d, the.Stop)) end  end 
+    for i=1,20 do add(acq, d:ydist(d:acquire()[1])) end
+    for i=1,20 do add(rnd, _guess(d, the.Stop)) end  end 
   print(the.train:gsub("^.*/","") ..", "..  #d.rows ..", ".. #d.cols.x ..", ".. #d.cols.y ..", "..
-       S(asIs.mu) ..  S(asIs.lo + asIs:div()*0.35) ..
+       S(asIs.mu) ..  S(asIs:div()*0.35) ..
         S(acqs[12].mu) .. S(acqs[24].mu) .. S(acqs[96].mu) ..
         S(rnds[12].mu) .. S(rnds[24].mu) .. S(rnds[96].mu)) end
 
