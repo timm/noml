@@ -153,28 +153,28 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
   --   x2 = (-b - math.sqrt(b**2 - 4 * a * c)) / (2 * a)
   --   return x1 if m1 <= x1 <= m2 else x2
 
-function _guess(row, todo,done,best,rest,fun)
-  if   math.random() > min(#todo, the.guesses)/#todo 
-  then return -10^8
-  else return fun(best:like(row,#done,2),
-                  rest:like(row,#done,2)) end end
-
 function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[list]
                       Y,todo,done,best,rest)
   fun    = fun or function(b,r) return b + b -r end
   labels = labels or {}
   Y      = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
-  todo   = l.shuffle(self.rows)
+  H      = function(r) 
+                       --#print(min(#todo, the.guesses)/#todo )
+                       if   math.random() > min(#todo, the.guesses)/#todo 
+                       then return -10^8
+                       else return fun(best:like(r,#done,2),
+                                       rest:like(r,#done,2)) end end
+  todo   = {}
   done   = {}
+  for _, row in pairs(l.shuffle(self.rows)) do l.push(todo, row) end
   for row in pairs(labels)     do l.push(done, row) end 
   for i = 1, the.start - #done do l.push(done, table.remove(todo)) end
   while true do
-    done = l.keysort(done,Y)                   -- sort labelled items
+    done = l.keysort(done, Y)
     if #todo <= 3 or #done >= the.Stop then return done end -- maybe stop
     best,rest = self:split(done, sqrt(#done))        -- divide labels into two groups
-    todo = l.keysort(todo, function(r) -- sort todo by some function of like(best), like(rest)
-                             return _guess(r,todo,done,best,rest,fun) end )
-    l.push(done, table.remove(todo)) end end  -- label the best todo
+    todo = l.keysort(todo, H)
+    l.push(done, table.remove(todo)) end end -- label the best todo
 
 -- ## Dists
 
@@ -333,15 +333,25 @@ function eg.likes(    d,n)
 	  if i==1 or i % 30 == 0 then 
 		  print(i,l.o(row),d:like(row,#d.rows,2)) end end  end
 
-function eg.acquires(    d,n)
+function _guess(data1,n)
+   rows = l.shuffle(data1.rows)
+   t={}; for i=1,n do  t[1+#t] = data1:ydist(rows[i]) end
+   return l.sort(t)[1] end
+
+function eg.acquires(    d,n,S,t,u,base)
   S = function(n) return l.fmt("%.3f",n) end
   d = l.data(the.train)
 	base = d:ydist(d:ydists().rows[#d.rows//2])
-  t={}; for i=1,20 do l.push(t, d:ydist(d:acquire()[1])) end
- 	t = l.sort(t)
-    print(S(t[2]), S(t[6]), S(t[10]), S(t[14]), S(t[18]),"|",S(base))
-   end
-	-- se.dry: help string consistent with settings if settings derived from help   
+  for _,n in pairs{6,24,64} do
+    the.Stop = n
+    t={}; for i=1,20 do l.push(t, d:ydist(d:acquire()[1])) end
+    u={}; for i=1,20 do l.push(u,_guess(d, the.Stop)) end
+    for txt,v in pairs{rand=u, acq=t} do
+      v = l.sort(v)
+      print(txt, the.start, the.Stop,
+           S(v[2]), S(v[6]), S(v[10]), S(v[14]), S(v[18]),"|",S(base))  end end end
+
+-- se.dry: help string consistent with settings if settings derived from help   
 -- se.re: regulatr expressions are very useful   
 -- se.ll: a little text parsing defines a convenient shorthand for a common task 
 -- ai.seeds: debugging, reproducibility needs control of random seeds  
