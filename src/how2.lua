@@ -1,10 +1,11 @@
 #!/usr/bin/env lua
--- <!-- vim : set ts=2 sw=2 et : -->
+-- vim : set ts=2 sw=2 et :
 -- Line of UNIX shell scripts can list the interpreter for that file (se.sh).
 -- All code needs explanation, even your own in a few months time (se.doc).
 -- All code has magic control params, which has to be controlled and tuned (se.config).
 -- License your code, least someone else takes it from yauo (se.license).
 local the,help = {},[[
+
 how.lua : how to change your mind (using TPE + Bayes classifier)
 (c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
 
@@ -13,23 +14,25 @@ USAGE:
   ./how.lua [OPTIONS]
 
 OPTIONS:
-  -c conf    statistical confidence   = 0.01
-	-C Cliffs  threshjold for cliffs    = 0.195
-	-B Bootstraps num.of bootstraps     = 256
-  -e end     size of                  = .5
-  -g guesses how many todos to sample = 100
-  -h help    show help                = false
-  -k k       bayes control            = 1
-  -m m       bayes control            = 2
-  -p p       distance coeffecient     = 2
-  -r rseed   random seed              = 1234567891
-  -s start   init number of samples   = 4
-  -S Stop    stopping for acquire     = 30
-  -t train   data                     = ../../moot/optimize/misc/auto93.csv]]
+  -c conf       statistical confidence   = 0.01
+  -C Cliffs     threshjold for cliffs    = 0.195
+  -B Bootstraps num.of bootstraps        = 256
+  -e end        size of                  = .5
+  -f far        num.far samples          = 30
+  -g guesses    how many todos to sample = 100
+  -h help       show help                = false
+  -k k          bayes control            = 1
+  -l leaf       leaf size                = .5
+  -m m          bayes control            = 2
+  -p p          distance coeffecient     = 2
+  -r rseed      random seed              = 1234567891
+  -s start      init number of samples   = 4
+  -S Stop       stopping for acquire     = 25
+  -t train      data                     = ../../moot/optimize/misc/auto93.csv]]
 
 -- There are many standard cliches; e.g. create update query (se.patterns).
 local big = 1E32
-local NUM, SYM, DATA, COLS, l = {}, {}, {}, {}, {}
+local NUM, SYM, DATA, COLS, TREE, l = {}, {}, {}, {}, {}, {}
 local abs, cos, exp, log = math.abs,  math.cos,  math.exp, math.log
 local max, min, pi, sqrt = math.max,  math.min,  math.pi, math.sqrt
 
@@ -115,6 +118,7 @@ function SYM:div(     e)
   e=0; for _,n in pairs(self.has) do e = e - n/self.n*log(n/self.n, 2) end 
   return e end
 
+
 -- Split one DATA into two.
 function DATA:split(rows,n,       first,rest)
   first, rest = self:clone(), self:clone()
@@ -162,8 +166,8 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
 
 local function _focus(t,b,r,    l,m)
   b,r = exp(b), exp(r)
-	l = 0.25
-	m = 1 + (exp(l*t) - 1) / (exp(l*(b-1)) - 1)
+  l = 0.25
+  m = 1 + (exp(l*t) - 1) / (exp(l*(b-1)) - 1)
   return ((b+1)^m + (r+1))/ (abs(b-r) + 1E-32) end
 
 function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[list]
@@ -171,14 +175,14 @@ function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[li
   --fun    = fun or function(b,r) b,r = exp(b), exp(r); return (b + r)/(abs(b-r)+ 0.0000000001)  end
   fun    = fun or function(_,b,r) return b  - r end
   --fun    = fun or function(_,b,r) return math.random() < 0.5 end
-  labels = labels or {}
+  _,labels = self:tree(true)
   Y      = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
   H      = function(r) 
                        --#print(min(#todo, the.guesses)/#todo )
                        if   math.random() > min(#todo, the.guesses)/#todo 
                        then return -10^8
                        else return fun(#done,
-											                 best:like(r,#done,2),
+                                       best:like(r,#done,2),
                                        rest:like(r,#done,2)) end end
   todo   = {}
   done   = {}
@@ -191,11 +195,29 @@ function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[li
     best,rest = self:split(done, sqrt(#done))        -- divide labels into two groups
     todo = l.keysort(todo, H)
     for i=1,2 do
-		  l.push(done, table.remove(todo,1)) 
+      l.push(done, table.remove(todo,1)) 
       l.push(done, table.remove(todo))  end
     end end -- label the best todo
 
 -- ## Dists
+
+function SYM:dist(a,b)
+  return (a=="?" and b=="?" and 0) or (a==b and 0 or 1) end
+
+function NUM:dist(a,b)
+  if a=="?" and b=="?" then return 1 end
+  a,b = self:norm(a), self:norm(b)
+  a = a ~= "?" and a or (b<0.5 and 1 or 0)
+  b = b ~= "?" and b or (a<0.5 and 1 or 0)
+  return abs(a-b) end
+
+-- Minkowski  distance
+function DATA:xdist(row1,row2,    d,n) -- (list) -> number
+  n,d = 0,0
+  for _,x in pairs(self.cols.x) do 
+    d = d + x:dist(row1[x.at], row2[x.at])^the.p
+    n = n + 1 end
+  return (d/n)^(1/the.p) end
 
 -- Chebyshev distance is max distance of any one attribute to another (ml.dist). 
 function DATA:ydist(row,    d) -- (list) -> number
@@ -212,46 +234,45 @@ function DATA:twoFar(rows,above, Y,sortp)
   most = 0
   for i=1,the.far do 
     a0,b0 = above or l.any(rows), l.any(rows)
-    d = self:xDist(a0,b0)
+    d = self:xdist(a0,b0)
     if d > most then most,a,b = d,a0,b0 end end
   if sortp and Y(b) < Y(a) then a,b = a,b end
   return most,a,b end
 
 function DATA:half(rows,above,Y,  sortp) --> float,rows,rows,row,row
-  local ls,rs,c,l,r,cos,fun
-  c,l,r = self:twoFar(rows,above,Y,sortp)
+  local ls,rs,c,l1,r1,cos,fun
+  c,l1,r1 = self:twoFar(rows,above,Y,sortp)
   cos   = function(a,b) return (a^2 + c^2 - b^2) / (2*c+ 1E-32) end 
-  fun   = function(row) return cos(self:xDist(row,l), self:xDist(row,r)) end
+  fun   = function(row) return cos(self:xdist(row,l1), self:xdist(row,r1)) end
   ls,rs = {},{}
   for i,row in pairs(l.keysort(rows,fun)) do
     l.push(i <= #rows//2 and ls or rs, row) end
-  return self:xdist(l,rs[1]), ls, rs, l, r end
+  return self:xdist(l1,rs[1]), ls, rs, l1, r1 end
 
-local TREE={}
 function TREE:new(data, lvl, guard, lefts, rights)
   return l.new(TREE, {data=data, lvl=lvl, guard=guard, lefts=lefts, rights=rights}) end
 
 function TREE:show()
-  print(l.fmt("%s%s %s", ('|.. ')*self.lvl, #self.data.rows))
-	if self.lefts  then self.lefts:show() end
-	if self.rights then self.rights:show() end end
+  print(l.fmt("%s%s", ('|.. '):rep(self.lvl), #self.data.rows))
+  if self.lefts  then self.lefts:show() end
+  if self.rights then self.rights:show() end end
 
-function DATA:tree(rows,  sortp)
-  local labels,Y,stop,fun
+function DATA:tree(sortp, depth,stop)
+  local labels,Y,fun
   labels= {}
   Y     = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
-  stop  = #self.rows^the.leaf
-  function fun(rows, lvl, guard,above)
-    local ls,rs,l,r,goLeft,goRight,lefts,rights,cut
-    if #rows > 2*stop then
-      cut,ls,rs,l,r = self:half(rows,above,Y,sortp)
-      goLeft  = function(row) return self:xDist(row,l) < cut end
-      goRight = function(row) return not goLeft(row) end
-      lefts   = fun(ls, lvl+1, goLeft,l)
-      if sortp then rights = fun(rs, lvl+1, goRight,r) end end
-    return TREE(self:clone(rows), lvl,guard,lefts,rights)  
-  end
-  return fun(self.rows, 0), labels end
+  stop  = stop or ((#self.rows)^the.leaf)
+  depth = depth or big
+  go    = function(rows, lvl, guard,above)
+            local ls,rs,l1,r1,goLeft,goRight,lefts,rights,cut
+            if #rows > 2*stop and lvl < depth then
+              cut,ls,rs,l1,r1 = self:half(rows,above,Y,sortp)
+              goLeft  = function(row) return self:xdist(row,l) < cut end
+              goRight = function(row) return not goLeft(row) end
+              lefts   = go(ls, lvl+1, goLeft,l1)
+              if sortp ~= true then rights = go(rs, lvl+1, goRight,r1) end end
+            return TREE:new(self:clone(rows),lvl,guard,lefts,rights)  end
+  return go(self.rows, 0), labels end
 
 -- ## Misc
 
@@ -357,7 +378,7 @@ function SOME:add(x)
   if x~="?" then
      l.push(self.all,x)
      self.num:add(x) 
-		 self.mu = self.num.mu end end
+     self.mu = self.num.mu end end
 
 function SOME:same(other)
   return self:cliffs(other) and self:bootstrap(other) end
@@ -396,6 +417,7 @@ function SOME.lessMoreSame(samples, less, more,same,keys,delta)
     for j,two in pairs(samples) do
       if j>i then
         local k,what
+<<<<<<< HEAD
         k = l.fmt("%s,%s",one.num.txt, two.num.txt)
 				keys[k]=k
         delta[k] = delta[k] or NUM:new()
@@ -407,6 +429,13 @@ function SOME.lessMoreSame(samples, less, more,same,keys,delta)
 	   print(l.fmt("%3s, %3s, %3s, %.3f,%s", less[k] or 0 ,  same[k] or 0,  more[k] or 0, 
            delta[k].mu,l.o(k))) end 
 	return less,more,same,keys end 
+=======
+        k = l.fmt("%s %s",one.num.txt, two.num.txt)
+        keys[k]=k
+        what = one:same(two) and same or (one.mu < two.mu and less or more)
+        what[k]= 1 + (what[k] or 0) end end end 
+  return less,more,same,keys end 
+>>>>>>> 4afdff2854cb2a2bbbab143294e44035fae62751
  
 
 -- ## Start
@@ -464,17 +493,25 @@ function eg.likes(    d,n)
     if i==1 or i % 30 == 0 then 
       print(i,l.o(row),d:like(row,#d.rows,2)) end end  end
 
+function eg.tree(      d)
+  d = l.data(the.train)
+  tree,labels=d:tree(true)
+  for r,_ in pairs(labels) do l.oo(r) end
+  tree:show() 
+  done = d:acquire(labels)
+  print(#done, d:ydist(done[1])) end
+
 function eg.stats(     d,n,s1,s2)
    B=function(x) return x and "y" or "." end
-	 for _,n in pairs{20,40,80, 160,320} do
-	   d=1
-		 print("")
+   for _,n in pairs{20,40,80, 160,320} do
+     d=1
+     print("")
      while d < 1.5 do
-	     s1=SOME:new(); for i=1,n do s1:add(math.random()^2 + math.random()^.5 ) end
-	     s2=SOME:new(); for _,x in pairs(s1.all) do s2:add(x *d) end
+       s1=SOME:new(); for i=1,n do s1:add(math.random()^2 + math.random()^.5 ) end
+       s2=SOME:new(); for _,x in pairs(s1.all) do s2:add(x *d) end
        print(l.fmt("%4s %6.3f %s %s %s",n,d, 
-			      B(s1:cliffs(s2)), B(s1:bootstrap(s2)), B(s1:same(s2))))
-		   d=d*1.05 end end end
+            B(s1:cliffs(s2)), B(s1:bootstrap(s2)), B(s1:same(s2))))
+       d=d*1.05 end end end
   
 local function _guess(data1,n,    rows,t)
    rows = l.shuffle(data1.rows)
@@ -485,9 +522,9 @@ function eg.acqs()
   local less,more,same,keys,deltas={},{},{},{},{}
   for _,f in pairs(arg) do
     if f:find"csv$" then 
-		  print(f)
+      print(f)
       the.train = f 
-	    local S,d,acqs,rnds,asIs,adds,eps
+      local S,d,acqs,rnds,asIs,adds,eps
       S = function(n) return l.fmt("%.3f,  ",n) end
       d = l.data(the.train)
       acqs = {[12]=SOME:new("acq,15"), [25]=SOME:new("acq,25"), [100]=SOME:new("acq,100"), [200]=SOME:new("acq,200")}
@@ -497,7 +534,11 @@ function eg.acqs()
       eps = asIs:div()*.35
       add = function(n,x)  n:add( ((0.5 + x/eps)//1)*eps)  end
       for n,acq in pairs(acqs) do 
+<<<<<<< HEAD
 			  io.write(n,": ")
+=======
+        print(n)
+>>>>>>> 4afdff2854cb2a2bbbab143294e44035fae62751
         the.Stop = n
         for i=1,20 do io.write("."); add(acq, d:ydist(d:acquire()[1])) end
         for i=1,20 do io.write("."); add(rnds[n], _guess(d, the.Stop)) end  
@@ -506,9 +547,19 @@ function eg.acqs()
             S(asIs.mu) ..  
              S(acqs[12].mu) .. S(acqs[25].mu) .. S(acqs[100].mu) .. S(acqs[200].mu) ..
              S(rnds[12].mu) .. S(rnds[25].mu) .. S(rnds[100].mu) .. S(acqs[200].mu)) 
+<<<<<<< HEAD
       local all={}; for _,t in pairs{acqs,rnds} do for _,s in pairs(t) do l.push(all,s) end end 
       SOME.lessMoreSame(all,less,more,same,keys,deltas) end end end
 	   -- se.dry: help string consistent with settings if settings derived from help   
+=======
+      local all={}; for _,t in pairs{acqs,rnds} do for _,s in pairs(t) do l.push(all,s) end end
+      SOME.lessMoreSame(all,less,more,same,keys) end end
+  for k,_ in pairs(keys) do
+    print(l.fmt("%3s, %3s, %3s, %s", less[k] or 0 ,  same[k] or 0,  more[k] or 0,  l.o(k))) end end
+
+
+-- se.dry: help string consistent with settings if settings derived from help   
+>>>>>>> 4afdff2854cb2a2bbbab143294e44035fae62751
 -- se.re: regulatr expressions are very useful   
 -- se.ll: a little text parsing defines a convenient shorthand for a common task 
 -- ai.seeds: debugging, reproducibility needs control of random seeds  
