@@ -13,8 +13,11 @@ USAGE:
   ./how.lua [OPTIONS]
 
 OPTIONS:
+  -c conf    statistical confidence   = 0.01
+	-C Cliffs  threshjold for cliffs    = 0.195
+	-B Bootstraps num.of bootstraps     = 256
   -e end     size of                  = .5
-  -g guesses how many todos to sample = 256
+  -g guesses how many todos to sample = 100
   -h help    show help                = false
   -k k       bayes control            = 1
   -m m       bayes control            = 2
@@ -119,6 +122,10 @@ function DATA:split(rows,n,       first,rest)
     (i <= n and first or rest):add(row) end
   return first,rest end
 
+function NUM:delta(other,      y,z,e)
+  e, y, z = 1E-32, self, other
+  return abs(y.mu - z.mu) / ( (e + y:div()^2/y.n + z:div()^2/z.n)^.5) end
+
 -- ## Bayes
 
 function SYM:like(x,prior)
@@ -211,7 +218,7 @@ function DATA:twoFar(rows,above, Y,sortp)
   return most,a,b end
 
 function DATA:half(rows,above,Y,  sortp) --> float,rows,rows,row,row
-  local ls,rs,l,r,cos,fun
+  local ls,rs,c,l,r,cos,fun
   c,l,r = self:twoFar(rows,above,Y,sortp)
   cos   = function(a,b) return (a^2 + c^2 - b^2) / (2*c+ 1E-32) end 
   fun   = function(row) return cos(self:xDist(row,l), self:xDist(row,r)) end
@@ -222,7 +229,7 @@ function DATA:half(rows,above,Y,  sortp) --> float,rows,rows,row,row
 
 local TREE={}
 function TREE:new(data, lvl, guard, lefts, rights)
-  return new(TREE, {data=data, lvl=lvl, guard=guard, lefts=lefts, rights=rights}) end
+  return l.new(TREE, {data=data, lvl=lvl, guard=guard, lefts=lefts, rights=rights}) end
 
 function TREE:show()
   print(l.fmt("%s%s %s", ('|.. ')*self.lvl, #self.data.rows))
@@ -235,14 +242,14 @@ function DATA:tree(rows,  sortp)
   Y     = function(r) labels[r] = labels[r] or self:ydist(r); return labels[r] end
   stop  = #self.rows^the.leaf
   function fun(rows, lvl, guard,above)
-    local ls,rs,l,r,goLeft,goRight,lefts,rights
+    local ls,rs,l,r,goLeft,goRight,lefts,rights,cut
     if #rows > 2*stop then
       cut,ls,rs,l,r = self:half(rows,above,Y,sortp)
       goLeft  = function(row) return self:xDist(row,l) < cut end
       goRight = function(row) return not goLeft(row) end
-      lefts   = grow(ls, lvl+1, goLeft,l)
-      if sortp then rights = grow(rs, lvl+1, goRight,r) end end
-    return TREE(self:clone(rows), lvl,gaurd,lefts,rights)  
+      lefts   = fun(ls, lvl+1, goLeft,l)
+      if sortp then rights = fun(rs, lvl+1, goRight,r) end end
+    return TREE(self:clone(rows), lvl,guard,lefts,rights)  
   end
   return fun(self.rows, 0), labels end
 
@@ -338,6 +345,64 @@ function l.new(klass, obj) --> obj
   klass.__tostring = klass.__tostring or l.o
   return setmetatable(obj,klass) end
 
+-- ## Stats
+
+local SOME={}
+function SOME:new(txt)
+  return l.new(SOME,{num=NUM:new(txt),mu=0, all={}}) end
+
+function SOME:div(x) return self.num:div() end
+
+function SOME:add(x)
+  if x~="?" then
+     l.push(self.all,x)
+     self.num:add(x) 
+		 self.mu = self.num.mu end end
+
+function SOME:same(other)
+  return self:cliffs(other) and self:bootstrap(other) end
+
+function SOME:cliffs(other)
+  local lt,gt,n = 0,0,0
+  for _,x in pairs(self.all) do
+     for _,y in pairs(other.all) do
+       n = n + 1
+       if y > x then gt = gt + 1 end
+       if y < x then lt = lt + 1 end end end
+  return abs(gt - lt)/n <= the.Cliffs end
+
+function SOME:bootstrap(other)
+  local y0,z0 = self.all, other.all
+  local  x,y,z,xmu,ymu,zmu,yhat,zhat,tobs,n
+  x, y, z, yhat, zhat = NUM:new(), NUM:new(), NUM:new(), {}, {}
+  for _,y1 in pairs(y0) do x:add(y1); y:add(y1)           end
+  for _,z1 in pairs(z0) do x:add(z1); z:add(z1)           end
+  xmu, ymu, zmu = x.mu, y.mu, z.mu
+  for _,y1 in pairs(y0) do yhat[1+#yhat] = y1 - ymu + xmu end
+  for _,z1 in pairs(z0) do zhat[1+#zhat] = z1 - zmu + xmu end
+  tobs = y:delta(z)
+  n = 0
+  for _= 1,the.Bootstraps do
+    local tmp1,tmp2
+    tmp1=NUM:new(); for _ in pairs(yhat) do tmp1:add(l.any(yhat)) end
+    tmp2=NUM:new(); for _ in pairs(zhat) do tmp2:add(l.any(zhat)) end
+    n = n + (tmp1:delta(tmp2) > tobs and 1 or 0) end
+  return n / the.Bootstraps >= the.conf end
+
+function SOME.lessMoreSame(samples, less, more,same,keys)
+  keys=keys or {}
+  less,more,same = less or {}, more or {}, same or {}
+  for i,one in pairs(samples) do
+    for j,two in pairs(samples) do
+      if j>i then
+        local k,what
+        k = l.fmt("%s %s",one.num.txt, two.num.txt)
+				keys[k]=k
+        what = one:same(two) and same or (one.mu < two.mu and less or more)
+        what[k]= 1 + (what[k] or 0) end end end 
+	return less,more,same,keys end 
+ 
+
 -- ## Start
 local eg={}
 function eg.the() l.oo(the) end -- try ths with different command line settings
@@ -374,10 +439,10 @@ function eg.rxy(       d)
   -- ./how2.lua --rxy ../../moot/optimize/[chmp]*/*.csv | sort -t, -nk 2
   for _,f in pairs(arg) do
     if f:find"csv$" then 
-      d = l.data(f) 
+      d = l.data(f) ; 
       print(l.fmt("%8s, %8s, %8s,  %8s", #d.rows,#d.cols.x,#d.cols.y, (f:gsub(".*/", "  ")))) end end end
 
-function eg.ydist(    d,num)
+function eg.ydist(    d,num,y)
   d = l.data(the.train)
   num=NUM:new()
   for i,row in pairs(d:ydists().rows) do
@@ -393,29 +458,52 @@ function eg.likes(    d,n)
     if i==1 or i % 30 == 0 then 
       print(i,l.o(row),d:like(row,#d.rows,2)) end end  end
 
-function _guess(data1,n)
+function eg.stats(     d,n,s1,s2)
+   B=function(x) return x and "y" or "." end
+	 for _,n in pairs{20,40,80, 160,320} do
+	   d=1
+		 print("")
+     while d < 1.5 do
+	     s1=SOME:new(); for i=1,n do s1:add(math.random()^2 + math.random()^.5 ) end
+	     s2=SOME:new(); for _,x in pairs(s1.all) do s2:add(x *d) end
+       print(l.fmt("%4s %6.3f %s %s %s",n,d, 
+			      B(s1:cliffs(s2)), B(s1:bootstrap(s2)), B(s1:same(s2))))
+		   d=d*1.05 end end end
+  
+local function _guess(data1,n,    rows,t)
    rows = l.shuffle(data1.rows)
-   t={}; for i=1,n do  t[1+#t] = data1:ydist(rows[i]) end
+   t={}; for i=1,min(n,#data1.rows) do  t[1+#t] = data1:ydist(rows[i]) end
    return l.sort(t)[1] end
 
-function eg.acqs(    d,n,S,t,u,base,add)
-  S = function(n) return l.fmt("%.3f,  ",n) end
-  d = l.data(the.train)
-  acqs = {[12]=NUM:new("acq,15"), [24]=NUM:new("acq,24"), [96]=NUM:new("acq,60")}
-  rnds = {[12]=NUM:new("rnd,15"), [24]=NUM:new("rnd,24"), [96]=NUM:new("rnd,60")}
-  asIs = NUM:new("asIs")
-  for _,row in pairs(d.rows) do asIs:add(d:ydist(row)) end
-  eps = asIs:div()*.35
-  add = function(n,x)  n:add( ((0.5 + x/eps)//1)*eps)  end
-  for n,acq in pairs(acqs) do
-    rnd=rnds[n]
-    the.Stop = n
-    for i=1,20 do add(acq, d:ydist(d:acquire()[1])) end
-    for i=1,20 do add(rnd, _guess(d, the.Stop)) end  end 
-  print(the.train:gsub("^.*/","") ..", "..  #d.rows ..", ".. #d.cols.x ..", ".. #d.cols.y ..", "..
-       S(asIs.mu) ..  S(asIs:div()*0.35) ..
-        S(acqs[12].mu) .. S(acqs[24].mu) .. S(acqs[96].mu) ..
-        S(rnds[12].mu) .. S(rnds[24].mu) .. S(rnds[96].mu)) end
+function eg.acqs()
+  local less,more,same,keys={},{},{},{}
+  for _,f in pairs(arg) do
+    if f:find"csv$" then 
+		  print(f)
+      the.train = f 
+	    local S,d,acqs,rnds,asIs,adds,eps
+      S = function(n) return l.fmt("%.3f,  ",n) end
+      d = l.data(the.train)
+      acqs = {[12]=SOME:new("acq,15"), [25]=SOME:new("acq,25"), [100]=SOME:new("acq,100"), [200]=SOME:new("acq,200")}
+      rnds = {[12]=SOME:new("rnd,15"), [25]=SOME:new("rnd,25"), [100]=SOME:new("rnd,100"), [200]=SOME:new("rnd,200")}
+      asIs = SOME:new("asIs")
+      for _,row in pairs(d.rows) do asIs:add(d:ydist(row)) end
+      eps = asIs:div()*.35
+      add = function(n,x)  n:add( ((0.5 + x/eps)//1)*eps)  end
+      for n,acq in pairs(acqs) do 
+			  print(n)
+        the.Stop = n
+        for i=1,20 do add(acq, d:ydist(d:acquire()[1])) end
+        for i=1,20 do add(rnds[n], _guess(d, the.Stop)) end  end 
+      print(the.train:gsub("^.*/","") ..", "..  #d.rows ..", ".. #d.cols.x ..", ".. #d.cols.y ..", "..
+            S(asIs.mu) ..  
+             S(acqs[12].mu) .. S(acqs[25].mu) .. S(acqs[100].mu) .. S(acqs[200].mu) ..
+             S(rnds[12].mu) .. S(rnds[25].mu) .. S(rnds[100].mu) .. S(acqs[200].mu)) 
+      local all={}; for _,t in pairs{acqs,rnds} do for _,s in pairs(t) do l.push(all,s) end end
+      SOME.lessMoreSame(all,less,more,same,keys) end end
+	for k,_ in pairs(keys) do
+	  print(l.fmt("%3s, %3s, %3s, %s", less[k] or 0 ,  same[k] or 0,  more[k] or 0,  l.o(k))) end end
+
 
 -- se.dry: help string consistent with settings if settings derived from help   
 -- se.re: regulatr expressions are very useful   
