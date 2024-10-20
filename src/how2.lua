@@ -389,17 +389,23 @@ function SOME:bootstrap(other)
     n = n + (tmp1:delta(tmp2) > tobs and 1 or 0) end
   return n / the.Bootstraps >= the.conf end
 
-function SOME.lessMoreSame(samples, less, more,same,keys)
+function SOME.lessMoreSame(samples, less, more,same,keys,delta)
   keys=keys or {}
-  less,more,same = less or {}, more or {}, same or {}
+  less,more,same,delta = less or {}, more or {}, same or {},delta or {}
   for i,one in pairs(samples) do
     for j,two in pairs(samples) do
       if j>i then
         local k,what
-        k = l.fmt("%s %s",one.num.txt, two.num.txt)
+        k = l.fmt("%s,%s",one.num.txt, two.num.txt)
 				keys[k]=k
+        delta[k] = delta[k] or NUM:new()
+        delta[k]:add(one.mu - two.mu)
         what = one:same(two) and same or (one.mu < two.mu and less or more)
         what[k]= 1 + (what[k] or 0) end end end 
+  print("")
+  for k,_ in pairs(keys) do
+	   print(l.fmt("%3s, %3s, %3s, %.3f,%s", less[k] or 0 ,  same[k] or 0,  more[k] or 0, 
+           delta[k].mu,l.o(k))) end 
 	return less,more,same,keys end 
  
 
@@ -476,7 +482,7 @@ local function _guess(data1,n,    rows,t)
    return l.sort(t)[1] end
 
 function eg.acqs()
-  local less,more,same,keys={},{},{},{}
+  local less,more,same,keys,deltas={},{},{},{},{}
   for _,f in pairs(arg) do
     if f:find"csv$" then 
 		  print(f)
@@ -491,7 +497,7 @@ function eg.acqs()
       eps = asIs:div()*.35
       add = function(n,x)  n:add( ((0.5 + x/eps)//1)*eps)  end
       for n,acq in pairs(acqs) do 
-			  print(n)
+			  io.write(n,": ")
         the.Stop = n
         for i=1,20 do io.write("."); add(acq, d:ydist(d:acquire()[1])) end
         for i=1,20 do io.write("."); add(rnds[n], _guess(d, the.Stop)) end  
@@ -500,13 +506,9 @@ function eg.acqs()
             S(asIs.mu) ..  
              S(acqs[12].mu) .. S(acqs[25].mu) .. S(acqs[100].mu) .. S(acqs[200].mu) ..
              S(rnds[12].mu) .. S(rnds[25].mu) .. S(rnds[100].mu) .. S(acqs[200].mu)) 
-      local all={}; for _,t in pairs{acqs,rnds} do for _,s in pairs(t) do l.push(all,s) end end
-      SOME.lessMoreSame(all,less,more,same,keys) end end
-	for k,_ in pairs(keys) do
-	  print(l.fmt("%3s, %3s, %3s, %s", less[k] or 0 ,  same[k] or 0,  more[k] or 0,  l.o(k))) end end
-
-
--- se.dry: help string consistent with settings if settings derived from help   
+      local all={}; for _,t in pairs{acqs,rnds} do for _,s in pairs(t) do l.push(all,s) end end 
+      SOME.lessMoreSame(all,less,more,same,keys,deltas) end end end
+	   -- se.dry: help string consistent with settings if settings derived from help   
 -- se.re: regulatr expressions are very useful   
 -- se.ll: a little text parsing defines a convenient shorthand for a common task 
 -- ai.seeds: debugging, reproducibility needs control of random seeds  
