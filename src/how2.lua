@@ -493,8 +493,9 @@ function eg.acqs()
       for n,acq in pairs(acqs) do 
 			  print(n)
         the.Stop = n
-        for i=1,20 do add(acq, d:ydist(d:acquire()[1])) end
-        for i=1,20 do add(rnds[n], _guess(d, the.Stop)) end  end 
+        for i=1,20 do io.write("."); add(acq, d:ydist(d:acquire()[1])) end
+        for i=1,20 do io.write("."); add(rnds[n], _guess(d, the.Stop)) end  
+        print("") end 
       print(the.train:gsub("^.*/","") ..", "..  #d.rows ..", ".. #d.cols.x ..", ".. #d.cols.y ..", "..
             S(asIs.mu) ..  
              S(acqs[12].mu) .. S(acqs[25].mu) .. S(acqs[100].mu) .. S(acqs[200].mu) ..
