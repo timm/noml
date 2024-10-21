@@ -417,7 +417,6 @@ function SOME.lessMoreSame(samples, less, more,same,keys,delta)
     for j,two in pairs(samples) do
       if j>i then
         local k,what
-<<<<<<< HEAD
         k = l.fmt("%s,%s",one.num.txt, two.num.txt)
 				keys[k]=k
         delta[k] = delta[k] or NUM:new()
@@ -429,14 +428,7 @@ function SOME.lessMoreSame(samples, less, more,same,keys,delta)
 	   print(l.fmt("%3s, %3s, %3s, %.3f,%s", less[k] or 0 ,  same[k] or 0,  more[k] or 0, 
            delta[k].mu,l.o(k))) end 
 	return less,more,same,keys end 
-=======
-        k = l.fmt("%s %s",one.num.txt, two.num.txt)
-        keys[k]=k
-        what = one:same(two) and same or (one.mu < two.mu and less or more)
-        what[k]= 1 + (what[k] or 0) end end end 
-  return less,more,same,keys end 
->>>>>>> 4afdff2854cb2a2bbbab143294e44035fae62751
- 
+
 
 -- ## Start
 local eg={}
@@ -534,11 +526,7 @@ function eg.acqs()
       eps = asIs:div()*.35
       add = function(n,x)  n:add( ((0.5 + x/eps)//1)*eps)  end
       for n,acq in pairs(acqs) do 
-<<<<<<< HEAD
 			  io.write(n,": ")
-=======
-        print(n)
->>>>>>> 4afdff2854cb2a2bbbab143294e44035fae62751
         the.Stop = n
         for i=1,20 do io.write("."); add(acq, d:ydist(d:acquire()[1])) end
         for i=1,20 do io.write("."); add(rnds[n], _guess(d, the.Stop)) end  
@@ -547,19 +535,12 @@ function eg.acqs()
             S(asIs.mu) ..  
              S(acqs[12].mu) .. S(acqs[25].mu) .. S(acqs[100].mu) .. S(acqs[200].mu) ..
              S(rnds[12].mu) .. S(rnds[25].mu) .. S(rnds[100].mu) .. S(acqs[200].mu)) 
-<<<<<<< HEAD
       local all={}; for _,t in pairs{acqs,rnds} do for _,s in pairs(t) do l.push(all,s) end end 
       SOME.lessMoreSame(all,less,more,same,keys,deltas) end end end
 	   -- se.dry: help string consistent with settings if settings derived from help   
-=======
-      local all={}; for _,t in pairs{acqs,rnds} do for _,s in pairs(t) do l.push(all,s) end end
-      SOME.lessMoreSame(all,less,more,same,keys) end end
-  for k,_ in pairs(keys) do
-    print(l.fmt("%3s, %3s, %3s, %s", less[k] or 0 ,  same[k] or 0,  more[k] or 0,  l.o(k))) end end
 
 
 -- se.dry: help string consistent with settings if settings derived from help   
->>>>>>> 4afdff2854cb2a2bbbab143294e44035fae62751
 -- se.re: regulatr expressions are very useful   
 -- se.ll: a little text parsing defines a convenient shorthand for a common task 
 -- ai.seeds: debugging, reproducibility needs control of random seeds  

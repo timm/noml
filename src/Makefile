@@ -205,3 +205,6 @@ acqs:
 	mkdir -p ~/tmp
 	echo "data,rows,x,y,asIs,a12,a25,a100,a200,,r12,r25,r100,r200" > ~/tmp/$@.csv
 	for f in ../../moot/optimize/[chmp]*/*.csv; do (./how2.lua -t $$f --$@ &); done | tee -a ~/tmp/$@.csv
+
+wlt:
+	./how2.lua --acqs ../../moot/optimize/[chmp]*/*.csv | tee ~/tmp/wlt.out
