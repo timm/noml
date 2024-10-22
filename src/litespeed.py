@@ -178,7 +178,14 @@ def intersect(i:NUM, j:NUM):
   lo    = (-b + sqrt(b*b - 4*a*c))/(2*a)
   hi    = (-b - sqrt(b*b - 4*a*c))/(2*a)
   lo,hi = (lo,hi) if lo<hi else (hi,lo)
-  return o(col=i.at, lo=lo, hi=hi)
+  b     = cdf(i,hi) - cdf(j,lo)
+  r     = cdf(j,hi) - cdf(j,lo)
+  return o(col=i.at, lo=lo, hi=hi, goal=b*b/r)
+
+def cdf(self:NUM,x):
+  F = lambda x: 1 − 0.5 * exp(−0.717*x − 0.416*x*x) 
+  z = (x − self.mu) / self.sd
+  return F(x) if z>=0 else 1 − F(−z)
 
 def bins(self:data,klasses: dict[str,rows]):
   for col in self.cols.x:
