@@ -138,17 +138,17 @@ def loglike(self: DATA, row: row, nall: int, nh: int) -> float:
   return sum(log(x) for x in all + [prior] if x > 0)
 
 def learn0(self:DATA, ntrain=0.33):
+  Y  = lambda r: ydist(self, r) # best is left
+  B  = lambda r: loglike(best,r,len(done),2) 
+  R  = lambda r: loglike(rest,r,len(done),2) 
+  BR = lambda r: B(r) - R(r) # really R/B since these are logs
   rows=shuffle(self.rows)[:]
-  n1        = int(ntrain * len(self.rows))
+  n1         = int(ntrain * len(self.rows))
   train,test = rows[:n1], rows[n1:]
   todo,done  = train[the.start:], train[:the.start]
-  Y = lambda r: ydist(self, r) # best is left
-  B = lambda r: loglike(best,r,len(done),2) 
-  R = lambda r: loglike(rest,r,len(done),2) 
-  BR= lambda r: B(r) - R(r) # really R/B since these are logs
   while True:
     done = sorted(done, key=Y)
-    if len(done) > the.Stop: break
+    if len(done) > the.Stop or len(todo) < 5: break
     n2 = int(sqrt(len(done)))
     best, rest = clone(self, done[:n2]), clone(self,done[n2:])
     a, b, *todo, c, d = sorted(todo, key=BR)
@@ -170,15 +170,35 @@ def learn1(self:DATA, ntrain=0.33):
   return (done[0]
          ,sorted(test,key=BR)[-1])
 
-# ## DISTANCE -----------------------------------------------------------------
-def ydist(self: DATA, row) -> float:
-   "Chebyshev distance dependent columns to best possible dependent values."
-   return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
+# ## DISCRETIZE -----------------------------------------------------------------
+def intersect(i:NUM, j:NUM):
+  a     = 1/(2*i.sd**2) - 1/(2*j.sd**2)
+  b     = j.mu/(j.sd**2) - i.mu/(i.sd**2)
+  c     = i.mu**2 /(2*i.sd**2) - j.mu**2 / (2*j.sd**2) - log(j.sd/i.sd)
+  lo    = (-b + sqrt(b*b - 4*a*c))/(2*a)
+  hi    = (-b - sqrt(b*b - 4*a*c))/(2*a)
+  lo,hi = (lo,hi) if lo<hi else (hi,lo)
+  return o(col=i.at, lo=lo, hi=hi)
 
-# def ydist(i:DATA, row1:row) -> number:
-#   d = sum(abs(norm(y, row1[y.at]) - y.goal)**the.p for y in i.cols.y)
-#   return (d / len(i.cols.x))**(1/the.p)
-#
+def bins(self:data,klasses: dict[str,rows]):
+  for col in self.cols.x:
+    for y,rows in klass.items():
+      for row in rows
+        x = row[col.at]
+        if x ~= "?":
+          
+
+
+
+# ## DISTANCE -----------------------------------------------------------------
+# def ydist(self: DATA, row) -> float:
+#    "Chebyshev distance dependent columns to best possible dependent values."
+#    return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
+
+def ydist(i:DATA, row1:row) -> number:
+  d = sum(abs(norm(y, row1[y.at]) - y.goal)**the.p for y in i.cols.y)
+  return (d / len(i.cols.x))**(1/the.p)
+
 def ydists(self: DATA) -> DATA:
   self.rows.sort(key=lambda r: ydist(self, r))
   return self
