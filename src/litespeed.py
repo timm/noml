@@ -124,7 +124,7 @@ def cdf(self: NUM, x):
   return fun(z) if z >= 0 else 1 - fun(-z)
 
 # ## Bayes -------------------------------------------------------------------
-def like(self: DATA, row: row, nall: int, nh: int) -> float:
+def loglike(self: DATA, row: row, nall: int, nh: int) -> float:
   def _sym(sym1, x, prior):
     return (sym1.counts.get(x, 0) + the.m*prior) / (sym1.n + the.m)
 
@@ -134,54 +134,51 @@ def like(self: DATA, row: row, nall: int, nh: int) -> float:
     return min(1, tmp + 1E-32)
 
   prior = (len(self.rows) + the.k) / (nall + the.k*nh)
-  likes = [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
-  return sum(log(x) for x in likes + [prior] if x > 0)
+  all = [prior] +  [(_num if c.nump else _sym)(c, row[c.at], prior) for c in self.cols.x]
+  return sum(log(x) for x in all + [prior] if x > 0)
 
-def learn(self:DATA, ntrain=0.33):
-  random.shuffle(self.rows)
-  best,rest,done = None,None,None
-  Y  = lambda r: ydist(self, r) # best is left
-  BR = lambda r: like(best,r,len(done),2) - like(rest,r,len(done),2) # best is right
-  ntrain = int(ntrain * len(self.rows))
-  train  = self.rows[:ntrain]
-  test   = self.rows[ntrain:]
-  todo   = train[the.start:]
-  done   = train[:the.Start]
+def learn0(self:DATA, ntrain=0.33):
+  rows=shuffle(self.rows)[:]
+  n1        = int(ntrain * len(self.rows))
+  train,test = rows[:n1], rows[n1:]
+  todo,done  = train[the.start:], train[:the.start]
+  Y = lambda r: ydist(self, r) # best is left
+  B = lambda r: loglike(best,r,len(done),2) 
+  R = lambda r: loglike(rest,r,len(done),2) 
+  BR= lambda r: B(r) - R(r) # really R/B since these are logs
   while True:
-    done = sorted(done,key=Y)
+    done = sorted(done, key=Y)
     if len(done) > the.Stop: break
-    n    = int(sqrt(len(done)))
-    best = clone(self, done[:n])
-    rest = clone(self, done[n:])
-    a, b, *todo, c, d = todo #sorted(todo, key=BR)
+    n2 = int(sqrt(len(done)))
+    best, rest = clone(self, done[:n2]), clone(self,done[n2:])
+    a, b, *todo, c, d = sorted(todo, key=BR)
     done = done + [a,b,c,d]
-  return (done[0]
-         ,max([r for r in test if BR(r) > 0], key=BR))
+  return (done[0], sorted(test, key=BR)[-1])
 
 def learn1(self:DATA, ntrain=0.33):
-  random.shuffle(self.rows)
+  rows=shuffle(self.rows)[:]
   best,rest,done = None,None,None
   Y  = lambda r: ydist(self, r) # best is left
-  BR = lambda r: like(best,r,len(done),2) - like(rest,r,len(done),2) # best is right
+  BR = lambda r: loglike(best,r,len(done),2) - loglike(rest,r,len(done),2) # best is right
   ntrain = int(ntrain * len(self.rows))
-  train  = self.rows[:ntrain]
-  test   = self.rows[ntrain:]
+  train  = rows[:ntrain]
+  test   = rows[ntrain:]
   done   = sorted(train[:the.Stop],key=Y)
   n      = int(sqrt(len(done)))
   best   = clone(self, done[:n])
   rest   = clone(self, done[n:])
   return (done[0]
-         ,max([r for r in test if BR(r) > 0], key=BR))
+         ,sorted(test,key=BR)[-1])
 
 # ## DISTANCE -----------------------------------------------------------------
-# def ydist(self: DATA, row) -> float:
-#   "Chebyshev distance dependent columns to best possible dependent values."
-#   return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
+def ydist(self: DATA, row) -> float:
+   "Chebyshev distance dependent columns to best possible dependent values."
+   return max(abs(c.goal - norm(c, row[c.at])) for c in self.cols.y)
 
-def ydist(i:DATA, row1:row) -> number:
-  d = sum(abs(norm(y, row1[y.at]) - y.goal)**the.p for y in i.cols.y)
-  return (d / len(i.cols.x))**(1/the.p)
-
+# def ydist(i:DATA, row1:row) -> number:
+#   d = sum(abs(norm(y, row1[y.at]) - y.goal)**the.p for y in i.cols.y)
+#   return (d / len(i.cols.x))**(1/the.p)
+#
 def ydists(self: DATA) -> DATA:
   self.rows.sort(key=lambda r: ydist(self, r))
   return self
@@ -222,9 +219,9 @@ class main:
   "things that can be called from the command line using --x"
   def the(): print(the)
 
-  def like():
+  def loglike():
     data1 = read(the.train)
-    print(sorted([round(like(data1, row, len(data1.rows), 2), 2)
+    print(sorted([round(loglike(data1, row, len(data1.rows), 2), 2)
             for i, row in enumerate(data1.rows) if i % 20 == 0]))
 
   def ydist():
@@ -232,17 +229,28 @@ class main:
     print(sorted([round(ydist(data1, row), 2)
             for i, row in enumerate(data1.rows) if i % 20 == 0]))
 
-  def learn1():
-    data1 = read(the.train)
-    num = adds(NUM(), [ydist(data1, row) for row in data1.rows])
-    Y = lambda r: R(ydist(data1,r))
-    R = lambda n: round(n,3)
-    trained,tested = NUM(),NUM()
-    for _ in range(20):
-      trained1, tested1 = learn1(data1)
-      add(trained, Y(trained1))
-      add(tested,  Y(tested1))
-    print(the.Stop, [R(x) for x in [num.lo,num.mu,trained.mu,tested.mu]])
+  def learn01():
+    print("stop,asIs.mu,eps,trainActive, trainRandom, testActive, testRandom,file")
+    for f in sys.argv:
+      if f[-3:]=="csv": 
+         try: _go(f)
+         except Exception: print("#", f)
+        #
+def _go(f):
+  the.train = f
+  data1 = read(the.train)
+  num = adds(NUM(), [ydist(data1, row) for row in data1.rows])
+  Y = lambda r: ydist(data1,r)
+  R = lambda n: f"{int(0.5+n/(.35*num.sd))*.35*num.sd:6.2f}"
+  trains0,tests0 = NUM(),NUM()
+  trains1,tests1 = NUM(),NUM()
+  for _ in range(20):
+    train0, test0 = learn0(data1)
+    add(trains0, Y(train0)); add(tests0,  Y(test0))
+    train1, test1 = learn1(data1)
+    add(trains1, Y(train1)); add(tests1,  Y(test1))
+  print(the.Stop, ', '.join([R(x) for x in [num.mu,0.35*num.sd,trains0.mu,trains1.mu,tests0.mu,tests1.mu]]), 
+            the.train.split("/")[-1],sep=", ")
 
 if __name__ == "__main__":
-  cli(sys.argv, the.__dict__)
+    main.learn01() #cli(sys.argv, the.__dict__)
