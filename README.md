@@ -1,5 +1,14 @@
 
 ## Who is this for?
+Be quiet or I will repalce you with one very small shells cript.
+
+
+“Inside every large program is a small program struggling to get out.”
+― Tony Hoare
+
+Every block of stone has a statue inside it and it is the task of the sculptor to discover it.
+-- Michelangelo
+
 
 This code is for explorers. That is to say, the analysts building quick software tools to prod at some
 problem in order to gain as much insight as possible in the shortest time.
