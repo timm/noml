@@ -182,14 +182,16 @@ function cliffs(xs,ys)
 function bootstrap(y0,z0,confidence,bootstraps)
   --non-parametric significance test From Introduction to Bootstrap,
   -- Efron and Tibshirani, 1993, chapter 20. https://doi.org/10.1201/9780429246593
-  x,y,z  = adds(adds(NUM:new(),y0),z0), adds(NUM:new(),y0), adds(NUMS:new(),z0)
+  local x,y,z,delta0,yhat,zhat,n,samples, sample1, sample2
+  x,y,z  = adds(adds(NUM:new(),y0),z0), adds(NUM:new(),y0), adds(NUM:new(),z0)
   delta0 = y:delta(z)
   yhat   = map(y0, function(y1) return y1 - y.mu + x.mu end)
   zhat   = map(z0, function(z1) return z1 - z.mu + x.mu end)
   n = 0
-  for i=1, bootstraps or the.stats.bootstraps or 512 do
-    if adds(NUM:new(),many(yhat)).delta(adds(NUM:new(),many(zhat))) > delta0 then
-      n = n + 1 end end
+  samples= bootstraps or the.stats.bootstraps or 512 
+  for i=1, samples do
+    sample1, sample2 = adds(NUM:new(),many(yhat)), adds(NUM:new(),many(zhat))
+    n = n + (sample1.delta(sample2) > delta0 and 1 or 0) end
   return n / samples >= (confidence or the.stats.confidence or 0.05) end
 
 local eg={}
