@@ -1,21 +1,36 @@
-big = 1E32
-abs,log = math.abs,math.log
-pop = table.remove
+local big = 1E32
+local fmt, pop = string.format, table.remove
+local pi, abs, exp, log = math.pi, math.abs, math.exp, math.log
+local max, min, sqrt    = math.max, math.min, math.sqrt
 
-the = {k=1, m=2, p=2}
+local SYM,NUM,DATA = {},{},{}
+
+local the = {k=1, m=2, p=2}
 
 ----------------- ----------------- ----------------- ----------------- ------------------
-function push(t,x) 
+local function adds(it,t) 
+  for _,x in pairs(t or {}) do it:add(x) end; return it end
+
+local function sort(t,fn)
+  table.sort(t,fn)
+  return t end
+
+local function cat(t)
+  u={}; for k,v in pairs(t) do  u[k] = fmt(":%s %s",k,v) end 
+	for k,v in pairs(sort(u)) do print(">",k,v) end
+	return "{" .. table.concat(sort(u)," ") .. "}" end
+
+local function push(t,x) 
   t[1+#t] = x; return x end
 
-function trim(s) 
+local function trim(s) 
   return s:match"^%s*(.-)%s*$" end
 
-function coerce(s,     fn) 
+local function coerce(s,     fn) 
   fn = function(s) return s=="true" and true or s ~= "false" and s end
   return math.tointeger(s) or tonumber(s) or fn(trim(s)) end
 
-function csv(file,     src)
+local function csv(file,     src)
   if file and file ~="-" then src=io.input(file) end
   return function(     s,t)
     s = io.read()
@@ -23,99 +38,116 @@ function csv(file,     src)
     then if src then io.close(src) end 
     else t={}; for s1 in s:gmatch"([^,]+)" do push(t,coerce(s1)) end; return t end end end
 
-function split(t,n)
+local function split(t,n)
   local u,v = {},{}
   for j,x in pairs(t) do push(j <= n and u or v,x) end
-  return i,v end
+  return u,v end
 
-function shuffle(t,    j) 
+local function shuffle(t,    j)
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
   return t end
------------------ ----------------- ----------------- ----------------- ------------------
-function SYM(num,s) 
-  return {at=num, txt=s, n=0, has={}, most=0, mode=nil} end
 
-function NUM(num,s) 
-  return {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=-big, hi=big,
-         goal = (s or ""):find"-$" and 0 or 1} end
+local function lt(x) return function(a,b) return a[x] < b[x] end end
 
-function DATA(names)
-  local all,x,y,col = {},{},{}
+local function keysort(t,fn,     u,v)
+  u={}; for _,x in pairs(t) do u[1+#u] = {fn(x),x} end
+  v={}; for _,x in pairs(sort(u, lt(1))) do v[1+#v] = x[2] end
+  return v end
+
+local function new(klass, obj)
+  klass.__index    = klass
+	klass.__tostring = cat
+  return setmetatable(obj, klass) end
+
+----------------- ----------------- ----------------- ----------------- -----------------
+function SYM:new(num,s) 
+  return new(SYM, {at=num, txt=s, n=0, has={}, most=0, mode=nil}) end
+
+function SYM:add(x)
+  if x~="?" then
+    self.n = self.n + 1
+    self.has[x] = 1 + (self.has[x] or 0) 
+    if self.has[x] > self.most then self.most, self.mode = self.has[x], x end end end
+
+function SYM:like(x,prior)
+  return ((self.has[x] or 0) + the.m*prior) / (self.n + the.m) end
+
+----------------- ----------------- ----------------- ----------------- -----------------  
+function NUM:new(num,s) 
+  return new(NUM, {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=-big, hi=big,
+                   goal = (s or ""):find"-$" and 0 or 1}) end
+
+function NUM:add(x)
+  if x~="?" then
+    self.n = self.n + 1
+    local d = x - self.mu
+    self.mu = self.mu + d / self.n
+    self.m2 = self.m2 + d * (x - self.mu)
+    self.sd = self.n < 2 and 0 or (self.m2/(self.n - 1))^.5
+    if x > self.hi then self.hi = x end
+    if x < self.lo then self.lo = x end end end
+
+function NUM:like(x,_ ,      v,tmp)
+  v = self.sd^2 + 1/big
+  tmp = exp(-1*(x - self.mu)^2/(2*v)) / (2*pi*v) ^ 0.5
+  return max(0,min(1, tmp + 1/big)) end
+  
+function NUM:norm(x)
+  return x=="?" and x or (x - self.lo)/(self.hi - self.lo) end
+                    
+----------------- ----------------- ----------------- ----------------- -----------------  
+function DATA:new(names)
+  local all,x,y = {},{},nil
   for at,x in pairs(names) do 
-    push(all, x:find"^[A-Z]" and NUM(x,i) or SYM(x,at))
+    push(all, x:find"^[A-Z]" and NUM(x,at) or SYM(x,at))
     if not x:find"X$" then
-      push(y and x:find"[!+-]$" or x, all[#all])
+      push(y and x:find"[!+-]$" or x, all[#all]) end end
   return {rows={}, cols={names=names, all=all, x=x, y=y}} end
 
-function data(i, row) 
-  push(i.rows, row)
-  for _,col1 in pairs(i.cols.all) do col(col1, row[col1.at]) end end
+function DATA:add(row) 
+  push(self.rows, row)
+  for _,col in pairs(self.cols.all) do col:add(row[col.at]) end end
 
-function col(i,x)
-  function _sym()
-    i.has[x] = 1 + (i.has[x] or 0) 
-    if i.has[x] > i.most then i.most, i.mode = i.has[x], x end end
-
-  function _num()
-    local d = x - i.mu
-    i.mu = i.mu + d / i.n
-    i.m2 = i.m2 + d * (x - i.mu)
-    i.sd = i.n < 2 and 0 or (i.m2/(i.n - 1))^.5 end
-    if x > i.hi then i.hi = x end
-    if x < i.lo then i.lo = x end end
-
-  if x~="?" then
-    i.n = i.n + 1
-    return (i.mu and _num or _sym)() end end end
-
-function cols(i,t) 
-  for _,x in pairs(t or {}) do col(i,x) end; return i end
-
-function clone(data1,rows) 
-  return cols(DATA(data1.cols.names),rows) end
-
-function loglike(data1, row, nall, nh)
-  local out,tmp,prior,likes,_sym,_num
-  function _sym(i,x,prior)
-    return ((i.has[x] or 0) + the.m*prior) / (i.n + the.m) end
-  
-  function _num(i,x,_ ,      v,tmp)
-    v = i:div()^2 + 1/big
-    tmp = exp(-1*(x - i.mu)^2/(2*v)) / (2*pi*v) ^ 0.5
-    return max(0,min(1, tmp + 1/big)) end
-  
-  prior = (#data1.rows + the.k) / (nall + the.k*nh)
-  out,likes = 0,log(prior)
-  for _,col in pairs(data1.cols.y) do 
-    tmp = (col.mu and _num and _sym)(col, row[col.at], prior) 
+function DATA:clone(rows) 
+  return adds(DATA(self.cols.names),rows) end
+    
+function DATA:loglike(row, nall, nh)
+  local prior,out,tmp
+  prior = (#self.rows + the.k) / (nall + the.k*nh)
+  out,tmp = 0,log(prior)
+  for _,col in pairs(self.cols.y) do 
+    tmp = col:like(col, row[col.at], prior)
     if tmp > 0 then
        out = out + log(tmp) end end
   return out end
 
-function norm(num1,x)
-  return x=="?" and x or (x - num1.lo)/(num1.hi - num1.lo) end
-
-function ydist(data1, row)
+function DATA:ydist(row)
   local d = 0
-  for _,col in pairs(data1.cols.y) do
-    d = d + (abs(norm(col,row[col.at]) - col.goal))^the.p end
-  return (d/#data1.cols.y)^(1/the.p) end
+  for _,col in pairs(self.cols.y) do
+    d = d + (abs(col:norm(row[col.at]) - col.goal))^the.p end
+  return (d/#self.cols.y)^(1/the.p) end
 
-function learn(data1, ntrain)
+function DATA:learn(ntrain)
   local Y,B,R,BR,rows,n1,train,test,todo,done,best,rest,b2,a,b
-  Y          = function(r) return ydist(data1,r) end
-  B          = function(r) return loglike(best,r, #done,2) end
-  R          = function(r) return loglike(rest,r, #done,2) end
+  Y          = function(r) return self:ydist(r) end
+  B          = function(r) return best:loglike(r, #done, 2) end
+  R          = function(r) return rest:loglike(r, #done, 2) end
   BR         = function(r) return B(r) - R(r) end
-  train,test = split(shuffle(data1.rows), (ntrain * #done))
+  train,test = split(shuffle(self.rows), (ntrain * #done))
   todo,done  = split(train, the.start)
   while true do
     done = keysort(done,Y)
     if #done > the.Stop or #todo < 5 then break end
     best,rest = split(done, sqrt(#done))
-    best,rest = clone(data1, best), clone(data1,rest)
+    best,rest = self:clone(best), self:clone(rest)
     todo      = keysort(todo,BR)
     push(done, pop(todo));   push(done, pop(todo))
     push(done, pop(todo,1)); push(done, pop(todo,1)) 
   end
   return done[1], keysort(test,BR)[#test] end
+
+local eg={}
+function eg.the() print(NUM:new()) end
+
+for _,s in pairs(arg) do
+  if eg[s:sub(3)] then eg[s:sub(3)]() end end 
