@@ -143,7 +143,7 @@ function NUM:like(x,_ ,      v,tmp)
 function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) -> number
   prior = (#self.rows + the.k) / (nall + the.k*nh)
   out,likes = 0,log(prior)
-  for _,col in pairs(self.cols.y) do 
+  for _,col in pairs(self.cols.x) do 
     tmp = col:like(row[col.at], prior) 
     if tmp > 0 then
        out = out + log(tmp) end end
