@@ -24,11 +24,11 @@ local function kap(t,fn,    u) --> list
 local function sum(t,fn,     n)
   n=0; for _,x in pairts(t) do n=n+(fn and nf(x) or x) end; return n end
 
-local function o(x,     f,g) --> str
-  f=function(k,v) return o(k):find"^_" and nil or fmt(":%s %s",k,o(x[k])) end
+local function o(x,     fn) --> str
+  fn = function(k,v) return o(k):find"^_" and nil or fmt(":%s %s",k,o(x[k])) end
   return (type(x) == "number" and fmt("%g",x)) or ( 
-         type(x)  ~= "table"  and tostring(x)) or (   
-         "{" .. table.concat(#x>0 and map(x,fn) or sort(kap(x,o))," ") .. "}") end 
+          type(x) ~= "table"  and tostring(x)) or (   
+          #x>0 and "{" .. table.concat(#x>0 and map(x,o) or sort(kap(x,fn))," ") .. "}") end 
 
 local function oo(x) print(o(x)) end
 
@@ -72,7 +72,7 @@ local function new(klass, obj) --> obj
   return setmetatable(obj,klass) end
 
 ----------------- ----------------- ----------------- ----------------- -----------------
-function SYM:new(num,s) 
+function SYM:new(is,num) 
   return new(SYM, {at=num, txt=s, n=0, has={}, most=0, mode=nil}) end
 
 function SYM:add(x)
@@ -85,7 +85,7 @@ function SYM:like(x,prior)
   return ((self.has[x] or 0) + the.m*prior) / (self.n + the.m) end
 
 ----------------- ----------------- ----------------- ----------------- -----------------  
-function NUM:new(num,s) 
+function NUM:new(s,num) 
   return new(NUM, {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=big, hi=-big,
                    goal = (s or ""):find"-$" and 0 or 1}) end
 
@@ -160,11 +160,13 @@ function DATA:learn(ntrain)
 
 local eg={}
 function eg.num(    n) 
-   n=adds(NUM:new(),{1,2,3,4,5,6,7,8})
+   n=adds(NUM:new("fred",2),{1,2,3,4,5,6,7,8})
    oo(n) end
+
 function eg.sort(    t)
    t={1,2,3,4,5,6,7}
    t=sort(t, function(x,y) return  x > y end)
+   oo{10,4,5}
    oo(t) end
 
 for _,s in pairs(arg) do
