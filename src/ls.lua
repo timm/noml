@@ -5,9 +5,11 @@ pop = table.remove
 the = {k=1, m=2, p=2}
 
 ----------------- ----------------- ----------------- ----------------- ------------------
-function push(t,x) t[1+#t] = x; return x end
+function push(t,x) 
+  t[1+#t] = x; return x end
 
-function trim(s) return s:match"^%s*(.-)%s*$" end
+function trim(s) 
+  return s:match"^%s*(.-)%s*$" end
 
 function coerce(s,     fn) 
   fn = function(s) return s=="true" and true or s ~= "false" and s end
@@ -21,10 +23,21 @@ function csv(file,     src)
     then if src then io.close(src) end 
     else t={}; for s1 in s:gmatch"([^,]+)" do push(t,coerce(s1)) end; return t end end end
 
+function split(t,n)
+  local u,v = {},{}
+  for j,x in pairs(t) do push(j <= n and u or v,x) end
+  return i,v end
+
+function shuffle(t,    j) 
+  for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
+  return t end
 ----------------- ----------------- ----------------- ----------------- ------------------
-function SYM(num, s) return {at=num, txt=s, n=0, has={}, most=0, mode=nil} end
-function NUM(num, s) return {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=-big, hi=big,
-                             goal = (s or ""):find"-$" and 0 or 1} end
+function SYM(num,s) 
+  return {at=num, txt=s, n=0, has={}, most=0, mode=nil} end
+
+function NUM(num,s) 
+  return {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=-big, hi=big,
+         goal = (s or ""):find"-$" and 0 or 1} end
 
 function DATA(names)
   local all,x,y,col = {},{},{}
@@ -36,7 +49,7 @@ function DATA(names)
 
 function data(i, row) 
   push(i.rows, row)
-  for _,col in pairs(i.cols.all) do col(col, row[col.at]) end end
+  for _,col1 in pairs(i.cols.all) do col(col1, row[col1.at]) end end
 
 function col(i,x)
   function _sym()
@@ -55,9 +68,11 @@ function col(i,x)
     i.n = i.n + 1
     return (i.mu and _num or _sym)() end end end
 
-function cols(i,t) for _,x in pairs(t or {}) do col(i,x) end; return i end
+function cols(i,t) 
+  for _,x in pairs(t or {}) do col(i,x) end; return i end
 
-function clone(data1,rows) return cols(DATA(data1.cols.names),rows) end
+function clone(data1,rows) 
+  return cols(DATA(data1.cols.names),rows) end
 
 function loglike(data1, row, nall, nh)
   local out,tmp,prior,likes,_sym,_num
