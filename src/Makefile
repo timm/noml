@@ -77,6 +77,10 @@ pretty:
 	1>&2 echo "... $@"
 	sed -e '1d' -e '2d' $< | pandoc  -o $@ $(Pandoc)
 
+~/tmp/%.html : %.lua
+	pycco -d ~/tmp $^
+	open $@
+
 ../docs/%.html : ../src/%.py
 	echo "$< ... "
 	gawk -f etc/py2html.awk $< | pandoc $(Pandoc) -o $@
@@ -85,7 +89,7 @@ pretty:
 	@mkdir -p docs
 	@echo "pdf-ing $@ ... "
 	@a2ps -Bjr    -q                        \
-		--chars-per-line=100 \
+		--chars-per-line=120 \
 		--line-numbers=1                    \
 		--highlight-level=normal  \
 		--columns 3                 \
@@ -186,7 +190,6 @@ likesR:
 		'$$2==6  {printf $$10 "," $$12} $$2==12 {printf "," $$12}  $$2==24 {printf "," $$12}\
      $$2==48 {print "," $$12 "," $$18 } ' 
 
-
 # 		 | sort -t,  -n
 #
 
@@ -198,4 +201,10 @@ acquiresR:
 		 | sort -t,  -n
 
 
+acqs:
+	mkdir -p ~/tmp
+	echo "data,rows,x,y,asIs,a12,a25,a100,a200,,r12,r25,r100,r200" > ~/tmp/$@.csv
+	for f in ../../moot/optimize/[chmp]*/*.csv; do (./how2.lua -t $$f --$@ &); done | tee -a ~/tmp/$@.csv
 
+wlt:
+	./how2.lua --acqs ../../moot/optimize/[chmp]*/*.csv | tee ~/tmp/wlt.out
