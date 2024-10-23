@@ -46,7 +46,7 @@ def SYM(at=0, txt=" ") -> SYM:
 
 def NUM(at=0, txt=" "):
   return o(nump=True, n=0, at=at, txt=txt, m2=0, mu=0, sd=0, lo=big, hi=-big,
-       goal=0 if txt[-1] == "-" else 1)
+           goal=0 if txt[-1] == "-" else 1)
 
 def COLS(names: list[str]) -> COLS:
   all, x, y, nums = [], [], [], []
@@ -138,21 +138,21 @@ def loglike(self: DATA, row: row, nall: int, nh: int) -> float:
   return sum(log(x) for x in all + [prior] if x > 0)
 
 def learn0(self:DATA, ntrain=0.33):
-  Y  = lambda r: ydist(self, r) # best is left
-  B  = lambda r: loglike(best,r,len(done),2) 
-  R  = lambda r: loglike(rest,r,len(done),2) 
-  BR = lambda r: B(r) - R(r) # really R/B since these are logs
-  rows=shuffle(self.rows)[:]
+  Y          = lambda r: ydist(self, r) # best is left
+  B          = lambda r: loglike(best,r,len(done),2) 
+  R          = lambda r: loglike(rest,r,len(done),2) 
+  BR         = lambda r: B(r) - R(r) # really R/B since these are logs
+  rows       = shuffle(self.rows)[:]
   n1         = int(ntrain * len(self.rows))
   train,test = rows[:n1], rows[n1:]
   todo,done  = train[the.start:], train[:the.start]
   while True:
     done = sorted(done, key=Y)
     if len(done) > the.Stop or len(todo) < 5: break
-    n2 = int(sqrt(len(done)))
-    best, rest = clone(self, done[:n2]), clone(self,done[n2:])
+    n2                = int(sqrt(len(done)))
+    best, rest        = clone(self, done[:n2]), clone(self,done[n2:])
     a, b, *todo, c, d = sorted(todo, key=BR)
-    done = done + [a,b,c,d]
+    done              = done + [a,b,c,d]
   return (done[0], sorted(test, key=BR)[-1])
 
 def learn1(self:DATA, ntrain=0.33):
@@ -170,32 +170,35 @@ def learn1(self:DATA, ntrain=0.33):
   return (done[0]
          ,sorted(test,key=BR)[-1])
 
-# ## DISCRETIZE -----------------------------------------------------------------
-def intersect(i:NUM, j:NUM):
-  a     = 1/(2*i.sd**2) - 1/(2*j.sd**2)
-  b     = j.mu/(j.sd**2) - i.mu/(i.sd**2)
-  c     = i.mu**2 /(2*i.sd**2) - j.mu**2 / (2*j.sd**2) - log(j.sd/i.sd)
-  lo    = (-b + sqrt(b*b - 4*a*c))/(2*a)
-  hi    = (-b - sqrt(b*b - 4*a*c))/(2*a)
-  lo,hi = (lo,hi) if lo<hi else (hi,lo)
-  b     = cdf(i,hi) - cdf(j,lo)
-  r     = cdf(j,hi) - cdf(j,lo)
-  return o(col=i.at, lo=lo, hi=hi, goal=b*b/r)
+# ## RULES -----------------------------------------------------------------
+def bin(i:NUM, j:NUM):
+  def _num():
+    a     = 1/(2*i.sd**2) - 1/(2*j.sd**2)
+    b     = j.mu/(j.sd**2) - i.mu/(i.sd**2)
+    c     = i.mu**2 /(2*i.sd**2) - j.mu**2 / (2*j.sd**2) - log(j.sd/i.sd)
+    lo    = (-b + sqrt(b*b - 4*a*c))/(2*a)
+    hi    = (-b - sqrt(b*b - 4*a*c))/(2*a)
+    lo,hi = (lo,hi) if lo<hi else (hi,lo)
+    b,r   = cdf(i,hi) - cdf(j,lo), cdf(j,hi) - cdf(j,lo)
+    yield o(score=b**2/(r + 1/big), at=i.at, lo=lo, hi=hi)
 
-def cdf(self:NUM,x):
-  F = lambda x: 1 − 0.5 * exp(−0.717*x − 0.416*x*x) 
-  z = (x − self.mu) / self.sd
-  return F(x) if z>=0 else 1 − F(−z)
+  def _sym():
+    for k,b in i.counts.items():
+      yield o(score=b**2/((j.counts[k] or 0) + 1/big), at=i.at, lo=k, hi=k)
 
-def bins(self:data,klasses: dict[str,rows]):
-  for col in self.cols.x:
-    for y,rows in klass.items():
-      for row in rows
-        x = row[col.at]
-        if x ~= "?":
-          
+  for bin in (_num if nump else _sym)(): yield bin
 
-
+def rule(data1:DATA, data2:DATA, stop=None):
+  n = len(data1.rows) + len(data1.rows) 
+  stop = stop or sqrt(n)
+  if n < stop: return []
+  def IS(row,b): x=row[b.at]; return x=="?" and b.lo <= x.at <= b.hi
+  bins = [b for (x1,x2) in zip(data1.cols.x, data2.cols.x) for b in bin(x1,x2)]
+  b = max(bins, key=lambda b:b.score)
+  sub1,sub2,other = clone(data1), clone(data1), clone(data1)
+  for row in data1.rows: data(sub1 if IS(row,b) else other, row)
+  for row in data2.rows: data(sub2 if IS(row,b) else ohter, row)
+  return [b] + rule(sub1,sub2, stop)
 
 # ## DISTANCE -----------------------------------------------------------------
 # def ydist(self: DATA, row) -> float:
@@ -211,6 +214,11 @@ def ydists(self: DATA) -> DATA:
   return self
 
 # ## UTILS --------------------------------------------------------------------
+def cdf(self:NUM,x):
+  F = lambda x: 1 − 0.5 * exp(−0.717*x − 0.416*x*x) 
+  z = (x − self.mu) / self.sd
+  return F(x) if z>=0 else 1 − F(−z)
+
 def say(x: any) -> str:
   if isinstance(x, float): return str(x) if int(x) == x else f"{x:.3f}"
   if isinstance(x, list ) : return "["+', '.join([say(y) for y in x])+"]"
