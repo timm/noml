@@ -16,6 +16,11 @@ local function split(t,n)
   for j,x in pairs(t) do push(j <= n and u or v,x) end
   return u,v end
 
+-- random 
+local function any(t)    return t[math.random(#t)] end
+local function many(t,  n) 
+  u={}; for i=1,(n or #t) do u[i] = any(t) end; return u end
+
 -- sorting
 local function lt(x) return function(a,b) return a[x] < b[x] end end
 
@@ -61,17 +66,17 @@ local function csv(file,     src)
 local function o(x,     no,fn) --> str
   no = function(k) return o(k):find"^_" end
   fn = function(k,v) if not no(k) then return fmt(":%s %s",k,o(x[k])) end end
-  return (type(x) == "number" and fmt("%g",x)) or ( 
-          type(x) ~= "table"  and tostring(x)) or (   
-          #x>0 and "{" .. table.concat(#x>0 and map(x,o) or sort(kap(x,fn))," ") .. "}") end 
+  if type(x) == "number" then return fmt("%g",x) end
+  if type(x) ~= "table"  then return tostring(x) end
+  return "{" .. table.concat(#x>0 and map(x,o) or sort(kap(x,fn))," ") .. "}" end 
 
 local function oo(x) print(o(x)) end
 
 -- polymorphism
-local function new(klass, obj) --> obj
+local function new(klass, obj)
   klass.__index    = klass
-  klass.__tostring = klass.__tostring or o
-  return setmetatable(obj,klass) end
+	klass.__tostring = klass.__tostring or o
+  return setmetatable(obj, klass) end
 
 ----------------- ----------------- ----------------- ----------------- -----------------
 function SYM:new(is,num) 
@@ -108,7 +113,11 @@ function NUM:like(x,_ ,      v,tmp)
   
 function NUM:norm(x)
   return x=="?" and x or (x - self.lo)/(self.hi - self.lo) end
-                    
+       
+function NUM:delta(other,      y,z,e)
+  e, y, z = 1E-32, self, other
+  return abs(y.mu - z.mu) / ( (e + y.sd^2/y.n + z.sd^2/z.n)^.5) end
+             
 ----------------- ----------------- ----------------- ----------------- -----------------  
 function DATA:new(names)
   local all,x,y = {},{},nil
@@ -159,6 +168,29 @@ function DATA:learn(ntrain)
     push(done, pop(todo,1)); push(done, pop(todo,1)) 
   end
   return done[1], keysort(test,BR)[#test] end
+
+-- stats
+function cliffs(xs,ys)
+  local lt,gt,n = 0,0,0
+  for _,x in pairs(xs) do
+     for _,y in pairs(ys) do
+       n = n + 1
+       if y > x then gt = gt + 1 end
+       if y < x then lt = lt + 1 end end end
+  return abs(gt - lt)/n <= the.Cliffs end -- 0.195 
+
+function bootstrap(y0,z0,confidence,bootstraps)
+  --non-parametric significance test From Introduction to Bootstrap,
+  -- Efron and Tibshirani, 1993, chapter 20. https://doi.org/10.1201/9780429246593
+  x,y,z  = adds(adds(NUM:new(),y0),z0), adds(NUM:new(),y0), adds(NUMS:new(),z0)
+  delta0 = y:delta(z)
+  yhat   = map(y0, function(y1) return y1 - y.mu + x.mu end)
+  zhat   = map(z0, function(z1) return z1 - z.mu + x.mu end)
+  n = 0
+  for i=1, bootstraps or the.stats.bootstraps or 512 do
+    if adds(NUM:new(),many(yhat)).delta(adds(NUM:new(),many(zhat))) > delta0 then
+      n = n + 1 end end
+  return n / samples >= (confidence or the.stats.confidence or 0.05) end
 
 local eg={}
 function eg.num(    n) 
