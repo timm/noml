@@ -25,11 +25,10 @@ local function sum(t,fn,     n)
   n=0; for _,x in pairts(t) do n=n+(fn and nf(x) or x) end; return n end
 
 local function o(x,     f,g) --> str
-  if type(x) == "number" then return fmt("%g",x) end
-  if type(x) ~= "table"  then return tostring(x)   end
-  f=function(x)   return o(x) end
-  g=function(k,v) return o(k):find"^_" and nil or fmt(":%s %s",k,o(x[k])) end
-  return "{" .. table.concat(#x>0 and map(x,f) or sort(kap(x,g))," ").."}" end
+  f=function(k,v) return o(k):find"^_" and nil or fmt(":%s %s",k,o(x[k])) end
+  return (type(x) == "number" and fmt("%g",x)) or ( 
+         type(x)  ~= "table"  and tostring(x)) or (   
+         "{" .. table.concat(#x>0 and map(x,fn) or sort(kap(x,o))," ") .. "}") end 
 
 local function oo(x) print(o(x)) end
 
