@@ -15,10 +15,23 @@ local function sort(t,fn)
   table.sort(t,fn)
   return t end
 
-local function cat(t)
-  u={}; for k,v in pairs(t) do  u[k] = fmt(":%s %s",k,v) end 
-	for k,v in pairs(sort(u)) do print(">",k,v) end
-	return "{" .. table.concat(sort(u)," ") .. "}" end
+local function map(t,fn,     u) --> list
+  u={}; for _,v in pairs(t) do u[1+#u] = fn(v)  end; return u end
+
+local function kap(t,fn,    u) --> list
+   u={}; for k,v in pairs(t) do u[1+#u]=fn(k,v)  end; return u end
+
+local function sum(t,fn,     n)
+  n=0; for _,x in pairts(t) do n=n+(fn and nf(x) or x) end; return n end
+
+local function o(x,     f,g) --> str
+  if type(x) == "number" then return fmt("%g",x) end
+  if type(x) ~= "table"  then return tostring(x)   end
+  f=function(x)   return o(x) end
+  g=function(k,v) return o(k):find"^_" and nil or fmt(":%s %s",k,o(x[k])) end
+  return "{" .. table.concat(#x>0 and map(x,f) or sort(kap(x,g))," ").."}" end
+
+local function oo(x) print(o(x)) end
 
 local function push(t,x) 
   t[1+#t] = x; return x end
@@ -54,10 +67,10 @@ local function keysort(t,fn,     u,v)
   v={}; for _,x in pairs(sort(u, lt(1))) do v[1+#v] = x[2] end
   return v end
 
-local function new(klass, obj)
+local function new(klass, obj) --> obj
   klass.__index    = klass
-	klass.__tostring = cat
-  return setmetatable(obj, klass) end
+  klass.__tostring = klass.__tostring or o
+  return setmetatable(obj,klass) end
 
 ----------------- ----------------- ----------------- ----------------- -----------------
 function SYM:new(num,s) 
@@ -74,7 +87,7 @@ function SYM:like(x,prior)
 
 ----------------- ----------------- ----------------- ----------------- -----------------  
 function NUM:new(num,s) 
-  return new(NUM, {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=-big, hi=big,
+  return new(NUM, {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=big, hi=-big,
                    goal = (s or ""):find"-$" and 0 or 1}) end
 
 function NUM:add(x)
@@ -147,7 +160,13 @@ function DATA:learn(ntrain)
   return done[1], keysort(test,BR)[#test] end
 
 local eg={}
-function eg.the() print(NUM:new()) end
+function eg.num(    n) 
+   n=adds(NUM:new(),{1,2,3,4,5,6,7,8})
+   oo(n) end
+function eg.sort(    t)
+   t={1,2,3,4,5,6,7}
+   t=sort(t, function(x,y) return  x > y end)
+   oo(t) end
 
 for _,s in pairs(arg) do
   if eg[s:sub(3)] then eg[s:sub(3)]() end end 
