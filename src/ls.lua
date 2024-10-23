@@ -8,49 +8,46 @@ local SYM,NUM,DATA = {},{},{}
 local the = {k=1, m=2, p=2}
 
 ----------------- ----------------- ----------------- ----------------- ------------------
-local function push(t,x) 
-  t[1+#t] = x; return x end
-
-local function trim(s) 
-  return s:match"^%s*(.-)%s*$" end
-
-local function sort(t,fn)
-  table.sort(t,fn)
-  return t end
-
-local function map(t,fn,     u) --> list
-  u={}; for _,v in pairs(t) do u[1+#u] = fn(v)  end; return u end
-
-local function kap(t,fn,    u) --> list
-   u={}; for k,v in pairs(t) do u[1+#u]=fn(k,v)  end; return u end
-
-local function sum(t,fn,     n)
-  n=0; for _,x in pairts(t) do n=n+(fn and fn(x) or x) end; return n end
+-- lists
+local function push(t,x) t[1+#t] = x; return x end
 
 local function split(t,n)
   local u,v = {},{}
   for j,x in pairs(t) do push(j <= n and u or v,x) end
   return u,v end
 
+-- sorting
+local function lt(x) return function(a,b) return a[x] < b[x] end end
+
+local function sort(t,fn) table.sort(t,fn); return t end
+
 local function shuffle(t,    j)
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
   return t end
 
-local function lt(x) return function(a,b) return a[x] < b[x] end end
+-- mapping
+local function kap(t,fn,    u) --> list
+  u={}; for k,v in pairs(t) do u[1+#u]=fn(k,v)  end; return u end
 
-local function coerce(s,     fn) 
-  fn = function(s) return s=="true" and true or s ~= "false" and s end
+local function map(t,fn,     u) --> list
+  u={}; for _,v in pairs(t) do u[1+#u] = fn(v)  end; return u end
+
+local function sum(t,fn,     n)
+  n=0; for _,x in pairts(t) do n=n+(fn and fn(x) or x) end; return n end
+
+local function adds(it,t) 
+  for _,x in pairs(t or {}) do it:add(x) end; return it end
+
+local function keysort(t,fn,     decorate,undecorate)
+  decorate   = function(x) return {fn(x),x} end
+  undecorate = function(x) return x[2] end
+  return map(sort(map(t,decorate),lt(1)), undecorate) end
+
+-- string to thing
+local function coerce(s,     fn,trim) 
+  trim= function(s) return s:match"^%s*(.-)%s*$" end
+  fn  = function(s) return s=="true" and true or s ~= "false" and s end
   return math.tointeger(s) or tonumber(s) or fn(trim(s)) end
-
-
-
-local function o(x,     fn) --> str
-  fn = function(k,v) return o(k):find"^_" and nil or fmt(":%s %s",k,o(x[k])) end
-  return (type(x) == "number" and fmt("%g",x)) or ( 
-          type(x) ~= "table"  and tostring(x)) or (   
-          #x>0 and "{" .. table.concat(#x>0 and map(x,o) or sort(kap(x,fn))," ") .. "}") end 
-
-local function oo(x) print(o(x)) end
 
 local function csv(file,     src)
   if file and file ~="-" then src=io.input(file) end
@@ -60,18 +57,21 @@ local function csv(file,     src)
     then if src then io.close(src) end 
     else t={}; for s1 in s:gmatch"([^,]+)" do push(t,coerce(s1)) end; return t end end end
 
-local function keysort(t,fn,     u,v)
-  u={}; for _,x in pairs(t) do u[1+#u] = {fn(x),x} end
-  v={}; for _,x in pairs(sort(u, lt(1))) do v[1+#v] = x[2] end
-  return v end
+-- thing to string
+local function o(x,     no,fn) --> str
+  no = function(k) return o(k):find"^_" end
+  fn = function(k,v) if not no(k) then return fmt(":%s %s",k,o(x[k])) end end
+  return (type(x) == "number" and fmt("%g",x)) or ( 
+          type(x) ~= "table"  and tostring(x)) or (   
+          #x>0 and "{" .. table.concat(#x>0 and map(x,o) or sort(kap(x,fn))," ") .. "}") end 
 
+local function oo(x) print(o(x)) end
+
+-- polymorphism
 local function new(klass, obj) --> obj
   klass.__index    = klass
   klass.__tostring = klass.__tostring or o
   return setmetatable(obj,klass) end
-
-local function adds(it,t) 
-  for _,x in pairs(t or {}) do it:add(x) end; return it end
 
 ----------------- ----------------- ----------------- ----------------- -----------------
 function SYM:new(is,num) 
