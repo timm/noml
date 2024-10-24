@@ -6,7 +6,7 @@ local pi, abs, cos, exp = math.pi, math.abs, math.cos, math.exp
 local log, max, min, sqrt = math.log, math.max, math.min, math.sqrt
 
 local R = math.random
-local SYM,NUM,DATA = {},{},{}
+local SYM,NUM,DATA,COLS = {},{},{},{}
 
 local the = {k=1, m=2, p=2, rseed=1234567891,
              train="../../moot/optimize/misc/auto93.csv"}
@@ -48,19 +48,19 @@ local function map(t,fn,     u) --> list
 local function sum(t,fn,     n)
   n=0; for _,x in pairts(t) do n=n+(fn and fn(x) or x) end; return n end
 
-local function adds(it,t) 
-  for _,x in pairs(t or {}) do it:add(x) end; return it end
+local function adds(it,t)
+  for _,x in pairs(t) do it:add(x) end; return it end
 
-local function keysort(t,fn,     decorate,undecorate)
-  decorate   = function(x) return {fn(x),x} end
-  undecorate = function(x) return x[2] end
-  return map(sort(map(t,decorate),lt(1)), undecorate) end
+local function keysort(t,fn,     DECORATE,UNDECORATE)
+  DECORATE   = function(x) return {fn(x),x} end
+  UNDECORATE = function(x) return x[2] end
+  return map(sort(map(t,DECORATE),lt(1)), UNDECORATE) end
 
 -- string to thing
-local function coerce(s,     fn,trim) 
-  trim= function(s) return s:match"^%s*(.-)%s*$" end
-  fn  = function(s) return s=="true" and true or s ~= "false" and s end
-  return math.tointeger(s) or tonumber(s) or fn(trim(s)) end
+local function coerce(s,     FN,TRIM) 
+  TRIM= function(s) return s:match"^%s*(.-)%s*$" end
+  FN  = function(s) return s=="true" and true or s ~= "false" and s end
+  return math.tointeger(s) or tonumber(s) or FN(TRIM(s)) end
 
 local function csv(file,     src)
   if file and file ~="-" then src=io.input(file) end
@@ -71,13 +71,13 @@ local function csv(file,     src)
     else t={}; for s1 in s:gmatch"([^,]+)" do push(t,coerce(s1)) end; return t end end end
 
 -- thing to string
-local function o(x,     f,g,go) --> str
-  f  = function() return #x>0 and map(x,o) or sort(kap(x,g)) end
-  g  = function(k,v) if go(k) then return fmt(":%s %s",k,o(x[k])) end end
-  go = function(k,v) return not o(k):find"^_" end
+local function o(x,     F,G,GO) --> str
+  F  = function() return #x>0 and map(x,o) or sort(kap(x,G)) end
+  G  = function(k,v) if GO(k) then return fmt(":%s %s",k,o(x[k])) end end
+  GO = function(k,v) return not o(k):find"^_" end
   return type(x)=="number" and fmt("%g",x) or  
          type(x)~="table"  and tostring(x) or 
-         "{" .. table.concat(f()," ") .. "}" end 
+         "{" .. table.concat(F()," ") .. "}" end 
 
 local function oo(x) 
   print(o(x)) end
@@ -143,8 +143,8 @@ function DATA:new()
 function DATA:read(src)
   for row in csv(src) do self:add(row) end; return self end
 
-function DATA:adds(src)
-  for row in src or {} do self:add(row) end; return self end
+function DATA:adds(t)
+  for row in pairs(t or {}) do self:add(row) end; return self end
 
 function DATA:add(row) 
   if self.cols then
@@ -218,6 +218,14 @@ function bootstrap(y0,z0,confidence,bootstraps)
 
 -----------------------------------------------------------------------------------------
 local eg={}
+
+function eg.all(   t)
+  t= {"any","split","sort","num","sym","csv"}
+  for _,x in pairs(t) do
+	  print(x)
+		math.randomseed(the.rseed)
+		eg[x]() end end
+
 
 function eg.any(  a)
   a = {10,20,30,40,50,60}
