@@ -6,6 +6,7 @@ local pi, abs, cos, exp = math.pi, math.abs, math.cos, math.exp
 local log, max, min, sqrt = math.log, math.max, math.min, math.sqrt
 
 local R = math.random
+local SYM,NUM,DATA,COLS = {},{},{},{}
 
 local the = {k=1, m=2, p=2, rseed=1234567891,
              train="../../moot/optimize/misc/auto93.csv"}
@@ -87,9 +88,42 @@ local function new(klass, obj)
   klass.__tostring = klass.__tostring or o
   return setmetatable(obj, klass) end
 
------------------ ----------------- ----------------- ----------------- -----------------
-local SYM={}
+local function tests(eg,all,      fails,ok,msg) 
+  fails = 0
+  for _,x in pairs(all) do
+    math.randomseed(the.rseed)
+    ok,msg = xpcall(eg[x], debug.traceback, _)
+    if   ok == false or msg == false 
+    then print("❌ FAIL on "..x); fails = fails + 1
+    else print("✅ PASS on "..x) end end 
+  os.exit(fails) end
 
+-- stats
+function cliffs(xs,ys)
+  local lt,gt,n = 0,0,0
+  for _,x in pairs(xs) do
+     for _,y in pairs(ys) do
+       n = n + 1
+       if y > x then gt = gt + 1 end
+       if y < x then lt = lt + 1 end end end
+  return abs(gt - lt)/n <= the.Cliffs end -- 0.195 
+
+function bootstrap(y0,z0,confidence,bootstraps)
+  --non-parametric significance test From Introduction to Bootstrap,
+  -- Efron and Tibshirani, 1993, chapter 20. https://doi.org/10.1201/9780429246593
+  local x,y,z,delta0,yhat,zhat,n,samples, sample1, sample2
+  x,y,z  = adds(adds(NUM:new(),y0),z0), adds(NUM:new(),y0), adds(NUM:new(),z0)
+  delta0 = y:delta(z)
+  yhat   = map(y0, function(y1) return y1 - y.mu + x.mu end)
+  zhat   = map(z0, function(z1) return z1 - z.mu + x.mu end)
+  n = 0
+  samples= bootstraps or the.stats.bootstraps or 512 
+  for i=1, samples do
+    sample1, sample2 = adds(NUM:new(),many(yhat)), adds(NUM:new(),many(zhat))
+    n = n + (sample1.delta(sample2) > delta0 and 1 or 0) end
+  return n / samples >= (confidence or the.stats.confidence or 0.05) end
+
+----------------- ----------------- ----------------- ----------------- -----------------
 function SYM:new(is,num) 
   return new(SYM, {at=num, txt=s, n=0, has={}, most=0, mode=nil}) end
 
@@ -103,8 +137,6 @@ function SYM:like(x,prior)
   return ((self.has[x] or 0) + the.m*prior) / (self.n + the.m) end
 
 ----------------- ----------------- ----------------- ----------------- -----------------  
-local NUM={}
-
 function NUM:new(s,num) 
   return new(NUM, {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=big, hi=-big,
                    goal = (s or ""):find"-$" and 0 or 1}) end
@@ -132,8 +164,6 @@ function NUM:delta(other,      y,z,e)
   return abs(y.mu - z.mu) / ( (e + y.sd^2/y.n + z.sd^2/z.n)^.5) end
              
 ----------------- ----------------- ----------------- ----------------- -----------------  
-local COLS={}
-
 function COLS:new(names)
   local all,x,y = {},{},nil
   for at,x in pairs(names) do 
@@ -142,8 +172,7 @@ function COLS:new(names)
       push(y and x:find"[!+-]$" or x, all[#all]) end end
   return new(COLS, {names=names, all=all, x=x, y=y}) end
 
-local DATA={}
-
+----------------- ----------------- ----------------- ----------------- -----------------  
 function DATA:new()
   return new(DATA, {cols=nil, rows={}})  end
 
@@ -198,45 +227,11 @@ function DATA:learn(ntrain)
   end
   return done[1], keysort(test,BR)[#test] end
 
--- stats
-function cliffs(xs,ys)
-  local lt,gt,n = 0,0,0
-  for _,x in pairs(xs) do
-     for _,y in pairs(ys) do
-       n = n + 1
-       if y > x then gt = gt + 1 end
-       if y < x then lt = lt + 1 end end end
-  return abs(gt - lt)/n <= the.Cliffs end -- 0.195 
-
-function bootstrap(y0,z0,confidence,bootstraps)
-  --non-parametric significance test From Introduction to Bootstrap,
-  -- Efron and Tibshirani, 1993, chapter 20. https://doi.org/10.1201/9780429246593
-  local x,y,z,delta0,yhat,zhat,n,samples, sample1, sample2
-  x,y,z  = adds(adds(NUM:new(),y0),z0), adds(NUM:new(),y0), adds(NUM:new(),z0)
-  delta0 = y:delta(z)
-  yhat   = map(y0, function(y1) return y1 - y.mu + x.mu end)
-  zhat   = map(z0, function(z1) return z1 - z.mu + x.mu end)
-  n = 0
-  samples= bootstraps or the.stats.bootstraps or 512 
-  for i=1, samples do
-    sample1, sample2 = adds(NUM:new(),many(yhat)), adds(NUM:new(),many(zhat))
-    n = n + (sample1.delta(sample2) > delta0 and 1 or 0) end
-  return n / samples >= (confidence or the.stats.confidence or 0.05) end
-
------------------------------------------------------------------------------------------
+----------------- ----------------- ----------------- ----------------- -----------------  
 local EG={}
 
-function EG.all() return {"any","split","sort","num","sym","csv"} end
-
-function EG.egs(      fails,ok,msg) 
-  fails = 0
-  for _,x in pairs(EG.all()) do
-    math.randomseed(the.rseed)
-    ok,msg = xpcall(EG[x], debug.traceback, _)
-    if   ok == false or msg == false 
-    then print("❌ FAIL on "..x); fails = fails + 1
-    else print("✅ PASS on "..x) end end 
-	os.exit(fails) end
+function EG.all() 
+  return tests(EG, {"any","split","sort","num","sym","csv"}) end
 
 function EG.any(  a)
   a = {10,20,30,40,50,60}
@@ -268,7 +263,6 @@ function EG.csv(   d, n)
   n=0
   for row in csv(the.train) do n=n+1 ; if n==1 or n % 30==0 then oo(row) end end end
 
------------------------------------------------------------------------------------------
+----------------- ----------------- ----------------- ----------------- -----------------  
 math.randomseed(the.rseed)
-for _,s in pairs(arg) do
-  if EG[s:sub(3)] then EG[s:sub(3)]() end end 
+map(arg, function(s) if EG[s:sub(3)] then EG[s:sub(3)]() end end)
