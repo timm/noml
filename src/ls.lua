@@ -219,17 +219,21 @@ function bootstrap(y0,z0,confidence,bootstraps)
 -----------------------------------------------------------------------------------------
 local eg={}
 
-function eg.all(   t)
-  t= {"any","split","sort","num","sym","csv"}
-  for _,x in pairs(t) do
-	  print(x)
-		math.randomseed(the.rseed)
-		eg[x]() end end
+function eg.all() return {"any","split","sort","num","sym","csv"} end
 
+function eg.egs(      fails,ok,msg) 
+  fails = 0
+  for _,x in pairs(eg.all()) do
+    math.randomseed(the.rseed)
+    ok,msg = xpcall(eg[x], debug.traceback, _)
+    if   ok == false or msg == false 
+    then print("❌ FAIL on "..x); fails = fails + 1
+    else print("✅ PASS on "..x) end end 
+	os.exit(fails) end
 
 function eg.any(  a)
   a = {10,20,30,40,50,60}
-  for i=1,5 do
+  for i=1,2 do
 	  map({any(a), many(a,3), shuffle(a), keysort(a, function(x) return -x end)},oo) end end
 
 function eg.split(    a)
@@ -253,8 +257,9 @@ function eg.sym(    s)
   s = adds(SYM:new(), {"a","a","a","a","b","b","c"})
 	print(s.mode, o(s.has)) end
 
-function eg.csv(   d)
-  for row in csv(the.train) do oo(row) end end
+function eg.csv(   d, n)
+  n=0
+  for row in csv(the.train) do n=n+1 ; if n==1 or n % 30==0 then oo(row) end end end
 
 math.randomseed(the.rseed)
 for _,s in pairs(arg) do
