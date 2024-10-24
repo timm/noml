@@ -6,7 +6,6 @@ local pi, abs, cos, exp = math.pi, math.abs, math.cos, math.exp
 local log, max, min, sqrt = math.log, math.max, math.min, math.sqrt
 
 local R = math.random
-local SYM,NUM,DATA,COLS = {},{},{},{}
 
 local the = {k=1, m=2, p=2, rseed=1234567891,
              train="../../moot/optimize/misc/auto93.csv"}
@@ -89,6 +88,8 @@ local function new(klass, obj)
   return setmetatable(obj, klass) end
 
 ----------------- ----------------- ----------------- ----------------- -----------------
+local SYM={}
+
 function SYM:new(is,num) 
   return new(SYM, {at=num, txt=s, n=0, has={}, most=0, mode=nil}) end
 
@@ -102,6 +103,8 @@ function SYM:like(x,prior)
   return ((self.has[x] or 0) + the.m*prior) / (self.n + the.m) end
 
 ----------------- ----------------- ----------------- ----------------- -----------------  
+local NUM={}
+
 function NUM:new(s,num) 
   return new(NUM, {at=num, txt=s, n=0, mu=0, m2=0, sd=0, lo=big, hi=-big,
                    goal = (s or ""):find"-$" and 0 or 1}) end
@@ -129,6 +132,8 @@ function NUM:delta(other,      y,z,e)
   return abs(y.mu - z.mu) / ( (e + y.sd^2/y.n + z.sd^2/z.n)^.5) end
              
 ----------------- ----------------- ----------------- ----------------- -----------------  
+local COLS={}
+
 function COLS:new(names)
   local all,x,y = {},{},nil
   for at,x in pairs(names) do 
@@ -136,6 +141,8 @@ function COLS:new(names)
     if not x:find"X$" then
       push(y and x:find"[!+-]$" or x, all[#all]) end end
   return new(COLS, {names=names, all=all, x=x, y=y}) end
+
+local DATA={}
 
 function DATA:new()
   return new(DATA, {cols=nil, rows={}})  end
@@ -217,50 +224,51 @@ function bootstrap(y0,z0,confidence,bootstraps)
   return n / samples >= (confidence or the.stats.confidence or 0.05) end
 
 -----------------------------------------------------------------------------------------
-local eg={}
+local EG={}
 
-function eg.all() return {"any","split","sort","num","sym","csv"} end
+function EG.all() return {"any","split","sort","num","sym","csv"} end
 
-function eg.egs(      fails,ok,msg) 
+function EG.egs(      fails,ok,msg) 
   fails = 0
-  for _,x in pairs(eg.all()) do
+  for _,x in pairs(EG.all()) do
     math.randomseed(the.rseed)
-    ok,msg = xpcall(eg[x], debug.traceback, _)
+    ok,msg = xpcall(EG[x], debug.traceback, _)
     if   ok == false or msg == false 
     then print("❌ FAIL on "..x); fails = fails + 1
     else print("✅ PASS on "..x) end end 
 	os.exit(fails) end
 
-function eg.any(  a)
+function EG.any(  a)
   a = {10,20,30,40,50,60}
   for i=1,2 do
 	  map({any(a), many(a,3), shuffle(a), keysort(a, function(x) return -x end)},oo) end end
 
-function eg.split(    a)
+function EG.split(    a)
   a={10,20,30,40,50,60}
 	b,c = split(a,3)
 	print(o(b), o(c)) end
 
-function eg.sort(    t)
+function EG.sort(    t)
   t={1,2,3,4,5,6,7}
   t=sort(t, function(x,y) return  x > y end)
   oo{10,4,5}
   oo(t) end
 
-function eg.num(    n,N) 
+function EG.num(    n,N) 
   N = function(mu,sd) return (mu or 0)+(sd or 1)*sqrt(-2*log(R()))*cos(2*pi*R()) end
   n = NUM:new()
 	for _ = 1,1000 do n:add( N(10,2) ) end
 	assert(10-n.mu < 0.1 and 2-n.sd < 0.03) end
 
-function eg.sym(    s) 
+function EG.sym(    s) 
   s = adds(SYM:new(), {"a","a","a","a","b","b","c"})
 	print(s.mode, o(s.has)) end
 
-function eg.csv(   d, n)
+function EG.csv(   d, n)
   n=0
   for row in csv(the.train) do n=n+1 ; if n==1 or n % 30==0 then oo(row) end end end
 
+-----------------------------------------------------------------------------------------
 math.randomseed(the.rseed)
 for _,s in pairs(arg) do
-  if eg[s:sub(3)] then eg[s:sub(3)]() end end 
+  if EG[s:sub(3)] then EG[s:sub(3)]() end end 
