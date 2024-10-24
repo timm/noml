@@ -1,11 +1,15 @@
+#!/usr/bin/env lua
+-- vim : set tabstop=2 shiftwidth=2 expandtab :
 local big = 1E32
 local fmt, pop = string.format, table.remove
-local pi, abs, exp, log = math.pi, math.abs, math.exp, math.log
-local max, min, sqrt    = math.max, math.min, math.sqrt
+local pi, abs, cos, exp = math.pi, math.abs, math.cos, math.exp
+local log, max, min, sqrt = math.log, math.max, math.min, math.sqrt
 
+local R = math.random
 local SYM,NUM,DATA = {},{},{}
 
-local the = {k=1, m=2, p=2}
+local the = {k=1, m=2, p=2, rseed=1234567891,
+             train="../../moot/optimize/misc/auto93.csv"}
 
 ----------------- ----------------- ----------------- ----------------- ------------------
 -- lists
@@ -17,17 +21,21 @@ local function split(t,n)
   return u,v end
 
 -- random 
-local function any(t)    return t[math.random(#t)] end
+local function any(t)    
+  return t[R(#t)] end
+
 local function many(t,  n) 
   u={}; for i=1,(n or #t) do u[i] = any(t) end; return u end
 
 -- sorting
-local function lt(x) return function(a,b) return a[x] < b[x] end end
+local function lt(x) 
+  return function(a,b) return a[x] < b[x] end end
 
-local function sort(t,fn) table.sort(t,fn); return t end
+local function sort(t,fn) 
+  table.sort(t,fn); return t end
 
 local function shuffle(t,    j)
-  for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
+  for i = #t, 2, -1 do j = R(i); t[i], t[j] = t[j], t[i] end
   return t end
 
 -- mapping
@@ -63,19 +71,21 @@ local function csv(file,     src)
     else t={}; for s1 in s:gmatch"([^,]+)" do push(t,coerce(s1)) end; return t end end end
 
 -- thing to string
-local function o(x,     no,fn) --> str
-  no = function(k) return o(k):find"^_" end
-  fn = function(k,v) if not no(k) then return fmt(":%s %s",k,o(x[k])) end end
-  if type(x) == "number" then return fmt("%g",x) end
-  if type(x) ~= "table"  then return tostring(x) end
-  return "{" .. table.concat(#x>0 and map(x,o) or sort(kap(x,fn))," ") .. "}" end 
+local function o(x,     f,g,go) --> str
+  f  = function() return #x>0 and map(x,o) or sort(kap(x,g)) end
+  g  = function(k,v) if go(k) then return fmt(":%s %s",k,o(x[k])) end end
+  go = function(k,v) return not o(k):find"^_" end
+  return type(x)=="number" and fmt("%g",x) or  
+         type(x)~="table"  and tostring(x) or 
+         "{" .. table.concat(f()," ") .. "}" end 
 
-local function oo(x) print(o(x)) end
+local function oo(x) 
+  print(o(x)) end
 
 -- polymorphism
 local function new(klass, obj)
   klass.__index    = klass
-	klass.__tostring = klass.__tostring or o
+  klass.__tostring = klass.__tostring or o
   return setmetatable(obj, klass) end
 
 ----------------- ----------------- ----------------- ----------------- -----------------
@@ -194,16 +204,38 @@ function bootstrap(y0,z0,confidence,bootstraps)
     n = n + (sample1.delta(sample2) > delta0 and 1 or 0) end
   return n / samples >= (confidence or the.stats.confidence or 0.05) end
 
+-----------------------------------------------------------------------------------------
 local eg={}
-function eg.num(    n) 
-   n=adds(NUM:new("fred",2),{1,2,3,4,5,6,7,8})
-   oo(n) end
+
+function eg.any(  a)
+  a = {10,20,30,40,50,60}
+  for i=1,5 do
+	  map({any(a), many(a,3), shuffle(a), keysort(a, function(x) return -x end)},oo) end end
+
+function eg.split(    a)
+  a={10,20,30,40,50,60}
+	b,c = split(a,3)
+	print(o(b), o(c)) end
 
 function eg.sort(    t)
-   t={1,2,3,4,5,6,7}
-   t=sort(t, function(x,y) return  x > y end)
-   oo{10,4,5}
-   oo(t) end
+  t={1,2,3,4,5,6,7}
+  t=sort(t, function(x,y) return  x > y end)
+  oo{10,4,5}
+  oo(t) end
 
+function eg.num(    n,N) 
+  N = function(mu,sd) return (mu or 0)+(sd or 1)*sqrt(-2*log(R()))*cos(2*pi*R()) end
+  n = NUM:new()
+	for _ = 1,1000 do n:add( N(10,2) ) end
+	assert(10-n.mu < 0.1 and 2-n.sd < 0.03) end
+
+function eg.sym(    s) 
+  s = adds(SYM:new(), {"a","a","a","a","b","b","c"})
+	print(s.mode, o(s.has)) end
+
+function eg.csv(   d)
+  for row in csv(the.train) do oo(row) end end
+
+math.randomseed(the.rseed)
 for _,s in pairs(arg) do
   if eg[s:sub(3)] then eg[s:sub(3)]() end end 
