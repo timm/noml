@@ -129,17 +129,29 @@ function NUM:delta(other,      y,z,e)
   return abs(y.mu - z.mu) / ( (e + y.sd^2/y.n + z.sd^2/z.n)^.5) end
              
 ----------------- ----------------- ----------------- ----------------- -----------------  
-function DATA:new(names)
+function COLS:new(names)
   local all,x,y = {},{},nil
   for at,x in pairs(names) do 
     push(all, x:find"^[A-Z]" and NUM(x,at) or SYM(x,at))
     if not x:find"X$" then
       push(y and x:find"[!+-]$" or x, all[#all]) end end
-  return {rows={}, cols={names=names, all=all, x=x, y=y}} end
+  return new(COLS, {names=names, all=all, x=x, y=y}) end
+
+function DATA:new()
+  return new(DATA, {cols=nil, rows={}})  end
+
+function DATA:read(src)
+  for row in csv(src) do self:add(row) end; return self end
+
+function DATA:adds(src)
+  for row in src or {} do self:add(row) end; return self end
 
 function DATA:add(row) 
-  push(self.rows, row)
-  for _,col in pairs(self.cols.all) do col:add(row[col.at]) end end
+  if self.cols then
+    push(self.rows, row)
+    for _,col in pairs(self.cols.all) do col:add(row[col.at]) end 
+	else
+	  self.cols= COLS:new(row) end end 
 
 function DATA:clone(rows) 
   return adds(DATA(self.cols.names),rows) end
