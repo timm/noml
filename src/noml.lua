@@ -9,6 +9,8 @@
 --   examples (where "best"  can be  defined by  multiple goals). 
 --         
 -- ### For this code
+-- 
+-- 
 -- - The raw source files are in markdown, where
 --   type annotations are allowed for function arguments and return types.  In those annotations "?" denotes
 --    "optional argument" A tiny pre-processor[^md2lua] generates
@@ -166,11 +168,11 @@ function NUM:dist(a, b) --> num
   return math.abs(a - b) end
 
 function SYM:dist(a, b) --> 0,1
-  return a==b and 0 or 1 end
+  return x==y and 0 or 1 end
 
-function DATA:xDist(a, b,       fn) --> num
-  fn = function(col) return col:dist(a[col.i], b[col.i])^the.p end
-  return sum(self.cols.x, fn) / (#self.cols.x)^(1/the.p) end
+function DATA:xDist(a, b,       fun) --> num
+  fun = function(col) return col:dist(a[col.i], b[col.i])^the.p end
+  return sum(self.cols.x, fun) / (#self.cols.x)^(1/the.p) end
 
 function DATA:twoFar(repeats,rows,sortp,    most,a0,b0,a,b,d) --> row,row
   most = 0

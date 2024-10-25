@@ -1,5 +1,6 @@
-#!/usr/bin/env lua
+#!/usr/bin/env lua 
 -- vim : set tabstop=2 shiftwidth=2 expandtab :
+
 local big = 1E32
 local fmt, pop = string.format, table.remove
 local pi, abs, cos, exp = math.pi, math.abs, math.cos, math.exp
@@ -46,7 +47,7 @@ local function map(t,fn,     u) --> list
   u={}; for _,v in pairs(t) do u[1+#u] = fn(v)  end; return u end
 
 local function sum(t,fn,     n)
-  n=0; for _,x in pairts(t) do n=n+(fn and fn(x) or x) end; return n end
+  n=0; for _,x in pairs(t) do n=n+(fn and fn(x) or x) end; return n end
 
 local function adds(it,t)
   for _,x in pairs(t) do it:add(x) end; return it end
@@ -190,7 +191,7 @@ function DATA:add(row)
 	  self.cols= COLS:new(row) end end 
 
 function DATA:clone(rows) 
-  return adds(DATA(self.cols.names),rows) end
+  return adds(adds(DATA:new(), {self.cols.names}),rows) end
     
 function DATA:loglike(row, nall, nh)
   local prior,out,tmp
@@ -235,8 +236,11 @@ function EG.all()
 
 function EG.any(  a)
   a = {10,20,30,40,50,60}
-  for i=1,2 do
-	  map({any(a), many(a,3), shuffle(a), keysort(a, function(x) return -x end)},oo) end end
+	oo(map({any(a), many(a,3),shuffle(a),keysort(a,function(x) return -x end)},
+     o)) end 
+
+function EG.sum()
+  assert(210 == sum{10,20,30,40,50,60}) end
 
 function EG.split(    a)
   a={10,20,30,40,50,60}
@@ -250,10 +254,11 @@ function EG.sort(    t)
   oo(t) end
 
 function EG.num(    n,N) 
-  N = function(mu,sd) return (mu or 0)+(sd or 1)*sqrt(-2*log(R()))*cos(2*pi*R()) end
+  N = function(mu,sd) 
+        return (mu or 0)+(sd or 1)*sqrt(-2*log(R()))*cos(2*pi*R()) end
   n = NUM:new()
-	for _ = 1,1000 do n:add( N(10,2) ) end
-	assert(10-n.mu < 0.1 and 2-n.sd < 0.03) end
+  for _ = 1,1000 do n:add( N(10,2) ) end
+  assert(10-n.mu < 0.1 and 2-n.sd < 0.03) end
 
 function EG.sym(    s) 
   s = adds(SYM:new(), {"a","a","a","a","b","b","c"})
@@ -261,8 +266,11 @@ function EG.sym(    s)
 
 function EG.csv(   d, n)
   n=0
-  for row in csv(the.train) do n=n+1 ; if n==1 or n % 30==0 then oo(row) end end end
+  for row in csv(the.train) do n=n+1 ; if n==1 or n % 90==0 then oo(row) end end end
 
 ----------------- ----------------- ----------------- ----------------- -----------------  
 math.randomseed(the.rseed)
-map(arg, function(s) if EG[s:sub(3)] then EG[s:sub(3)]() end end)
+map(arg, function(s) 
+           if EG[s:sub(3)] then EG[s:sub(3)]() end 
+         end)
+return {SYM=SYM, NUM=NUM, COLS=COLS, DATA=DATA}

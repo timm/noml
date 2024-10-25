@@ -9,6 +9,8 @@ tHis code is about _less, but better_, analytics  where "better"= faster, cheape
   examples (where "best"  can be  defined by  multiple goals). 
         
 ### For this code
+
+
 - The raw source files are in markdown, where
   type annotations are allowed for function arguments and return types.  In those annotations "?" denotes
    "optional argument" A tiny pre-processor[^md2lua] generates
