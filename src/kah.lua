@@ -20,6 +20,7 @@ OPTIONS:
   -p p          distance coeffecient     = 2
   -r rseed      random seed              = 1234567891
   -s start      init number of samples   = 4
+  -S Stop       max number of labellings = 30
   -H Holdout    testing hold our ratio   = .33
   -t train      data                     = ../../moot/optimize/misc/auto93.csv 
 ]]
@@ -119,6 +120,14 @@ local function csv(file,     src)
     if   not s 
     then if src then io.close(src) end 
     else t={}; for s1 in s:gmatch"([^,]+)" do push(t,coerce(s1)) end; return t end end end
+
+local function datas(      i)
+  i=0
+  return function()
+    while i<#arg do
+      i = i+1
+      if arg[i]:find"csv" then
+        return arg[i], DATA:new():read(arg[i]) end end end end
 
 -- ### Thing to string
 
@@ -246,21 +255,19 @@ function DATA:loglike(row, nall, nh)
        out = out + log(tmp) end end
   return out end
 
-function DATA:ydist(row)
-  local d = 0
-  for _,col in pairs(self.cols.y) do
-    d = d + (abs(col:norm(row[col.at]) - col.goal))^the.p end
-  return (d/#self.cols.y)^(1/the.p) end
+function DATA:ydist(row, D)
+  D = function(y) return (abs(y:norm(row[y.at]) - y.goal))^the.p end
+  return (sum(self.cols.y,D) /#self.cols.y)^(1/the.p) end
 
 -- _DATA:active() --> list,list_
-function DATA:active()
-  local Y,B,R,BR,rows,n1,train,test,todo,done,best,rest,b2,a,b
+function DATA:acquire()
+  local Y,B,R,BR,test,train,todo,done,best,rest
   Y          = function(r) return self:ydist(r) end
   B          = function(r) return best:loglike(r, #done, 2) end
   R          = function(r) return rest:loglike(r, #done, 2) end
   BR         = function(r) return B(r) - R(r) end
-  test,train = split(shuffle(self.rows), (the.Holdout * #done))
-  todo,done  = split(train, the.start)
+  test,train = split(shuffle(self.rows), (the.Holdout * #self.rows))
+  done,todo  = split(train, the.start)
   while true do
     done = keysort(done,Y)
     if #done > the.Stop or #todo < 5 then break end
@@ -299,6 +306,8 @@ local function bootstrap(y0,z0)
     n = n + (this:delta(that) > delta0 and 1 or 0) end
   return n / b >= the.conf end
 
+local function same(y,z)
+  return cliffs(y,z) and bootstrap(y,z) end
 ---------------- ----------------- ----------------- ----------------- -----------------  
 local EG={}
 
@@ -361,9 +370,28 @@ function EG.like(   d,n)
 function EG.acquire()
   d = DATA:new():read(the.train) 
   train,test = d:acquire() 
-  print(d:ydist(train), d:ydist(test))
-  end
-  
+  print(d:ydist(train), d:ydist(test)) end
+
+function EG.acquire(     d,y,trains,tests,train,test,r,asIs,num0,num1,num2,eps,diff)
+  r = 20
+  for file,d in datas(arg) do
+      Y= function(r) return d:ydist(r) end
+      asIs = adds(NUM:new(), map(d.rows, Y))
+      for _,n in pairs{15,30,50,80,120} do
+        the.Stop=n
+        trains,tests = {},{}
+        for i=1, r do
+          train,test = d:acquire() 
+          push(trains,Y(train)) 
+          push(tests, Y(test)) end
+        num0=adds(NUM:new(), asIs)
+        num1=adds(NUM:new(), trains)
+        num2=adds(NUM:new(), tests)
+        eps = num0.sd *.35
+        diff=num1.mu - num2.mu
+        oo{file=file:gsub(".*/",""), n=the.Stop, eps=eps,mu0=asIs.mu, mu1=num1.mu, mu2=num2.mu,
+           delta = same(train,tests) and 0 or abs(diff) < eps and 0 or diff} end end end 
+      
 ----------------- ----------------- ----------------- ----------------- -----------------  
 help:gsub("%s+-%S%s(%S+)[^=]+=%s+(%S+)%s*\n", function(k,v) the[k]= coerce(v) end)
 if o(arg):find"kah.lua" then
