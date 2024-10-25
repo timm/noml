@@ -79,6 +79,7 @@ pretty:
 
 ~/tmp/%.html : %.lua
 	pycco -d ~/tmp $^
+	echo "p { text-align: right; }" >> ~/tmp/pycco.css
 	open $@
 
 ../docs/%.html : ../src/%.py

@@ -5,14 +5,14 @@
 -- All code has magic control params, which has to be controlled and tuned (se.config).
 -- License your code, least someone else takes it from yauo (se.license).
 local the,help = {},[[
-
+    
 how.lua : how to change your mind (using TPE + Bayes classifier)
 (c) 2024 Tim Menzies (timm@ieee.org). BSD-2 license
-
+    
 USAGE: 
   chmod +x how.lua
   ./how.lua [OPTIONS]
-
+    
 OPTIONS:
   -c conf       statistical confidence   = 0.01
   -C Cliffs     threshjold for cliffs    = 0.195
@@ -29,7 +29,7 @@ OPTIONS:
   -s start      init number of samples   = 4
   -S Stop       stopping for acquire     = 25
   -t train      data                     = ../../moot/optimize/misc/auto93.csv]]
-
+    
 -- There are many standard cliches; e.g. create update query (se.patterns).
 local big = 1E32
 local NUM, SYM, DATA, COLS, TREE, l = {}, {}, {}, {}, {}, {}
