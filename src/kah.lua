@@ -306,8 +306,6 @@ local function bootstrap(y0,z0)
     n = n + (this:delta(that) > delta0 and 1 or 0) end
   return n / b >= the.conf end
 
-local function same(y,z)
-  return cliffs(y,z) and bootstrap(y,z) end
 ---------------- ----------------- ----------------- ----------------- -----------------  
 local EG={}
 
@@ -360,6 +358,11 @@ function EG.data(   d)
   d = DATA:new():read(the.train) 
   assert(3184 == (sum(d.rows,function(r) return #r end))) end
 
+function EG.ydist(   d,n)
+  n,d = 0,DATA:new():read(the.train) 
+  for n,row in pairs(keysort(d.rows, function(r) return d:ydist(r) end)) do
+     if n==1 or n % 30==0 then print(n,o(row), d:ydist(row)) end end end
+
 function EG.like(   d,n)
   n,d = 0,DATA:new():read(the.train) 
   for _,row in pairs(d.rows) do 
@@ -372,34 +375,43 @@ function EG.acquire()
   train,test = d:acquire() 
   print(d:ydist(train), d:ydist(test)) end
 
-function EG.acquire(     d,y,trains,tests,train,test,r,asIs,num0,num1,num2,eps,diff)
+local SOME={}
+function SOME:new(txt, items)
+  return adds(new(SOME, {txt=txt, all={}, num=NUM:new()}), items) end
+
+function SOME:add(x)
+  self.num:add(x)
+  push(self.all, x) end 
+
+function SOME:diff(other,eps=0)
+  if cliffs(y,z) and bootstrap(y,z) then return 0 end
+  pooled = sqrt(((self.n-1)*self.sd^2 + (other.n-1)*other.sd^2) / (self.n + other.n-2))
+  d = self.all.num.mu - other.all.num.mu
+  return abs(d) < pooled*eps and 0 or d end
+
+function EG.acquires(     d,y,trains,tests,train,test,r,asIs,num0,num1,num2,eps,diff)
   r = 20
   for file,d in datas(arg) do
-      Y= function(r) return d:ydist(r) end
-      asIs = adds(NUM:new(), map(d.rows, Y))
-      for _,n in pairs{15,30,50,80,120} do
-        the.Stop=n
-        trains,tests = {},{}
-        for i=1, r do
-          train,test = d:acquire() 
-          push(trains,Y(train)) 
-          push(tests, Y(test)) end
-        num0=adds(NUM:new(), asIs)
-        num1=adds(NUM:new(), trains)
-        num2=adds(NUM:new(), tests)
-        eps = num0.sd *.35
-        diff=num1.mu - num2.mu
-        oo{file=file:gsub(".*/",""), n=the.Stop, eps=eps,mu0=asIs.mu, mu1=num1.mu, mu2=num2.mu,
-           delta = same(train,tests) and 0 or abs(diff) < eps and 0 or diff} end end end 
+    Y= function(r) return d:ydist(r) end
+    asIs = SOME:new("asIs", map(d.rows, Y))
+    for _,n in pairs{15,30,50,80,120} do
+      the.Stop=n
+      trains,tests = SOME:new("train"), SOME:new("test")
+      for i=1, r do
+        train,test = d:acquire() 
+        trains:add(Y(train)) 
+        tests:add(Y(test)) end
+      diff=train:diff(test)
+      oo{file=file:gsub(".*/",""), n=the.Stop, eps=eps,mu0=asIs.mu, 
+         mu1=num1.mu, mu2=num2.mu, diff=diff}
       
 ----------------- ----------------- ----------------- ----------------- -----------------  
 help:gsub("%s+-%S%s(%S+)[^=]+=%s+(%S+)%s*\n", function(k,v) the[k]= coerce(v) end)
-if o(arg):find"kah.lua" then
-   the = cli(the)
-   if the.help then os.exit(print(help)) end
-   math.randomseed(the.rseed or 1)
-   map(arg, function(s) 
-               if EG[s:sub(3)] then EG[s:sub(3)]() end 
-             end) 
-end
-return {SYM=SYM, NUM=NUM, COLS=COLS, DATA=DATA, the=the,help=help}
+
+if   o(arg):find"kah.lua" 
+then the = cli(the)
+     if the.help then os.exit(print(help)) end
+     math.randomseed(the.rseed or 1)
+     map(arg, function(s) if EG[s:sub(3)] then EG[s:sub(3)]() end end) end 
+
+return {SYM=SYM, NUM=NUM, COLS=COLS, DATA=DATA, the=the, help=help}

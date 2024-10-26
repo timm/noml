@@ -149,51 +149,48 @@ function DATA:like(row, nall, nh,     out,tmp,prior,likes) -- (list, int,int) ->
        out = out + log(tmp) end end
   return out end
 
-<<<<<<< HEAD
-function DATA:acquire(  labels,fun) -- (?tuple[list,float],?function) -> list,list[list]
-  local b4,todo,done,m = {},{},{},nil
-  labels = labels or {}
-  for row in pairs(labels) do l.push(b4,row) end
-  m = max(1, the.start - #b4)
-  for i,row in pairs(l.shufflex(b4)) do 
-    l.push(i<=m and todo or done, row) end
-  fun = fun or function(b,r) return b + b -r end,
-  self:acquire1(
-     todo, done,
-     function(r)    return  fun(best.like(r #done, 2), rest.like(r, #done, 2)) enda,
-     function(r)    labels[r] = labels[r] or self:ydist(r); return labels[r] end,
-     function(rows) return self.ydists(self.clone(rows)).rows end) end
-
-function DATA:acquire1(todo, done, fun, Y,order,     guess,top)
-  function guess(todo.    score,best,rest)
-    best, rest = self:clone(), self:clone()
-    for i,row in pairs(done) do 
-      (i <= sqrt(#done) and best or rest).add(row) end
-    table.sort(todo, function(r) return fun(r) end) end
-
-== add order ;onles
-  while #done <= the.Stop do
-    guess(todo)
-    l.push(done, table.remove(todo))
-    done = order(done)
-    if #todo <= 3 then break end end 
-  return done end
-=======
-  -- def valley(m1,std1,m2,std2):
-  -- """https://stackoverflow.com/questions/22579434/
-  -- python-finding-the-intersection-point-of-two-gaussian-curves"""
-  -- if std1 < 0.0001: return (m1+m2)/2
-  -- if std2 < 0.0001: return (m1+m2)/2
-  -- if abs(std1-std2) < 0.01:
-  --   return (m1+m2)/2
-  -- else:
-  --   a  = 1/(2*std1**2) - 1/(2*std2**2)
-  --   b  = m2/(std2**2) - m1/(std1**2)
-  --   c  = m1**2 /(2*std1**2) - m2**2 / (2*std2**2) - math.log(std2/std1)
-  --   x1 = (-b + math.sqrt(b**2 - 4 * a * c)) / (2 * a)
-  --   x2 = (-b - math.sqrt(b**2 - 4 * a * c)) / (2 * a)
-  --   return x1 if m1 <= x1 <= m2 else x2
-
+-- function DATA:acquire(  labels,fun) -- (?tuple[list,float],?function) -> list,list[list]
+--   local b4,todo,done,m = {},{},{},nil
+--   labels = labels or {}
+--   for row in pairs(labels) do l.push(b4,row) end
+--   m = max(1, the.start - #b4)
+--   for i,row in pairs(l.shufflex(b4)) do 
+--     l.push(i<=m and todo or done, row) end
+--   fun = fun or function(b,r) return b + b -r end,
+--   self:acquire1(
+--      todo, done,
+--      function(r)    return  fun(best.like(r #done, 2), rest.like(r, #done, 2)) enda,
+--      function(r)    labels[r] = labels[r] or self:ydist(r); return labels[r] end,
+--      function(rows) return self.ydists(self.clone(rows)).rows end) end
+--
+-- function DATA:acquire1(todo, done, fun, Y,order,     guess,top)
+--   function guess(todo.    score,best,rest)
+--     best, rest = self:clone(), self:clone()
+--     for i,row in pairs(done) do 
+--       (i <= sqrt(#done) and best or rest).add(row) end
+--     table.sort(todo, function(r) return fun(r) end) end
+--
+--   while #done <= the.Stop do
+--     guess(todo)
+--     l.push(done, table.remove(todo))
+--     done = order(done)
+--     if #todo <= 3 then break end end 
+--   return done end
+--   -- def valley(m1,std1,m2,std2):
+--   -- """https://stackoverflow.com/questions/22579434/
+--   -- python-finding-the-intersection-point-of-two-gaussian-curves"""
+--   -- if std1 < 0.0001: return (m1+m2)/2
+--   -- if std2 < 0.0001: return (m1+m2)/2
+--   -- if abs(std1-std2) < 0.01:
+--   --   return (m1+m2)/2
+--   -- else:
+--   --   a  = 1/(2*std1**2) - 1/(2*std2**2)
+--   --   b  = m2/(std2**2) - m1/(std1**2)
+--   --   c  = m1**2 /(2*std1**2) - m2**2 / (2*std2**2) - math.log(std2/std1)
+--   --   x1 = (-b + math.sqrt(b**2 - 4 * a * c)) / (2 * a)
+--   --   x2 = (-b - math.sqrt(b**2 - 4 * a * c)) / (2 * a)
+--   --   return x1 if m1 <= x1 <= m2 else x2
+--
 local function _focus(t,b,r,    l,m)
   b,r = exp(b), exp(r)
   l = 0.25
@@ -228,7 +225,6 @@ function DATA:acquire(  labels,fun, -- (?tuple[list,float],?function) -> list[li
       l.push(done, table.remove(todo,1)) 
       l.push(done, table.remove(todo))  end
     end end -- label the best todo
->>>>>>> e2b68159625f67217d3680e72053679c47f6aa7e
 
 -- ## Dists
 
@@ -250,11 +246,18 @@ function DATA:xdist(row1,row2,    d,n) -- (list) -> number
     n = n + 1 end
   return (d/n)^(1/the.p) end
 
--- Chebyshev distance is max distance of any one attribute to another (ml.dist). 
-function DATA:ydist(row,    d) -- (list) -> number
-  d = 0
-  for _,y in pairs(self.cols.y) do d = max(d, abs(y:norm(row[y.at]) - y.goal)) end
-  return d end
+-- -- Chebyshev distance is max distance of any one attribute to another (ml.dist). 
+-- function DATA:ydist(row,    d) -- (list) -> number
+--   d = 0
+--   for _,y in pairs(self.cols.y) do d = max(d, abs(y:norm(row[y.at]) - y.goal)) end
+--   return d end
+--
+function DATA:ydist(row1,    d,n) -- (list) -> number
+  n,d = 0,0
+  for _,y in pairs(self.cols.y) do 
+    d = d + (y:norm(row1[y.at]) - y.goal)^the.p
+    n = n + 1 end
+  return (d/n)^(1/the.p) end
 
 function DATA:ydists() -- () -> DATA
   self.rows = l.keysort(self.rows, function(r) return self:ydist(r) end)
