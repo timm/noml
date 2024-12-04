@@ -177,9 +177,16 @@ class eg:
     print("kmeans", (t2-t1)/10**9/r)
 
   def rkmeans(_):
-    d = DATA().csv(the.train); # print(d.div())
-    datas = d.kmeans(k=4,loops=4,samples=512)
-    [print(data.mid()) for data in sorted(datas, key=lambda d: d.yDist(d.mid()))]
+    d0 = DATA().csv(the.train); # print(d.div())
+    D  = lambda row: d0.yDist(row)
+    print(adds([D(row) for row in d0.rows]).lo)
+    dnow = d0
+    for _ in range(4):
+        print("\n",len(dnow.rows))
+        datas = dnow.kmeans(k=4,loops=10,samples=512)
+        [ print(len(data.rows)) for data in datas]
+        dnow = sorted(datas, key=lambda data:D(data.mid()))[0]
+    print(dnow.mid(), len(dnow.rows), D(dnow.mid()))
    
   def bins(_):
     d = DATA().csv(the.train); # print(d.div())
