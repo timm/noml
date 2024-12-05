@@ -51,7 +51,7 @@ function Num.add(i,x)
     i.hi = math.max(i.hi, x)
     i.lo = math.min(i.lo, x) end end
 
-local function adds(t,i)
+local function adds(t,  i)
   i = i or (t[1]=="number" and Num or Sym)()
   for x in t do i:add(x) end
   return end
