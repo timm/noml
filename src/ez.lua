@@ -1,4 +1,4 @@
-local l=require"rolllib"
+local l=require"ezlib"
 local coerce,new,push,sort,map,o,csv = l.coerce, l.new,l.push,l.sort,l.map,l.o,l.csv
 
 -----------------------------------------------------------------------------------------
@@ -56,17 +56,5 @@ local function adds(t,  i)
   i = i or (type(t[1])=="number" and Num or Sym):new()
   for _,x in pairs(t) do i:add(x) end
   return i end
-
------------------------------------------------------------------------------------------
-local eg={}
-
-function eg.one(s) print(coerce(s)) end
-
-function eg.norm(_,    t,n)
-  n = Num:new(); for _=1,500 do n:add(l.normal(10,1))  end
-  print(n.mu) end
-
-for k,v in pairs(arg) do
-  if eg[v:sub(3)] then eg[v:sub(3)](arg[k+1] or "") end end 
 
 return {Sym=Sym, Num=Num, Data=Data}
