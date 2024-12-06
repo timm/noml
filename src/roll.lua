@@ -53,7 +53,7 @@ function Num.add(i,x,     d)
     i.lo = math.min(i.lo, x) end end
 
 local function adds(t,  i)
-  i = i or ((type(t[1])=="number" and Num or Sym):new())
+  i = i or (type(t[1])=="number" and Num or Sym):new()
   for _,x in pairs(t) do i:add(x) end
   return i end
 
