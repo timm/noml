@@ -10,7 +10,8 @@ function Sym:new(s,at)
 
 function Num:new(s,at) 
   return new(Num, {txt=s or "", at=at or 0, n=0, 
-                   mu=0, m2=0, sd=0, hi= -math.huge, lo=math.huge}) end
+                   mu=0, m2=0, sd=0, hi= -math.huge, lo=math.huge,
+                   goal = (s or ""):find"-$" and 0 or 1}) end
 
 function Data:new(src)
   return new(Data,{rows={}, cols=Cols:new(src())}):adds(src)  end
@@ -19,10 +20,11 @@ function Cols:new(names)
   return new(Cols {names={},all={},x={},y={}}):adds(names) end
 
 -----------------------------------------------------------------------------------------
-function Cols.adds(i,names,   col)
+function Cols.adds(i,names)
+  i.names = names
   for at,s in pairs(names) do
-    col = push(i.all, (s:find"^[A-Z]" and Num or Sym):new(s,at)) 
-    push(s:find"[!+-]$" and i.y or i.x, col) end 
+    push(s:find"[!+-]$" and i.y or i.x, 
+      push(i.all, (s:find"^[A-Z]" and Num or Sym):new(s,at))) end
   return i end
 
 function Data.add(i,row) 
