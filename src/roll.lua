@@ -52,9 +52,9 @@ function Num.add(i,x,     d)
     i.hi = math.max(i.hi, x)
     i.lo = math.min(i.lo, x) end end
 
-local function addz(t,  i)
+local function adds(t,  i)
   i = i or ((type(t[1])=="number" and Num or Sym):new())
-  for x in pairs(t) do i:add(x) end
+  for _,x in pairs(t) do i:add(x) end
   return i end
 
 -----------------------------------------------------------------------------------------
@@ -62,12 +62,9 @@ local eg={}
 
 function eg.one(s) print(coerce(s)) end
 
-function eg.norm(_,    t,num)
-  t={}; for _=1,50 do push(t, l.normal(10,1)) end
-  num=Num:new()
-  for _=1,50 do num:add(l.normal(10,1))  end
-  print(addz(t).sd)
-  print(num.sd) end
+function eg.norm(_,    t,n)
+  n = Num:new(); for _=1,500 do n:add(l.normal(10,1))  end
+  print(n.mu) end
 
 for k,v in pairs(arg) do
   if eg[v:sub(3)] then eg[v:sub(3)](arg[k+1] or "") end end 
