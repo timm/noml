@@ -85,16 +85,16 @@ function Data.ydist(i,row,     DIST)
   DIST = function(c) return math.abs(c:norm(row[c.at]) - c.goal)^the.p end
   return (sum(i.cols.y,DIST) / #i.cols.y)^1/the.p end
  
- function Data.diverse(i,k,       t,tmp,row1,row2)
-   t = {l.any(i.rows)}
-   for _ = 2,k do
-     tmp={}
-     for _=1,the.samples do
-       row1 = l.any(i.rows)
-       row2 = l.min(t, function(row2) return i:xdist(row1,row2) end)
-       tmp[row1] = i:xdist(row1,row2)^2 end
-     push(t, l.sample(tmp)) end 
-   return t end 
+function Data.diverse(i,k,       t,tmp,row1,row2)
+  t = {l.any(i.rows)}
+  for _ = 2,k do
+    tmp={}
+    for _=1,the.samples do
+      row1 = l.any(i.rows)
+      row2 = l.min(t, function(row2) return i:xdist(row1,row2) end) -- who ru closest 2?
+      tmp[row1] = i:xdist(row1,row2)^2 end -- remember just how close you are
+    push(t, l.sample(tmp)) end 
+  return t end 
 
 -----------------------------------------------------------------------------------------
 return {Sym=Sym, Num=Num, Data=Data,adds=adds}

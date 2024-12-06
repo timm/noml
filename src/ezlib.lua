@@ -37,13 +37,6 @@ function l.keysort(t,FUN,     DECORATE,UNDECORATE)
   UNDECORATE = function(x) return x[2] end
   return l.map(l.sort(l.map(t,DECORATE),l.lt(1)), UNDECORATE) end
 
-function l.min(t,FUN,      n,lo,out)
-  lo = math.huge
-  for _,x in pairs(t) do
-    n=FUN(x)
-    if n < lo then lo,out = n,x end end
-  return out end
-
 function l.shuffle(t,    j) --> list
   for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
   return t end
@@ -57,6 +50,13 @@ function l.maps(t,FUN,...)
 
 function l.sum(t,FUN,...)
   local n=0; for _,v in pairs(t) do n=n+FUN(v,...) end; return n end 
+
+function l.min(t,FUN,      n,lo,out)
+  lo = math.huge
+  for _,x in pairs(t) do
+    n=FUN(x)
+    if n < lo then lo,out = n,x end end
+  return out end
 
 -- ## String to things
 function l.coerce(s) 

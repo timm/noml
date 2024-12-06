@@ -89,7 +89,7 @@ pretty:
 ~/tmp/ez.pdf : ez.lua  ## make pdf
 	@mkdir -p docs
 	@echo "pdf-ing $@ ... "
-	@a2ps -bjr    -q                        \
+	@a2ps -b    -q                        \
 		--chars-per-line=90 \
     --left-title="" \
     --right-title="" \
@@ -98,9 +98,8 @@ pretty:
 		--highlight-level=normal  \
 		--columns 3                 \
 		--borders=no --pro=color --columns 3 \
-		--right-footer="" --left-footer=""    \
 		--pretty-print=../etc/lua.ssh             \
-		--footer="page %p."                     \
+		--footer=""                     \
 		-M letter -o $@.ps ez*.lua
 	@ps2pdf $@.ps $@; rm $@.ps
 
