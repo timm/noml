@@ -79,11 +79,11 @@ function Sym.dist(i,a,b)
 
 function Data.xdist(i,row1,row2,     DIST)
   DIST = function(c) return c:dist(row1[c.at],row2[c.at])^the.p end
-  return (sum(i.cols.x,DIST) / #i.cols.x)^1/the.p end
+  return (sum(i.cols.x,DIST) / #i.cols.x) ^ (1/the.p) end
 
 function Data.ydist(i,row,     DIST)
   DIST = function(c) return math.abs(c:norm(row[c.at]) - c.goal)^the.p end
-  return (sum(i.cols.y,DIST) / #i.cols.y)^1/the.p end
+  return (sum(i.cols.y,DIST) / #i.cols.y) ^ (1/the.p) end
  
 function Data.diverse(i,k,       t,tmp,row1,row2)
   t = {l.any(i.rows)}
@@ -93,7 +93,7 @@ function Data.diverse(i,k,       t,tmp,row1,row2)
       row1 = l.any(i.rows)
       row2 = l.min(t, function(row2) return i:xdist(row1,row2) end) -- who ru closest 2?
       tmp[row1] = i:xdist(row1,row2)^2 end -- remember just how close you are
-    push(t, l.sample(tmp)) end 
+    push(t, l.sample(tmp)) end -- stochastically sample one item from tmp
   return t end 
 
 -----------------------------------------------------------------------------------------

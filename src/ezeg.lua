@@ -39,12 +39,11 @@ function eg.sample(_, it,num)
   for _,row in pairs(it:diverse(20)) do 
      print(it:ydist(row)) end end
   
---------------------------------------------------------
+-----------------------------------------------------------------------------------------
 local nothing =true
 for k,v in pairs(arg) do
   math.randomseed(1234567891)
-  if eg[v:sub(3)] then nothing=false; eg[v:sub(3)](arg[k+1] or "") end 
-  end 
+  if eg[v:sub(3)] then nothing=false; eg[v:sub(3)](arg[k+1] or "") end end 
 
 if nothing then
   print("\nUsage:")
