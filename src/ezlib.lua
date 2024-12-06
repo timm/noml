@@ -15,8 +15,28 @@ function l.items(t,    i)
     if i <= #t then return t[i] end end end
 
 -- ### Sorting
+function l.any(t) return t[math.random(#t)] end
+
+function l.lt(x) return function(a,b) return a[x] < b[x] end end
+
 function l.sort(t,FUN) 
   table.sort(t,FUN); return t end
+
+function l.keysort(t,FUN,     DECORATE,UNDECORATE)
+  DECORATE   = function(x) return {FUN(x),x} end
+  UNDECORATE = function(x) return x[2] end
+  return l.map(l.sort(l.map(t,DECORATE),l.lt(1)), UNDECORATE) end
+
+function l.min(t,FUN,      n,lo,out)
+  lo = math.huge
+  for _,x in pairs(t) do
+    n=FUN(x)
+    if n < lo then lo,out = n,x end end
+  return out end
+
+function l.shuffle(t,    j) --> list
+  for i = #t, 2, -1 do j = math.random(i); t[i], t[j] = t[j], t[i] end
+  return t end
 
 -- ### Mapping
 function l.map( t,FUN,...)
@@ -24,6 +44,9 @@ function l.map( t,FUN,...)
 
 function l.maps(t,FUN,...) 
   local u={}; for k,v in pairs(t) do u[1+#u]=FUN(k,v,...) end; return u end
+
+function l.sum(t,FUN,...)
+  local n=0; for _,v in pairs(t) do n=n+FUN(v,...) end; return n end 
 
 -- ## String to things
 function l.coerce(s) 
