@@ -1,5 +1,9 @@
 local l={}
 
+function l.normal(mu,sd,    r)
+  return (mu or 0) + (sd or 1) * math.sqrt(-2*math.log(math.random())) 
+                               * math.cos(2*math.pi*math.random()) end
+
 function l.coerce(s) 
   return math.tointeger(s) or tonumber(s) or s:match"^%s*(.-)%s*$" end
 
