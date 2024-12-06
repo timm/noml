@@ -27,7 +27,7 @@ function Cols.adds(i,names,   col)
 
 function Data.add(i,row) 
   push(i.rows,row)
-  for _,c in pairs(self.cols.all) do c:add(row[c.at]) end
+  for _,c in pairs(i.cols.all) do c:add(row[c.at]) end
   return row end
 
 function Data.adds(i,   src)
@@ -41,7 +41,7 @@ function Sym.add(i,x)
     if i.has[x] > i.most then 
       i.most,i.mode=i.has[x], x end end end
 
-function Num.add(i,x)
+function Num.add(i,x,     d)
   if x ~= "?" then
     i.n  = i.n + 1
     d    = x - i.mu
