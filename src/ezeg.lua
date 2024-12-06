@@ -33,11 +33,12 @@ function eg.xdist(_, it)
   for k,row in pairs(l.keysort(it.rows,DIST)) do
     if k==1 or k % 60==0 then print(k,o(row), o(DIST(row))) end end end
 
-function eg.sample(_, it,num)
+function eg.sample(_, it,num,Y)
   it= Data:new(csv("../../moot/optimize/misc/auto93.csv")) 
-  print( ez.adds(map(it.rows,function(row) return it:ydist(row) end)))
-  for _,row in pairs(it:diverse(20)) do 
-     print(it:ydist(row)) end end
+  Y = function(row) return it:ydist(row) end
+  print( ez.adds(map(it.rows,Y)))
+  for i = 1,20 do
+     print(Y(l.keysort(it:diverse(12),Y)[1])) end end 
   
 -----------------------------------------------------------------------------------------
 local nothing =true

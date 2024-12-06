@@ -17,17 +17,20 @@ function l.items(t,    i)
 -- ## Sampling
 function l.any(t) return t[math.random(#t)] end
 
-function l.sample(t,    all,r,u,x,n)
+function l.biasPick(t,    all,r,u,x,n,anything)
   all,u=0,{}; for x,n in pairs(t) do u[1+#u]= {x,n}; all=all+n end
   r = math.random()
-  for _,xn in pairs(l.sort(u,l.lt(2))) do
+  for _,xn in pairs(l.sort(u,l.gt(2))) do
     x,n = xn[1],xn[2]
+    anything = anything or x
     r = r - n/all
     if r <= 0 then return x end end 
-  return x end
+  return anything end
 
 -- ## Sorting
 function l.lt(x) return function(a,b) return a[x] < b[x] end end
+function l.gt(x) return function(a,b) return a[x] > b[x] end end
+
 
 function l.sort(t,FUN) 
   table.sort(t,FUN); return t end
