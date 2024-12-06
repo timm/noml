@@ -85,16 +85,15 @@ function Data.ydist(i,row,     DIST)
   DIST = function(c) return math.abs(c:norm(row[c.at]) - c.goal)^the.p end
   return (sum(i.cols.y,DIST) / #i.cols.y)^1/the.p end
  
- function Data.sample(i,k,       t,row1,row2,tmp)
+ function Data.diverse(i,k,       t,tmp,row1,row2)
    t = {l.any(i.rows)}
    for _ = 2,k do
      tmp={}
-     for _=1,(the.samples * 4//3) do 
+     for _=1,the.samples do
        row1 = l.any(i.rows)
        row2 = l.min(t, function(row2) return i:xdist(row1,row2) end)
-       d = i:xdist(row1,row2)
-       push(tmp, {row= row1, dist= d}) end
-     push(t, sort(tmp,l.lt"dist")[the.samples].row) end 
+       tmp[row1] = i:xdist(row1,row2)^2 end
+     push(t, l.sample(tmp)) end 
    return t end 
 
 -----------------------------------------------------------------------------------------

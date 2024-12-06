@@ -14,9 +14,19 @@ function l.items(t,    i)
     i = (i or 0) + 1
     if i <= #t then return t[i] end end end
 
--- ### Sorting
+-- ## Sampling
 function l.any(t) return t[math.random(#t)] end
 
+function l.sample(t,    all,r,u,x,n)
+  all,u=0,{}; for x,n in pairs(t) do u[1+#u]= {x,n}; all=all+n end
+  r = math.random()
+  for _,xn in pairs(l.sort(u,l.lt(2))) do
+    x,n = xn[1],xn[2]
+    r = r - n/all
+    if r <= 0 then return x end end 
+  return x end
+
+-- ## Sorting
 function l.lt(x) return function(a,b) return a[x] < b[x] end end
 
 function l.sort(t,FUN) 
@@ -52,6 +62,14 @@ function l.sum(t,FUN,...)
 function l.coerce(s) 
   return math.tointeger(s) or tonumber(s) or s:match"^%s*(.-)%s*$" end
 
+function l.csv(file,     CELLS,src)
+  CELLS = function (s,t)
+            for s1 in s:gmatch"([^,]+)" do l.push(t,l.coerce(s1)) end; return t end
+  src = io.input(file)
+  return function(s)
+    s = io.read()
+    if s then return CELLS(s,{}) else io.close(src) end end end 
+
 -- ## Thing to string
 l.fmt = string.format
 
@@ -61,14 +79,6 @@ function l.o(x,     FUN,PUB)
   PUB = function(k) return not l.o(k):find"^_" end
   FUN = function(k,v) if PUB(k) then return l.fmt(":%s %s",k, l.o(x[k])) end end
   return "{" .. table.concat(#x>0 and l.map(x,l.o) or l.sort(l.maps(x,FUN))," ").."}" end
-
-function l.csv(file,     CELLS,src)
-  CELLS = function (s,t)
-            for s1 in s:gmatch"([^,]+)" do l.push(t,l.coerce(s1)) end; return t end
-  src = io.input(file)
-  return function(s)
-    s = io.read()
-    if s then return CELLS(s,{}) else io.close(src) end end end 
 
 -- ## Polymorphism
 function l.new(meta, t) 

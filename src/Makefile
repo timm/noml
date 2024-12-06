@@ -86,6 +86,24 @@ pretty:
 	echo "$< ... "
 	gawk -f etc/py2html.awk $< | pandoc $(Pandoc) -o $@
 
+~/tmp/ez.pdf : ez.lua  ## make pdf
+	@mkdir -p docs
+	@echo "pdf-ing $@ ... "
+	@a2ps -bjr    -q                        \
+		--chars-per-line=90 \
+    --left-title="" \
+    --right-title="" \
+	  -A virtual  \
+		--line-numbers=1                    \
+		--highlight-level=normal  \
+		--columns 3                 \
+		--borders=no --pro=color --columns 3 \
+		--right-footer="" --left-footer=""    \
+		--pretty-print=../etc/lua.ssh             \
+		--footer="page %p."                     \
+		-M letter -o $@.ps ez*.lua
+	@ps2pdf $@.ps $@; rm $@.ps
+
 ~/tmp/%.pdf : %.lua  ## make pdf
 	@mkdir -p docs
 	@echo "pdf-ing $@ ... "
