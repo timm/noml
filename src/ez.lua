@@ -1,8 +1,8 @@
 local l=require"ezlib"
 local coerce,new,push,sort,map,o,csv = l.coerce, l.new,l.push,l.sort,l.map,l.o,l.csv
-local sum= l.sum
+local sum = l.sum
 
-local the= {p=2,samples=128}
+local the = {k=1, m=2, p=2, samples=128}
 -----------------------------------------------------------------------------------------
 local Sym,Num,Cols,Data = {},{},{},{}
 
@@ -29,7 +29,8 @@ function Cols.adds(i,names,   col)
   i.names = names
   for at,s in pairs(names) do
     col = push(i.all, (s:find"^[A-Z]" and Num or Sym):new(s,at))
-    push(s:find"[!+-]$" and i.y or i.x, col) end
+    if not s:find"X$" then
+      push(s:find"[!+-]$" and i.y or i.x, col) end end
   return i end
 
 function Data.add(i,row) 
@@ -95,6 +96,22 @@ function Data.diverse(i,k,       t,u,r1,r2)
       t[r1]= i:xdist(r1,r2)^2 end -- how close are you
     push(u, l.biasPick(t)) end -- stochastically pick one item 
   return u end 
+
+-----------------------------------------------------------------------------------------
+function Sym.like(i,x,prior)
+  return x=="?" and 0 or ((i.has[x] or 0) + the.m*prior) / (i.n + the.m) end
+
+function Num.like(i,x,_ ,      v,tmp)
+  if x=="?" then return 0 end
+  v = i.sd^2 + 1/1E32
+  tmp = math.exp(-1*(x - i.mu)^2/(2*v)) / (2*math.pi*v) ^ 0.5
+  return math.max(0,math.min(1, tmp + 1/1E32)) end
+
+function Data.loglike(i,row, nall, nh,          prior,F,L)
+  prior = (#i.rows + the.k) / (nall + the.k*nh)
+  F     = function(col) return L(col:like(row[col.at], prior)) end 
+  L     = function(n) return n>0 and math.log(n) or 0 end
+  return L(prior) + l.sum(i.cols.x, F) end
 
 -----------------------------------------------------------------------------------------
 return {Sym=Sym, Num=Num, Data=Data,adds=adds}

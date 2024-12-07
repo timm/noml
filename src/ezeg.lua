@@ -21,11 +21,17 @@ function eg.data(_, it)
   print(#it.rows,#it.cols.x,it.cols.x[1])
   end
 
-function eg.ydist(_, it)
+function eg.ydist(_, it,DIST)
   it= Data:new(csv("../../moot/optimize/misc/auto93.csv")) 
   DIST = function(row) return it:ydist(row) end
   for k,row in pairs(l.keysort(it.rows,DIST)) do
     if k==1 or k % 60==0 then print(k,o(row), o(DIST(row))) end end end
+
+function eg.bayes(_, it,BAUES)
+  it= Data:new(csv("../../moot/optimize/misc/auto93.csv")) 
+  BAYES = function(row) return it:loglike(row, 1000,2) end
+  for k,row in pairs(l.keysort(it.rows,BAYES)) do
+    if k==1 or k % 60==0 then print(k,o(row), o(BAYES(row))) end end end
 
 function eg.xdist(_, it)
   it= Data:new(csv("../../moot/optimize/misc/auto93.csv")) 
