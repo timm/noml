@@ -7,7 +7,7 @@ local eg={}
 
 function eg.one(s) print(l.coerce(s or "")) end
 
-function eg.norm(_,    n)
+function eg.num(_,    n)
   for _,r in pairs{10,20,40,80,160} do
     n = Num:new(); for _=1,r do n:add(l.normal(10,1))  end
     print(r,o{mu=n.mu, sd=n.sd}) end end
