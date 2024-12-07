@@ -1,10 +1,14 @@
 local l=require"ezlib"
 local coerce,new,push,sort,map,o,csv = l.coerce, l.new,l.push,l.sort,l.map,l.o,l.csv
 local sum = l.sum
+local abs,cos,log,sqrt,huge = math.abs,math.cos, math.log, math.sqrt,math.huge
+local pi, exp, max,min = math.pi, math.exp, math.max, math.min
 
-local the = {k=1, m=2, p=2, samples=128}
+local the = {k=1, m=2, p=2, samples=32}
 -----------------------------------------------------------------------------------------
 local Sym,Num,Cols,Data = {},{},{},{}
+local ez={Sym=Sym, Num=Num, Data=Data,
+          the=the}
 
 function Sym:new(s,at) 
   return new(Sym, {txt=s or "", at=at or 0,n=0, 
@@ -12,7 +16,7 @@ function Sym:new(s,at)
 
 function Num:new(s,at) 
   return new(Num, {txt=s or "", at=at or 0, n=0, 
-                   mu=0, m2=0, sd=0, hi= -math.huge, lo=math.huge,
+                   mu=0, m2=0, sd=0, hi= -huge, lo=huge,
                    goal = (s or ""):find"-$" and 0 or 1}) end
 
 function Cols:new(names)
@@ -55,10 +59,10 @@ function Num.add(i,x,     d)
     i.mu = i.mu + d / i.n
     i.m2 = i.m2 + d * (x - i.mu)
     i.sd = i.n < 2 and 0 or (i.m2/(i.n - 1))^.5
-    i.hi = math.max(i.hi, x)
-    i.lo = math.min(i.lo, x) end end
+    i.hi = max(i.hi, x)
+    i.lo = min(i.lo, x) end end
 
-local function adds(t,  i)
+function ez.adds(t,  i)
   i = i or (type(t[1])=="number" and Num or Sym):new()
   for _,x in pairs(t) do i:add(x) end
   return i end
@@ -67,12 +71,20 @@ local function adds(t,  i)
 function Num.norm(i,x) return x=="?" and x or (x - i.lo)/(i.hi - i.lo + 1/1E32) end
 function Sym.norm(i,x) return x end
 
+function Num.delta(i,j)
+  return abs(i.mu - j.mu) / ((1E-32 + i.sd^2/i.n + j.sd^2/j.n)^.5) end
+
+function Num.cohen(i,j,   d,      sd)
+  sd = (((i.n-1) * i.sd^2 + (j.n-1) * j.sd^2) / (i.n+j.n-2))^0.5 
+  return abs(i.mu - j.mu) <= (d or 0.35) * sd end
+
+-----------------------------------------------------------------------------------------
 function Num.dist(i,a,b)
   if a=="?" and b=="?" then return 1 end
   a,b = i:norm(a), i:norm(b)
   a = a ~= "?" and a or (b<0.5 and 1 or 0)
   b = b ~= "?" and b or (a<0.5 and 1 or 0)
-  return math.abs(a-b) end
+  return abs(a-b) end
 
 function Sym.dist(i,a,b) 
   if a=="?" and b=="?" then return 1 end
@@ -83,10 +95,10 @@ function Data.xdist(i,row1,row2,     DIST)
   return (sum(i.cols.x, DIST) / #i.cols.x) ^ (1/the.p) end
 
 function Data.ydist(i,row,     DIST)
-  DIST = function(c) return math.abs(c:norm(row[c.at]) - c.goal)^the.p end
+  DIST = function(c) return abs(c:norm(row[c.at]) - c.goal)^the.p end
   return (sum(i.cols.y, DIST) / #i.cols.y) ^ (1/the.p) end
  
-function Data.diverse(i,k,       t,u,r1,r2)
+function Data.some(i,k,       t,u,r1,r2)
   u = {l.any(i.rows)}
   for _ = 2,k do
     t={}
@@ -94,7 +106,7 @@ function Data.diverse(i,k,       t,u,r1,r2)
       r1 = l.any(i.rows)
       r2 = l.min(u, function(ru) return i:xdist(r1,ru) end) -- who ru closest 2?
       t[r1]= i:xdist(r1,r2)^2 end -- how close are you
-    push(u, l.biasPick(t)) end -- stochastically pick one item 
+    push(u, l.prefer(t)) end -- stochastically pick one item 
   return u end 
 
 -----------------------------------------------------------------------------------------
@@ -104,14 +116,14 @@ function Sym.like(i,x,prior)
 function Num.like(i,x,_ ,      v,tmp)
   if x=="?" then return 0 end
   v = i.sd^2 + 1/1E32
-  tmp = math.exp(-1*(x - i.mu)^2/(2*v)) / (2*math.pi*v) ^ 0.5
-  return math.max(0,math.min(1, tmp + 1/1E32)) end
+  tmp = exp(-1*(x - i.mu)^2/(2*v)) / (2*pi*v) ^ 0.5
+  return max(0,min(1, tmp + 1/1E32)) end
 
 function Data.loglike(i,row, nall, nh,          prior,F,L)
   prior = (#i.rows + the.k) / (nall + the.k*nh)
   F     = function(col) return L(col:like(row[col.at], prior)) end 
-  L     = function(n) return n>0 and math.log(n) or 0 end
+  L     = function(n) return n>0 and log(n) or 0 end
   return L(prior) + l.sum(i.cols.x, F) end
 
 -----------------------------------------------------------------------------------------
-return {Sym=Sym, Num=Num, Data=Data,adds=adds}
+return ez

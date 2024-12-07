@@ -1,7 +1,8 @@
 local l=require"ezlib"
 local ez=require"ez"
 local Data,Num = ez.Data,ez.Num
-local o,csv,map = l.o,l.csv,l.map
+local adds,o,csv,map = ez.adds,l.o,l.csv,l.map
+local cliffs,boot,cohen,same = l.cliffs,l.boot,l.cohen,l.same
 
 local eg={}
 
@@ -15,6 +16,18 @@ function eg.num(_,    n)
 function eg.csv(_, it)
   it = csv("../../moot/optimize/misc/auto93.csv") 
   for r in it do print(o(r)) end end
+
+function eg.stats0(_,    Y,t,u,m,n)
+  Y = function(s) return s and "y" or "." end
+  print("d\tclif\tboot\tsame\tcohen")
+  for d =1,1.2,0.02 do
+    t={}; for i=1,100 do t[1+#t] = l.normal(5,1) + l.normal(10,2)^2 end 
+    u={}; for i,x in pairs(t) do  u[i] = x*d end
+    m,n = ez.adds(t), ez.adds(u)
+    print(l.fmt("%.3f\t%s\t%s\t%s\t%s",
+             d,Y(cliffs(t,u)),Y(boot(t,u,adds)),Y(same(t,u,adds)),Y(m:cohen(n)))) end end
+
+-----------------------------------------------------------------------------------------
 
 function eg.data(_, it)
   it= Data:new(csv("../../moot/optimize/misc/auto93.csv")) 
@@ -43,12 +56,15 @@ function eg.sample(f, it,asis,tobe,Y,r)
   it= Data:new(csv(f or "../../moot/optimize/misc/auto93.csv")) 
   Y = function(row) return it:ydist(row) end
   asis= ez.adds(map(it.rows,Y))
-  for _,r in pairs{6,12,24,48} do
+  for _,r in pairs{6,12,24,48,96} do
+    l.shuffle(it.rows)
     tobe=Num:new()
-    for i = 1,20 do tobe:add(Y(l.keysort(it:diverse(r),Y)[1])) end 
+    for i = 1,20 do tobe:add(Y(l.keysort(it:some(r),Y)[1])) end 
     print(r,o{lo=asis.lo,mu={asis=asis.mu, tobe=tobe.mu},sd={asis=asis.sd, tobe=tobe.sd}}) end end
 
-  
+ function eg.all(_)
+   for _,k in pairs(l.keys(eg)) do 
+     if k ~= "all"  then math.randomseed(1234567891); eg[k](nil) end end end
 -----------------------------------------------------------------------------------------
 local nothing =true
 for k,v in pairs(arg) do
@@ -57,4 +73,4 @@ for k,v in pairs(arg) do
 
 if nothing then
   print("\nUsage:")
-  for k,_ in pairs(eg) do print("\tlua ezeg.py --"..k) end end
+  for _,k in pairs(l.keys(eg)) do print("\tlua ezeg.py --"..k) end end

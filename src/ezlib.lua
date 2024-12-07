@@ -14,10 +14,17 @@ function l.items(t,    i)
     i = (i or 0) + 1
     if i <= #t then return t[i] end end end
 
+function l.keys(t,    u)
+  u={}; for k,_ in pairs(t) do u[1+#u]=k end; return l.sort(u) end
+
 -- ## Sampling
 function l.any(t) return t[math.random(#t)] end
 
-function l.biasPick(t,    all,r,u,x,n,anything)
+function l.many(t,  n) 
+  n = n or #t
+  u={}; for j=1,(n or #t) do u[1+#u] = l.any(t) end; return u end
+
+function l.prefer(t,    all,r,u,x,n,anything)
   all,u=0,{}; for x,n in pairs(t) do u[1+#u]= {x,n}; all=all+n end
   r = math.random()
   for _,xn in pairs(l.sort(u,l.gt(2))) do
@@ -26,6 +33,32 @@ function l.biasPick(t,    all,r,u,x,n,anything)
     r = r - n/all
     if r <= 0 then return x end end 
   return anything end
+
+function l.cliffs(xs,ys,  delta,      lt,gt,n)
+  lt,gt,n,delta = 0,0,0,delta or 0.197
+  for _,x in pairs(xs) do
+      for _,y in pairs(ys) do
+        n = n + 1
+        if y > x then gt = gt + 1 end
+        if y < x then lt = lt + 1 end end end
+  return math.abs(gt - lt)/n <= delta end -- 0.195 
+      
+-- Taken from non-parametric significance test From Introduction to Bootstrap,
+-- Efron and Tibshirani, 1993, chapter 20. https://doi.org/10.1201/9780429246593
+-- Checks how rare are  the observed differences between samples of this data.
+-- If not rare, then these sets are the same.
+function l.boot(y0,z0,adds,  straps,conf,     x,y,z,yhat,zhat,n,N)
+  z,y,x = adds(z0), adds(y0), adds(y0, adds(z0))
+  yhat  = l.map(y0, function(y1) return y1 - y.mu + x.mu end)
+  zhat  = l.map(z0, function(z1) return z1 - z.mu + x.mu end)
+  n     = 0 
+  for _ = 1,(straps or 512)  do
+    if adds(l.many(yhat)):delta(adds(l.many(zhat))) > y:delta(z)  then n = n + 1 end end
+  return n / (straps or 512) >= (conf or 0.05)  end
+
+function l.same(x,y,adds,  delta,straps,conf)
+  return l.cliffs(x,y,delta) and l.boot(x,y,adds,straps,conf) end
+
 
 -- ## Sorting
 function l.lt(x) return function(a,b) return a[x] < b[x] end end
