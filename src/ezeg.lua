@@ -52,15 +52,19 @@ function eg.xdist(_, it)
   for k,row in pairs(l.keysort(it.rows,DIST)) do
     if k==1 or k % 60==0 then print(k,o(row), o(DIST(row))) end end end
 
-function eg.sample(f, it,asis,tobe,Y,r)
+function eg.sample(f, it,asisY,r)
   it= Data:new(csv(f or "../../moot/optimize/misc/auto93.csv")) 
   Y = function(row) return it:ydist(row) end
   asis= ez.adds(map(it.rows,Y))
   for _,r in pairs{6,12,24,48,96} do
     l.shuffle(it.rows)
-    tobe=Num:new()
-    for i = 1,20 do tobe:add(Y(l.keysort(it:some(r),Y)[1])) end 
-    print(r,o{lo=asis.lo,mu={asis=asis.mu, tobe=tobe.mu},sd={asis=asis.sd, tobe=tobe.sd}}) end end
+    local rand=Num:new(); 
+    local tobe=Num:new()
+    for i = 1,20 do 
+       for k=1,r do rand:add(Y(it.rows[k])) end
+       tobe:add(Y(l.keysort(it:some(r),Y)[1])) end 
+    print(r,o{lo=asis.lo,mu={asis=asis.mu, tobe=tobe.mu, rand=rand.mu, win=l.same(rand,tobe)},
+                         sd={asis=asis.sd, tobe=tobe.sd, rand=rand.sd}}) end end
 
  function eg.all(_)
    for _,k in pairs(l.keys(eg)) do 
