@@ -1,6 +1,6 @@
 local l=require"ezlib"
 local ez=require"ez"
-local Data,Num = ez.Data,ez.Num
+local Data,Num,Sample = ez.Data,ez.Num,ez.Sample
 local adds,o,csv,map = ez.adds,l.o,l.csv,l.map
 local cliffs,boot,cohen,same = l.cliffs,l.boot,l.cohen,l.same
 
@@ -17,17 +17,15 @@ function eg.csv(_, it)
   it = csv("../../moot/optimize/misc/auto93.csv") 
   for r in it do print(o(r)) end end
 
-function eg.stats0(_,    Y,t,u,m,n)
+function eg.stats0(_,    Y,t,u)
   Y = function(s) return s and "y" or "." end
   print("d\tclif\tboot\tsame\tcohen")
   for d =1,1.2,0.02 do
-    t={}; for i=1,100 do t[1+#t] = l.normal(5,1) + l.normal(10,2)^2 end 
-    u={}; for i,x in pairs(t) do  u[i] = x*d end
-    m,n = ez.adds(t), ez.adds(u)
+    t = Sample:new() ;for i=1,100 do t:add( l.normal(5,1) + l.normal(10,2)^2) end 
+    u = Sample:new(); for _,x in pairs(t.all) do u:add( x*d) end
     print(l.fmt("%.3f\t%s\t%s\t%s\t%s",
-             d,Y(cliffs(t,u)),Y(boot(t,u,adds)),Y(same(t,u,adds)),Y(m:cohen(n)))) end end
-
------------------------------------------------------------------------------------------
+              d,Y(cliffs(t.all,u.all)),Y(boot(t.all,u.all,adds)),
+                Y(t:same(u)),Y(t.x:cohen(u.x)))) end  end
 
 function eg.data(_, it)
   it= Data:new(csv("../../moot/optimize/misc/auto93.csv")) 

@@ -59,7 +59,6 @@ function l.boot(y0,z0,adds,  straps,conf,     x,y,z,yhat,zhat,n,N)
 function l.same(x,y,adds,  delta,straps,conf)
   return l.cliffs(x,y,delta) and l.boot(x,y,adds,straps,conf) end
 
-
 -- ## Sorting
 function l.lt(x) return function(a,b) return a[x] < b[x] end end
 function l.gt(x) return function(a,b) return a[x] > b[x] end end

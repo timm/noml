@@ -5,11 +5,12 @@ local abs,cos,log,sqrt,huge = math.abs,math.cos, math.log, math.sqrt,math.huge
 local pi, exp, max,min = math.pi, math.exp, math.max, math.min
 
 local the = {k=1, m=2, p=2, samples=32}
------------------------------------------------------------------------------------------
-local Sym,Num,Cols,Data = {},{},{},{}
-local ez={Sym=Sym, Num=Num, Data=Data,
+
+local Sym,Num,Cols,Data,Sample = {},{},{},{},{}
+local ez={Sym=Sym, Num=Num, Data=Data, Sample=Sample,
           the=the}
 
+-----------------------------------------------------------------------------------------
 function Sym:new(s,at) 
   return new(Sym, {txt=s or "", at=at or 0,n=0, 
                    has={}, mode=nil, most=0}) end
@@ -125,5 +126,14 @@ function Data.loglike(i,row, nall, nh,          prior,F,L)
   L     = function(n) return n>0 and log(n) or 0 end
   return L(prior) + l.sum(i.cols.x, F) end
 
+-----------------------------------------------------------------------------------------
+function Sample:new()
+  return new(Sample, {all={}, x=Num:new()}) end
+
+function Sample.add(i,x)
+  i.x:add( push(i.all,x) ) end
+
+function Sample.same(i,j, )
+  return l.same(i.all, j.all, ez.adds) end 
 -----------------------------------------------------------------------------------------
 return ez
