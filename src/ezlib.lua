@@ -109,7 +109,7 @@ function l.csv(file,     CELLS,src)
 l.fmt = string.format
 
 function l.o(x,     FUN,PUB) 
-  if type(x) == "number" then return l.fmt("%g",x) end
+  if type(x) == "number" then return l.fmt("%.2g",x) end
   if type(x) ~= "table"  then return tostring(x) end
   PUB = function(k) return not l.o(k):find"^_" end
   FUN = function(k,v) if PUB(k) then return l.fmt(":%s %s",k, l.o(x[k])) end end

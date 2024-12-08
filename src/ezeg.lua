@@ -56,16 +56,20 @@ function eg.sample(f, it,asisY,r,todo)
   Y = function(row) return it:ydist(row) end
   asis= adds(map(it.rows,Y),Some:new(0))
   tobe = {asis}
-  for _,k in pairs{10,20,30,40,50,60,90,120} do
+  for _,k in pairs{15,20,25,30,35,40,80,120} do
     local rand=Some:new(); 
     tobe[k]=Some:new(k)
     for i = 1,20 do 
        l.shuffle(it.rows)
        u={}; for r=1,k do push(u, Y(it.rows[r])) end ; rand:add(sort(u)[1]) 
        tobe[k]:add(Y(l.keysort(it:around(k),Y)[1])) end 
-    print(k,o{lo=asis.x.lo,mu={asis=asis.x.mu, tobe=tobe[k].x.mu, rand=rand.x.mu, win=rand:same(tobe[k])},
-                         sd={asis=asis.x.sd, tobe=tobe[k].x.sd, rand=rand.x.sd}}) end 
-  for k,some in pairs(Some.merges(keysort(tobe, function(a) return a.x.mu end), asis.x.sd*0.2)) do
+    print(k,o{lo=asis.x.lo, d=asis.x.sd*0.35,
+              mu={asis=asis.x.mu, tobe=tobe[k].x.mu, rand=rand.x.mu, win=rand:same(tobe[k])},
+              sd={asis=asis.x.sd, tobe=tobe[k].x.sd, rand=rand.x.sd}}) end 
+  for k,some in pairs(sort( Some.merges(keysort(tobe, function(a) return a.x.mu end),
+                                           asis.x.sd*0.35),
+                            function(a,b) return a._meta.x.mu < b._meta.x.mu or 
+                                                 (a._meta.x.mu == b._meta.x.mu and a.txt < b.txt) end)) do
     print(#it.rows,o{txt=some.txt,mu=some._meta.x.mu, rank=some._meta.rank}) end 
   end
 
