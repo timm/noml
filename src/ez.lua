@@ -24,6 +24,7 @@ function Cols:new(names)
   return new(Cols,{names={},all={},x={},y={}}):adds(names) end
 
 function Data:new( src)
+  if type(src)=="table" then return Data:new(items(src)) end
   return new(Data,{rows={}, cols=Cols:new(src())}):adds(src or items{})  end
 
 function Data.clone(i,src)
@@ -146,16 +147,17 @@ function Some.merge(i,j,  eps,      k)
       for _,x in pairs(t) do k:add(x) end end  end
   return k end 
 
-function Some.merges(somes,eps,     t,merdged)
+function Some.merges(somes,eps,     pos,t,merdged)
+  pos={}
   for _,some in pairs(somes) do
     if t 
     then merged = some:merge(t[#t],eps)
          if merged then t[#t] = merged else push(t,some) end
-    else t={some} 
-    end 
-    t[#t].rank = string.format("%c",96+#t)
-    some._meta=#t end
-  for k,some in pairs(somes) do some._meta = t[some._meta] end 
+    else t={some} end
+    pos[some] = #t end
+  for k,some in pairs(somes) do 
+     some._meta = t[pos[some]] 
+     some._meta.rank  = string.format("%c",96+pos[some]) end
   return somes end
 
 -----------------------------------------------------------------------------------------
