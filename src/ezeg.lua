@@ -56,7 +56,7 @@ function eg.sample(f, it,asisY,r,todo)
   Y = function(row) return it:ydist(row) end
   asis= adds(map(it.rows,Y),Some:new(0))
   tobe = {asis}
-  for _,k in pairs{10,20,30,40,50,100} do
+  for _,k in pairs{10,20,30,40,50,60,90,120} do
     local rand=Some:new(); 
     tobe[k]=Some:new(k)
     for i = 1,20 do 
@@ -66,7 +66,7 @@ function eg.sample(f, it,asisY,r,todo)
     print(k,o{lo=asis.x.lo,mu={asis=asis.x.mu, tobe=tobe[k].x.mu, rand=rand.x.mu, win=rand:same(tobe[k])},
                          sd={asis=asis.x.sd, tobe=tobe[k].x.sd, rand=rand.x.sd}}) end 
   for k,some in pairs(Some.merges(keysort(tobe, function(a) return a.x.mu end), asis.x.sd*0.2)) do
-    print(o{txt=some.txt,mu=some._meta.x.mu, rank=some._meta.rank}) end 
+    print(#it.rows,o{txt=some.txt,mu=some._meta.x.mu, rank=some._meta.rank}) end 
   end
 
  function eg.all(_)
