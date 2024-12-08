@@ -1,13 +1,13 @@
 local l=require"ezlib"
 local coerce,new,push,sort,map,o,csv = l.coerce, l.new,l.push,l.sort,l.map,l.o,l.csv
-local sum = l.sum
+local sum,keysort = l.sum, l.keysort
 local abs,cos,log,sqrt,huge = math.abs,math.cos, math.log, math.sqrt,math.huge
-local pi, exp, max,min = math.pi, math.exp, math.max, math.min
+local pi, exp, max,min      = math.pi,math.exp, math.max, math.min
 
 local the = {k=1, m=2, p=2, samples=32}
 
-local Sym,Num,Cols,Data,Sample = {},{},{},{},{}
-local ez={Sym=Sym, Num=Num, Data=Data, Sample=Sample,
+local Sym,Num,Cols,Data,Some = {},{},{},{},{}
+local ez={Sym=Sym, Num=Num, Data=Data, Some=Some,
           the=the}
 
 -----------------------------------------------------------------------------------------
@@ -98,8 +98,11 @@ function Data.xdist(i,row1,row2,     DIST)
 function Data.ydist(i,row,     DIST)
   DIST = function(c) return abs(c:norm(row[c.at]) - c.goal)^the.p end
   return (sum(i.cols.y, DIST) / #i.cols.y) ^ (1/the.p) end
+
+function Data.neighbors(i,row1,  rows)
+  return keysort(rows or i.rows, function(row2)  return i.xdist(row1,row2) end) end
  
-function Data.some(i,k,       t,u,r1,r2)
+function Data.around(i,k,       t,u,r1,r2)
   u = {l.any(i.rows)}
   for _ = 2,k do
     t={}
@@ -127,13 +130,33 @@ function Data.loglike(i,row, nall, nh,          prior,F,L)
   return L(prior) + l.sum(i.cols.x, F) end
 
 -----------------------------------------------------------------------------------------
-function Sample:new()
-  return new(Sample, {all={}, x=Num:new()}) end
+function Some:new(txt)
+  return new(Some, {txt=txt or "", all={}, x=Num:new()}) end
 
-function Sample.add(i,x)
+function Some.add(i,x)
   i.x:add( push(i.all,x) ) end
 
-function Sample.same(i,j, )
+function Some.same(i,j)
   return l.same(i.all, j.all, ez.adds) end 
+
+function Some.merge(i,j,  eps,      k)
+  if abs(i.x.mu - j.x.mu) < (eps or 0.01) or i:same(j) then 
+    k = Some:new(i.txt)
+    for _,t in pairs{i.all, j.all} do
+      for _,x in pairs(t) do k:add(x) end end  end
+  return k end 
+
+function Some.merges(somes,eps,     t,merdged)
+  for _,some in pairs(somes) do
+    if t 
+    then merged = some:merge(t[#t],eps)
+         if merged then t[#t] = merged else push(t,some) end
+    else t={some} 
+    end 
+    t[#t].rank = string.format("%c",96+#t)
+    some._meta=#t end
+  for k,some in pairs(somes) do some._meta = t[some._meta] end 
+  return somes end
+
 -----------------------------------------------------------------------------------------
 return ez

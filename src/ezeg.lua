@@ -1,8 +1,9 @@
 local l=require"ezlib"
 local ez=require"ez"
-local Data,Num,Sample = ez.Data,ez.Num,ez.Sample
+local Data,Num,Some = ez.Data,ez.Num,ez.Some
 local adds,o,csv,map = ez.adds,l.o,l.csv,l.map
-local cliffs,boot,cohen,same = l.cliffs,l.boot,l.cohen,l.same
+local lt,sort,push,cliffs,boot,cohen,same = l.lt,l.sort,l.push,l.cliffs,l.boot,l.cohen,l.same
+local keysort = l.keysort
 
 local eg={}
 
@@ -21,8 +22,8 @@ function eg.stats0(_,    Y,t,u)
   Y = function(s) return s and "y" or "." end
   print("d\tclif\tboot\tsame\tcohen")
   for d =1,1.2,0.02 do
-    t = Sample:new() ;for i=1,100 do t:add( l.normal(5,1) + l.normal(10,2)^2) end 
-    u = Sample:new(); for _,x in pairs(t.all) do u:add( x*d) end
+    t = Some:new() ;for i=1,100 do t:add( l.normal(5,1) + l.normal(10,2)^2) end 
+    u = Some:new(); for _,x in pairs(t.all) do u:add( x*d) end
     print(l.fmt("%.3f\t%s\t%s\t%s\t%s",
               d,Y(cliffs(t.all,u.all)),Y(boot(t.all,u.all,adds)),
                 Y(t:same(u)),Y(t.x:cohen(u.x)))) end  end
@@ -50,19 +51,23 @@ function eg.xdist(_, it)
   for k,row in pairs(l.keysort(it.rows,DIST)) do
     if k==1 or k % 60==0 then print(k,o(row), o(DIST(row))) end end end
 
-function eg.sample(f, it,asisY,r)
+function eg.sample(f, it,asisY,r,todo)
   it= Data:new(csv(f or "../../moot/optimize/misc/auto93.csv")) 
   Y = function(row) return it:ydist(row) end
-  asis= ez.adds(map(it.rows,Y))
-  for _,r in pairs{6,12,24,48,96} do
-    l.shuffle(it.rows)
-    local rand=Num:new(); 
-    local tobe=Num:new()
+  asis= adds(map(it.rows,Y),Some:new(0))
+  tobe = {asis}
+  for _,k in pairs{15,30,45,60,120} do
+    local rand=Some:new(); 
+    tobe[k]=Some:new(k)
     for i = 1,20 do 
-       for k=1,r do rand:add(Y(it.rows[k])) end
-       tobe:add(Y(l.keysort(it:some(r),Y)[1])) end 
-    print(r,o{lo=asis.lo,mu={asis=asis.mu, tobe=tobe.mu, rand=rand.mu, win=l.same(rand,tobe)},
-                         sd={asis=asis.sd, tobe=tobe.sd, rand=rand.sd}}) end end
+       l.shuffle(it.rows)
+       u={}; for r=1,k do push(u, Y(it.rows[r])) end ; rand:add(sort(u)[1]) 
+       tobe[k]:add(Y(l.keysort(it:around(k),Y)[1])) end 
+    print(k,o{lo=asis.x.lo,mu={asis=asis.x.mu, tobe=tobe[k].x.mu, rand=rand.x.mu, win=rand:same(tobe[k])},
+                         sd={asis=asis.x.sd, tobe=tobe[k].x.sd, rand=rand.x.sd}}) end 
+  for k,some in pairs(Some.merges(keysort(tobe, function(a) return a.x.mu end), asis.x.sd*0.2)) do
+    print(o{txt=some.txt,mu=some._meta.x.mu, rank=some._meta.rank}) end 
+  end
 
  function eg.all(_)
    for _,k in pairs(l.keys(eg)) do 
