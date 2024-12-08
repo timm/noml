@@ -56,7 +56,7 @@ function eg.sample(f, it,asisY,r,todo)
   Y = function(row) return it:ydist(row) end
   asis= adds(map(it.rows,Y),Some:new(0))
   tobe = {asis}
-  for _,k in pairs{15,30,45,60,120} do
+  for _,k in pairs{10,20,30,40,50,100} do
     local rand=Some:new(); 
     tobe[k]=Some:new(k)
     for i = 1,20 do 
