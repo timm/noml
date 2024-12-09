@@ -51,6 +51,11 @@ function eg.xdist(_, it)
   for k,row in pairs(l.keysort(it.rows,DIST)) do
     if k==1 or k % 60==0 then print(k,o(row), o(DIST(row))) end end end
 
+function eg.best(f)
+  it= Data:new(csv(f or "../../moot/optimize/misc/auto93.csv")) 
+  for _,row in pairs(it:around(20)) do
+     print(o(row), it:ydist(row)) end end
+
 function eg.sample(f, it,asisY,r,todo)
   it= Data:new(csv(f or "../../moot/optimize/misc/auto93.csv")) 
   Y = function(row) return it:ydist(row) end
@@ -64,7 +69,8 @@ function eg.sample(f, it,asisY,r,todo)
        u={}; for r=1,k do push(u, Y(it.rows[r])) end ; rand:add(sort(u)[1]) 
        tobe[k]:add(Y(l.keysort(it:around(k),Y)[1])) end 
     print(k,o{lo=asis.x.lo, d=asis.x.sd*0.35,
-              mu={asis=asis.x.mu, tobe=tobe[k].x.mu, rand=rand.x.mu, win=rand:same(tobe[k])},
+              mu={asis=asis.x.mu, tobe=tobe[k].x.mu, rand=rand.x.mu, 
+                  win=tobe[k].x.mu < rand.x.mu and not rand:same(tobe[k])},
               sd={asis=asis.x.sd, tobe=tobe[k].x.sd, rand=rand.x.sd}}) end 
   for k,some in pairs(sort( Some.merges(keysort(tobe, function(a) return a.x.mu end),
                                            asis.x.sd*0.35),

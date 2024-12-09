@@ -103,16 +103,34 @@ function Data.ydist(i,row,     DIST)
 function Data.neighbors(i,row1,  rows)
   return keysort(rows or i.rows, function(row2)  return i.xdist(row1,row2) end) end
  
-function Data.around(i,k,       t,u,r1,r2)
-  u = {l.any(i.rows)}
+function Data.around(i,k,  rows,      t,u,r1,r2)
+  rows = rows or i.rows
+  u = {l.any(rows)}
   for _ = 2,k do
     t={}
     for _ = 1,the.samples do
-      r1 = l.any(i.rows)
+      r1 = l.any(rows)
       r2 = l.min(u, function(ru) return i:xdist(r1,ru) end) -- who ru closest 2?
       t[r1]= i:xdist(r1,r2)^2 end -- how close are you
     push(u, l.prefer(t)) end -- stochastically pick one item 
   return u end 
+
+function Data.arounds(i,budget,k,  rows,        Y,FUN,ks)
+  rows = rows or l.shuffle(i.rows)
+  Y    = function(row) return i:ydist(row) end
+  FUN  = function(row) return {core=row, y=Y(row), has={}} end 
+  if #rows > k and budget >= k then
+    ks  = i:around(k, rows)
+    tmp = map(ks,FUN)
+    for j,row in pairs(rows) do
+      if j > 512 then break end
+      local D = function(z) return i:xdist(row, z.core) end
+      push(l.min(tmp, D).has, row)  
+    end
+    rows = sort(tmp, l.lt"y")[1].rows
+    return i:arounds(budget -k, k, rows) 
+  else
+     return keysort(i:around(k,rows),Y) end end
 
 -----------------------------------------------------------------------------------------
 function Sym.like(i,x,prior)
