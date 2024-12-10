@@ -1,11 +1,10 @@
 local l=require"ezlib"
-local coerce,new,push,sort,map,o,csv = l.coerce, l.new,l.push,l.sort,l.map,l.o,l.csv
-local sum,keysort = l.sum, l.keysort
-local abs,cos,log,sqrt,huge = math.abs,math.cos, math.log, math.sqrt,math.huge
+local coerce,new,push,sort,map,o = l.coerce, l.new,l.push,l.sort,l.map,l.o
+local items,sum,keysort = l.items, l.sum, l.keysort
+local abs,log,huge = math.abs, math.log, math.huge
 local pi, exp, max,min      = math.pi,math.exp, math.max, math.min
 
 local the = {k=1, m=2, p=2, samples=32}
-
 local Sym,Num,Cols,Data,Some = {},{},{},{},{}
 local ez={Sym=Sym, Num=Num, Data=Data, Some=Some,
           the=the}
@@ -77,7 +76,7 @@ function Num.delta(i,j)
   return abs(i.mu - j.mu) / ((1E-32 + i.sd^2/i.n + j.sd^2/j.n)^.5) end
 
 function Num.cohen(i,j,   d,      sd)
-  sd = (((i.n-1) * i.sd^2 + (j.n-1) * j.sd^2) / (i.n+j.n-2))^0.5 
+  sd = (((i.n-1) * i.sd^2 + (j.n-1) * j.sd^2) / (i.n+j.n-2))^0.5
   return abs(i.mu - j.mu) <= (d or 0.35) * sd end
 
 -----------------------------------------------------------------------------------------
@@ -102,7 +101,7 @@ function Data.ydist(i,row,     DIST)
 
 function Data.neighbors(i,row1,  rows)
   return keysort(rows or i.rows, function(row2)  return i.xdist(row1,row2) end) end
- 
+
 function Data.around(i,k,  rows,      t,u,r1,r2)
   rows = rows or i.rows
   u = {l.any(rows)}
@@ -113,24 +112,23 @@ function Data.around(i,k,  rows,      t,u,r1,r2)
       r2 = l.min(u, function(ru) return i:xdist(r1,ru) end) -- who ru closest 2?
       t[r1]= i:xdist(r1,r2)^2 end -- how close are you
     push(u, l.prefer(t)) end -- stochastically pick one item 
-  return u end 
+  return u end
 
-function Data.arounds(i,budget,k,  rows,        Y,FUN,ks)
+function Data.arounds(i,budget,k,  rows,        Y,FUN,ks,tmp)
   rows = rows or l.shuffle(i.rows)
   Y    = function(row) return i:ydist(row) end
-  FUN  = function(row) return {core=row, y=Y(row), has={}} end 
-  if #rows > k and budget >= k then
+  FUN  = function(row) return {on=row, y=Y(row), has={}} end
+  if #rows >= k and budget >= k then
     ks  = i:around(k, rows)
     tmp = map(ks,FUN)
     for j,row in pairs(rows) do
-      if j > 512 then break end
-      local D = function(z) return i:xdist(row, z.core) end
-      push(l.min(tmp, D).has, row)  
+      if j > 1024 then break end
+      local D = function(z) return i:xdist(row, z.on) end
+      push(l.min(tmp, D).has, row)
     end
-    rows = sort(tmp, l.lt"y")[1].rows
-    return i:arounds(budget -k, k, rows) 
+    return i:arounds(budget - k, k, sort(tmp, l.lt"y")[1].rows)
   else
-     return keysort(i:around(k,rows),Y) end end
+    return keysort(i:around(k,rows),Y) end end
 
 -----------------------------------------------------------------------------------------
 function Sym.like(i,x,prior)
@@ -144,7 +142,7 @@ function Num.like(i,x,_ ,      v,tmp)
 
 function Data.loglike(i,row, nall, nh,          prior,F,L)
   prior = (#i.rows + the.k) / (nall + the.k*nh)
-  F     = function(col) return L(col:like(row[col.at], prior)) end 
+  F     = function(col) return L(col:like(row[col.at], prior)) end
   L     = function(n) return n>0 and log(n) or 0 end
   return L(prior) + l.sum(i.cols.x, F) end
 
@@ -156,10 +154,10 @@ function Some.add(i,x)
   i.x:add( push(i.all,x) ) end
 
 function Some.same(i,j)
-  return l.same(i.all, j.all, ez.adds) end 
+  return l.same(i.all, j.all, ez.adds) end
 
 function Some.merge(i,j,  eps,      k)
-  if abs(i.x.mu - j.x.mu) < (eps or 0.01) or i:same(j) then 
+  if abs(i.x.mu - j.x.mu) < (eps or 0.01) or i:same(j) then
     k = Some:new(i.txt)
     for _,t in pairs{i.all, j.all} do
       for _,x in pairs(t) do k:add(x) end end  end
