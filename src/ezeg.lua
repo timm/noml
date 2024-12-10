@@ -67,8 +67,8 @@ function eg.sample(f, it,asisY,r,todo)
     for i = 1,20 do
        l.shuffle(it.rows)
        u={}; for r=1,k do push(u, Y(it.rows[r])) end ; rand:add(sort(u)[1]) 
-       tobe[k]:add(Y(l.keysort(it:arounds(10*k,k),Y)[1])) end 
-       --tobe[k]:add(Y(l.keysort(it:around(k),Y)[1])) end 
+       --tobe[k]:add(Y(l.keysort(it:arounds(k,8),Y)[1])) end 
+       tobe[k]:add(Y(l.keysort(it:around(k),Y)[1])) end 
     print(k,o{lo=asis.x.lo, d=asis.x.sd*0.35,
               mu={asis=asis.x.mu, tobe=tobe[k].x.mu, rand=rand.x.mu, 
                   win=tobe[k].x.mu < rand.x.mu and not rand:same(tobe[k])},

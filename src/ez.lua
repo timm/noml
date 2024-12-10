@@ -109,7 +109,7 @@ function Data.around(i,k,  rows,      t,u,r1,r2)
     t={}
     for _ = 1,the.samples do
       r1 = l.any(rows)
-      r2 = l.min(u, function(ru) return i:xdist(r1,ru) end) -- who ru closest 2?
+      r2 = l.min(u, function(ru) return i:xdist(r1,ru) end)  -- who ru closest 2?
       t[r1]= i:xdist(r1,r2)^2 end -- how close are you
     push(u, l.prefer(t)) end -- stochastically pick one item 
   return u end
@@ -119,6 +119,7 @@ function Data.arounds(i,budget,k,  rows,        Y,FUN,ks,tmp)
   Y    = function(row) return i:ydist(row) end
   FUN  = function(row) return {on=row, y=Y(row), has={}} end
   if #rows >= k and budget >= k then
+    print(k,#rows)
     ks  = i:around(k, rows)
     tmp = map(ks,FUN)
     for j,row in pairs(rows) do
@@ -126,7 +127,7 @@ function Data.arounds(i,budget,k,  rows,        Y,FUN,ks,tmp)
       local D = function(z) return i:xdist(row, z.on) end
       push(l.min(tmp, D).has, row)
     end
-    return i:arounds(budget - k, k, sort(tmp, l.lt"y")[1].rows)
+    return i:arounds(budget - k, k, sort(tmp, l.lt"y")[1].has)
   else
     return keysort(i:around(k,rows),Y) end end
 
