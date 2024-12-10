@@ -165,7 +165,7 @@ function Some.merge(i,j,  eps,      k)
       for _,x in pairs(t) do k:add(x) end end  end
   return k end 
 
-function Some.merges(somes,eps,     pos,t,merdged)
+function Some.merges(somes,eps,     pos,t,merged)
   pos={}
   for _,some in pairs(somes) do
     if t 
