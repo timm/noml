@@ -107,7 +107,7 @@ pretty:
 	@mkdir -p docs
 	@echo "pdf-ing $@ ... "
 	@a2ps -Bjr    -q                        \
-		--chars-per-line=120 \
+		--chars-per-line=90 \
 		--line-numbers=1                    \
 		--highlight-level=normal  \
 		--columns 3                 \
