@@ -15,16 +15,16 @@ local function Data(names)
       if s:find"[!+-]$" then i.y[k] = i.num[k] else i.x[k] = k end end  end
   return i end
 
-function addNum(num,x)
+function add(num,x)
   if x=="?" then return x end
   x=x+0
   num.lo = math.min(x, num.lo)
   num.hi = math.max(x, num.hi) 
   return x end
 
-function add(t,  data)
+function adds(t,  data)
   data = data or DATA
-  for k,num in pairs(data.num) do t[k] = addNum(num,t[k]) end
+  for k,num in pairs(data.num) do t[k] = add(num,t[k]) end
   push(data.rows, t) end
 
 function ydist(t,   data)
